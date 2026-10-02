@@ -10,7 +10,7 @@ public final class GameConfig {
     }
 
     // Window settings
-    public static final String GAME_TITLE = "Project DontKnown- A unplanned top-down roguelite shooter";
+    public static final String GAME_TITLE = "Project DontKnown- An unplanned top-down roguelite shooter";
     public static final int SCREEN_WIDTH = 1280;
     public static final int SCREEN_HEIGHT = 720;
     public static final boolean FULLSCREEN = false;

@@ -15,7 +15,7 @@ import java.awt.event.KeyEvent;
  */
 public class MenuState extends GameState {
 
-    private final String[] options = {"START MISSION", "HOW TO PLAY", "EXIT"};
+    private final String[] options = { "START MISSION", "HOW TO PLAY", "EXIT" };
     private int selectedOption = 0;
     private boolean showHowToPlay = false;
 
@@ -38,7 +38,8 @@ public class MenuState extends GameState {
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
         if (showHowToPlay) {
-            if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE) || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || mouseH.isLeftClickedOnce()) {
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE) || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
+                    || mouseH.isLeftClickedOnce()) {
                 showHowToPlay = false;
             }
             return;
@@ -47,11 +48,13 @@ public class MenuState extends GameState {
         // Keyboard navigation
         if (keyH.isKeyPressedOnce(KeyEvent.VK_UP) || keyH.isKeyPressedOnce(KeyEvent.VK_W)) {
             selectedOption--;
-            if (selectedOption < 0) selectedOption = options.length - 1;
+            if (selectedOption < 0)
+                selectedOption = options.length - 1;
         }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_DOWN) || keyH.isKeyPressedOnce(KeyEvent.VK_S)) {
             selectedOption++;
-            if (selectedOption >= options.length) selectedOption = 0;
+            if (selectedOption >= options.length)
+                selectedOption = 0;
         }
 
         // Mouse hover detection
@@ -103,7 +106,7 @@ public class MenuState extends GameState {
         // Main Title with glow effect
         g.setFont(titleFont);
         FontMetrics fmTitle = g.getFontMetrics();
-        String title = "SOUL KNIGHT: SURVIVOR";
+        String title = "Project DontKnow";
         int titleX = (GameConfig.SCREEN_WIDTH - fmTitle.stringWidth(title)) / 2;
         int titleY = 180;
 
@@ -117,7 +120,7 @@ public class MenuState extends GameState {
         // Subtitle
         g.setFont(subtitleFont);
         FontMetrics fmSub = g.getFontMetrics();
-        String subtitle = "POBG Top-Down Roguelite Shooter Edition";
+        String subtitle = "An unplanned top-down roguelite shooter";
         g.setColor(new Color(160, 180, 210));
         g.drawString(subtitle, (GameConfig.SCREEN_WIDTH - fmSub.stringWidth(subtitle)) / 2, titleY + 40);
 
@@ -147,7 +150,8 @@ public class MenuState extends GameState {
                 g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 12, 12);
 
                 g.setColor(new Color(255, 230, 80));
-                g.drawString(">  " + opt + "  <", (GameConfig.SCREEN_WIDTH - fmMenu.stringWidth(">  " + opt + "  <")) / 2, optY);
+                g.drawString(">  " + opt + "  <",
+                        (GameConfig.SCREEN_WIDTH - fmMenu.stringWidth(">  " + opt + "  <")) / 2, optY);
             } else {
                 g.setColor(new Color(180, 195, 220));
                 g.drawString(opt, optX, optY);
