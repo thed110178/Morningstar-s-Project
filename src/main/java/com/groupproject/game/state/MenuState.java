@@ -11,15 +11,27 @@ import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 
 /**
- * Main Menu State with keyboard and mouse navigation.
+ * Main Menu State providing an interactive entry screen with dual Keyboard and Mouse navigation.
+ *
+ * <p>WHY: Allows players to start the game, review control bindings, or exit gracefully.
+ * Implementing both keyboard arrow navigation and mouse hover/click ensures accessibility
+ * and creates a responsive, polished user interface experience.
  */
 public class MenuState extends GameState {
 
+    /**
+     * Primary menu choices available to the user.
+     */
     private final String[] options = { "START MISSION", "HOW TO PLAY", "EXIT" };
     private int selectedOption = 0;
     private boolean showHowToPlay = false;
 
+    /**
+     * Cached bounding boxes for mouse hover/click collision detection.
+     */
     private final Rectangle[] optionBounds = new Rectangle[3];
+
+    // Typography styling
     private final Font titleFont = new Font("SansSerif", Font.BOLD, 54);
     private final Font subtitleFont = new Font("SansSerif", Font.ITALIC, 22);
     private final Font menuFont = new Font("SansSerif", Font.BOLD, 26);
@@ -37,6 +49,7 @@ public class MenuState extends GameState {
 
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        // Handle Dismissal of the 'How To Play' briefing overlay
         if (showHowToPlay) {
             if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE) || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
                     || mouseH.isLeftClickedOnce()) {
@@ -45,19 +58,21 @@ public class MenuState extends GameState {
             return;
         }
 
-        // Keyboard navigation
+        // --- Keyboard Navigation (WASD / Arrow Keys) ---
         if (keyH.isKeyPressedOnce(KeyEvent.VK_UP) || keyH.isKeyPressedOnce(KeyEvent.VK_W)) {
             selectedOption--;
-            if (selectedOption < 0)
-                selectedOption = options.length - 1;
+            if (selectedOption < 0) {
+                selectedOption = options.length - 1; // Wrap around to bottom
+            }
         }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_DOWN) || keyH.isKeyPressedOnce(KeyEvent.VK_S)) {
             selectedOption++;
-            if (selectedOption >= options.length)
-                selectedOption = 0;
+            if (selectedOption >= options.length) {
+                selectedOption = 0; // Wrap around to top
+            }
         }
 
-        // Mouse hover detection
+        // --- Mouse Hover & Click Detection ---
         int mouseX = mouseH.getScreenX();
         int mouseY = mouseH.getScreenY();
         for (int i = 0; i < optionBounds.length; i++) {
@@ -70,11 +85,15 @@ public class MenuState extends GameState {
             }
         }
 
+        // --- Confirm Selection via Keyboard ---
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)) {
             selectCurrentOption();
         }
     }
 
+    /**
+     * Executes the action corresponding to the currently highlighted menu index.
+     */
     private void selectCurrentOption() {
         switch (selectedOption) {
             case 0 -> gsm.setState(GameStateManager.StateType.PLAYING);
@@ -85,11 +104,11 @@ public class MenuState extends GameState {
 
     @Override
     public void render(Graphics2D g) {
-        // Background - Dark Cybernetic Grid
+        // --- 1. Background Grid Styling ---
         g.setColor(new Color(15, 18, 28));
         g.fillRect(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
 
-        // Decorative grid lines
+        // Draw ambient sci-fi grid lines
         g.setColor(new Color(28, 35, 54));
         for (int x = 0; x < GameConfig.SCREEN_WIDTH; x += 40) {
             g.drawLine(x, 0, x, GameConfig.SCREEN_HEIGHT);
@@ -98,19 +117,20 @@ public class MenuState extends GameState {
             g.drawLine(0, y, GameConfig.SCREEN_WIDTH, y);
         }
 
+        // If briefing popup is visible, render it on top and skip main options
         if (showHowToPlay) {
             renderHowToPlay(g);
             return;
         }
 
-        // Main Title with glow effect
+        // --- 2. Title & Glowing Subtitle ---
         g.setFont(titleFont);
         FontMetrics fmTitle = g.getFontMetrics();
         String title = "Project DontKnow";
         int titleX = (GameConfig.SCREEN_WIDTH - fmTitle.stringWidth(title)) / 2;
         int titleY = 180;
 
-        // Shadow / Glow
+        // Shadow / Glow effect
         g.setColor(new Color(255, 75, 43, 80));
         g.drawString(title, titleX + 3, titleY + 3);
         // Primary title text
@@ -124,7 +144,7 @@ public class MenuState extends GameState {
         g.setColor(new Color(160, 180, 210));
         g.drawString(subtitle, (GameConfig.SCREEN_WIDTH - fmSub.stringWidth(subtitle)) / 2, titleY + 40);
 
-        // Menu Options
+        // --- 3. Interactive Menu Buttons ---
         g.setFont(menuFont);
         FontMetrics fmMenu = g.getFontMetrics();
         int startY = 360;
@@ -143,7 +163,7 @@ public class MenuState extends GameState {
             optionBounds[i] = bounds;
 
             if (i == selectedOption) {
-                // Highlight box
+                // Highlighted button styling
                 g.setColor(new Color(255, 100, 30, 40));
                 g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 12, 12);
                 g.setColor(new Color(255, 120, 50));
@@ -153,12 +173,13 @@ public class MenuState extends GameState {
                 g.drawString(">  " + opt + "  <",
                         (GameConfig.SCREEN_WIDTH - fmMenu.stringWidth(">  " + opt + "  <")) / 2, optY);
             } else {
+                // Normal unselected button
                 g.setColor(new Color(180, 195, 220));
                 g.drawString(opt, optX, optY);
             }
         }
 
-        // Footer info
+        // --- 4. Footer Help Tip ---
         g.setFont(infoFont);
         g.setColor(new Color(100, 115, 140));
         String footer = "Use W/S or Arrow Keys to navigate, Enter to Select | Mouse Click supported";
@@ -166,12 +187,16 @@ public class MenuState extends GameState {
         g.drawString(footer, (GameConfig.SCREEN_WIDTH - fmFoot.stringWidth(footer)) / 2, GameConfig.SCREEN_HEIGHT - 40);
     }
 
+    /**
+     * Renders a translucent briefing popup explaining controls and roguelite progression.
+     */
     private void renderHowToPlay(Graphics2D g) {
         int boxW = 800;
         int boxH = 460;
         int boxX = (GameConfig.SCREEN_WIDTH - boxW) / 2;
         int boxY = (GameConfig.SCREEN_HEIGHT - boxH) / 2;
 
+        // Semi-transparent dark backdrop
         g.setColor(new Color(22, 27, 40, 240));
         g.fillRoundRect(boxX, boxY, boxW, boxH, 20, 20);
         g.setColor(new Color(255, 120, 50));

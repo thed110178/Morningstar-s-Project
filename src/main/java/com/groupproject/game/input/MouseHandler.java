@@ -6,6 +6,12 @@ import java.awt.event.MouseWheelEvent;
 
 /**
  * Handles mouse movement, clicking, and dragging for 360-degree aiming.
+ *
+ * <p>WHY: Top-down roguelite shooters (like Soul Knight and POBG) require omnidirectional
+ * aiming where the firearm points directly at the cursor, and shooting can occur either continuously
+ * (automatic rifles) or on discrete clicks (pistols, shotguns). MouseHandler captures real-time
+ * cursor screen coordinates and tracks button states so that game states can calculate aim vectors
+ * without querying the OS mouse pointer synchronously inside the render loop.
  */
 public class MouseHandler extends MouseAdapter {
 
@@ -16,31 +22,57 @@ public class MouseHandler extends MouseAdapter {
     private boolean leftClickedOnce;
     private boolean rightClickedOnce;
 
+    /**
+     * Resets single-click pulse flags at the end of each frame.
+     *
+     * <p>WHY: Prevents single-click actions (such as clicking a menu button or firing a semi-automatic weapon)
+     * from triggering repeatedly across subsequent frames.
+     */
     public void update() {
         leftClickedOnce = false;
         rightClickedOnce = false;
     }
 
+    /**
+     * Returns the horizontal pixel coordinate of the cursor relative to the canvas.
+     */
     public int getScreenX() {
         return screenX;
     }
 
+    /**
+     * Returns the vertical pixel coordinate of the cursor relative to the canvas.
+     */
     public int getScreenY() {
         return screenY;
     }
 
+    /**
+     * Checks if the primary (left) mouse button is held down.
+     * Useful for automatic sustained gunfire.
+     */
     public boolean isLeftPressed() {
         return leftPressed;
     }
 
+    /**
+     * Checks if the secondary (right) mouse button is held down.
+     */
     public boolean isRightPressed() {
         return rightPressed;
     }
 
+    /**
+     * Checks if the primary (left) mouse button was clicked during this frame.
+     * Useful for UI button clicks and semi-automatic weapon firing.
+     */
     public boolean isLeftClickedOnce() {
         return leftClickedOnce;
     }
 
+    /**
+     * Checks if the secondary (right) mouse button was clicked during this frame.
+     */
     public boolean isRightClickedOnce() {
         return rightClickedOnce;
     }
@@ -79,6 +111,6 @@ public class MouseHandler extends MouseAdapter {
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        // Can be used for switching weapons or zooming
+        // Can be hooked into weapon cycling or zoom levels in future extensions
     }
 }

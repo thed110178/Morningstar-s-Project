@@ -2,32 +2,33 @@
 trigger: always_on
 ---
 
-Cập nhật mới nhất vào ngày: 02/10/2026
+# Project Dontknow - Workspace Rules
 
-# Project DontKnow - Workspace Rules
+## Chào mừng đến với Project Dontknow
 
-## Chào mừng đến với Project DontKnow
-Dự án game: **Project DontKnow - An unplanned top-down roguelite shooter** (phong cách Soul Knight / POBG).
-Môi trường công nghệ: **Java 21 LTS, Java Swing / Graphics2D, Maven, JUnit 5**.
-
-Trước khi bắt đầu hỗ trợ dự án, AI Agent phải dành thời gian tìm hiểu về cấu trúc, tài liệu và mã nguồn của Project DontKnow.
+Trước khi bắt đầu hỗ trợ dự án, AI Agent phải dành thời gian tìm hiểu về cấu trúc, tài liệu và mã nguồn của Project Unknown.
 
 ---
 
 # 1. Quy trình tìm hiểu dự án
 
-## Bước 1 - Đọc tài liệu (nếu có)
-Đầu tiên, hãy đọc toàn bộ tài liệu trong:
+## Bước 1 - Đọc tài liệu (nếu c)
+
+Đầu tiên, hãy đọc toàn bộ tài liệu trong (nếu không có, hãy tạo 1 folder với những yêu cầu dưới đây):
+
 ```
-Docs/
+GroupProjecct/Docs
 ```
+
 để nắm được:
-- Tổng quan dự án và yêu cầu môn học (`f2026-final-project`).
-- Thiết kế gameplay roguelite (di chuyển 8 hướng, ngắm bắn 360 độ, kho vũ khí, thẻ nâng cấp perks, phòng dungeon).
-- Kiến trúc hệ thống phân tầng (Core, Entity, Weapon, Physics, State, Dungeon, UI, Storage).
-- Quy tắc phát triển và tiêu chí chấm điểm (Rubric).
+
+- Tổng quan dự án.
+- Thiết kế gameplay.
+- Kiến trúc hệ thống.
+- Quy tắc phát triển.
 
 Nếu chưa biết cấu trúc thư mục tài liệu, hãy đọc trước:
+
 ```
 Docs/Project_Summary.md
 ```
@@ -35,218 +36,478 @@ Docs/Project_Summary.md
 ---
 
 ## Bước 2 - Đọc mã nguồn
-Sau khi hiểu tài liệu, tiếp tục đọc mã nguồn trong:
-```
-src/main/java/com/groupproject/game/
-```
-để hiểu:
-- Kiến trúc Game Loop 60 FPS đa luồng (`core/`).
-- Quản lý trạng thái bằng State Pattern (`state/`).
-- Hệ thống nhân vật, quái vật, vũ khí và đạn (`entity/`).
-- Hệ thống kiểm tra va chạm tối ưu không gian Spatial Grid (`physics/`).
-- API hiện có và mối quan hệ giữa các thành phần.
 
-Mã nguồn của dự án đã được chú thích (comment JavaDoc) nhằm hỗ trợ cả lập trình viên và AI Agent hiểu nhanh chức năng và lý do thiết kế của từng đoạn code.
+Sau khi hiểu tài liệu, tiếp tục đọc mã nguồn trong:
+
+```
+GroupProject/Script
+```
+
+để hiểu:
+
+- Kiến trúc code.
+- Chức năng của từng System.
+- API hiện có.
+- Quan hệ giữa các thành phần.
+
+Mã nguồn của dự án đã được chú thích (comment) nhằm hỗ trợ cả lập trình viên và AI Agent hiểu nhanh chức năng của từng đoạn code.
 
 ---
 
 ## Bước 3 - Thực hiện yêu cầu
+
 Sau khi hoàn thành hai bước trên, AI Agent mới bắt đầu xử lý yêu cầu của người dùng.
-Trong toàn bộ quá trình làm việc, luôn tuân thủ các quy tắc được định nghĩa trong **Global Rules** và file quy tắc này.
+
+Trong toàn bộ quá trình làm việc, luôn tuân thủ các quy tắc được định nghĩa trong **Global Rules**.
 
 ---
 
 # 2. Quy định về tài liệu
 
-## 2.1 Cấu trúc thư mục tài liệu
+## 2.1 Cấu trúc thư mục
+
 Toàn bộ tài liệu được lưu tại:
+
 ```
-Docs/
+GroupProject/Docs
+```
+
+Thư mục được tổ chức theo dạng:
+
+```
+Docs
 │
-├── Object/
-├── Checklist/
-├── Feature Category/
-│   ├── Combat/
-│   ├── Dungeon/
-│   └── Progression/
-├── PlanForNextFeature/
-└── Update/
+├── Object
+│
+├── Checklist
+│
+├── Feature Category
+│   ├── System A
+│   ├── System B
+│   └── ...
+│
+└── Update
 ```
 
 Nếu chưa hiểu cách phân loại, hãy đọc:
+
 ```
-Docs/Project_Summary.md
+GroupProject/Docs/Project_Summary.md
 ```
 
 ---
 
 ## 2.2 Cập nhật tài liệu
-Khi người dùng yêu cầu cập nhật tài liệu Markdown, AI Agent phải thực hiện đầy đủ các bước sau:
+
+Khi người dùng yêu cầu cập nhật tài liệu Markdown, AI Agent phải thực hiện đầy đủ các bước sau.
 
 ### Cập nhật thời gian
+
 Ở đầu mỗi file Markdown, thêm dòng:
-```markdown
+
+```
 Cập nhật mới nhất vào ngày: dd/mm/yyyy
 ```
 
+---
+
 ### Tạo tài liệu mới
+
 Nếu tính năng là hoàn toàn mới:
+
 - Được phép tạo file Markdown mới.
 - Đặt file vào đúng thư mục phân loại.
-- Không tự ý tạo thư mục mới nếu chưa hỏi ý kiến người dùng.
+- Không tự ý tạo thư mục mới.
+
+Nếu cần tạo một nhóm phân loại (Folder) mới, AI Agent phải hỏi ý kiến người dùng trước.
+
+---
 
 ### Cấu trúc file mô tả tính năng
+
 Khuyến nghị sử dụng cấu trúc sau:
-```markdown
+
+```
 1. Mô tả
+
 2. Quy trình hoạt động
-3. API / Class & Interface
-4. Cấu hình & Tham số cân bằng (Game Balance)
+
+3. API (nếu có)
+
+4. Inspector Settings (nếu có)
+
 5. Quan hệ với hệ thống khác
+
 6. Sửa đổi / Cập nhật
+
 7. Lỗi đã sửa
 ```
 
+Không phải mục nào cũng bắt buộc, tùy từng hệ thống.
+
 ---
 
-## 2.3 Ghi nhận thay đổi (Update Logs)
-Mỗi lần được yêu cầu cập nhật tài liệu hoặc hoàn thành một tính năng lớn (trừ khi tạo kế hoạch trong `Docs/PlanForNextFeature`), AI Agent phải tự động tạo hoặc ghi đè một báo cáo trong:
+## 2.3 Ghi nhận thay đổi
+
+Mỗi lần được yêu cầu cập nhật tài liệu , trừ khi tạo và cập nhâ tài liệu kế hoạch trong GroupProject\Docs\PlanForNextFeature, AI Agent phải tự động tạo một báo cáo trong:
+
 ```
-Docs/Update/
+GroupProject/Docs/Update
 ```
+
+Ngay cả khi người dùng không yêu cầu viết báo cáo, mà là chỉnh sửa.
+
 Tên file:
+
 ```
 yy-mm-dd_[số thứ tự trong ngày].md
 ```
+
 Ví dụ:
+
 ```
-26-10-02_01.md
-26-10-02_02.md
+26-07-11_01.md
+26-07-11_02.md
 ```
 
 Báo cáo cần ghi rõ chi tiết:
-- Những gì đã thay đổi.
-- File nào đã chỉnh sửa, file nào mới được tạo.
-- Lý do chỉnh sửa và nguyên lý giải quyết.
-- Ghi chú quan trọng và ảnh hưởng tới hệ thống.
-- Nếu là sửa lỗi: nêu rõ nguyên nhân (Root Cause) và cách khắc phục.
 
-*Quy tắc gộp file:* Nếu người dùng yêu cầu cập nhật liên tục trong vòng 4 tiếng, ghi tiếp vào file update hiện tại trong ngày để tránh sinh quá nhiều file vụn vặt.
+- Những gì đã thay đổi.
+- File nào đã chỉnh sửa.
+- File mới được tạo.
+- Lý do chỉnh sửa.
+- Ghi chú quan trọng (nếu có).
+- Nếu có 1 lỗi, Tính năng mới, hãy mô tả rõ nguyên nhân/lí do, mục đích, cách sửa/ các vận hành.
 
 ---
+
+Báo cáo không chỉ là liệt kê, mà là mô tả chi tiết cập nhật!
+
+các file mô tả mã nguồn, tổng thể dự án phải cập nhật liên tục sau mỗi lần chỉnh sửa. (VD: thay đổi/ cập nhật file md mô tả mã nguồn khi file mã nguồn tương ứng được cập nhật/ chỉnh sử)
+
+Nếu người dùng sử dụng agent để update liên tục, thì nên viết báo cáo trên cùng 1 file, mỗi yêu cầu sẽ được ghi đè, chỉnh sửa liên tục lên file đó.
+
+Khi người dùng yêu cầu update sau ít nhất 4h kể từ yêu cầu chỉnh sửa gần nhất thì mới tạo file update mới để phòng tránh folder có quá nhiều file
 
 ## 2.4 Khi cập nhật hệ thống đã tồn tại
+
 Nếu chỉnh sửa một hệ thống đã có tài liệu:
-* **Bổ sung tính năng:** Thêm vào mục `Sửa đổi / Cập nhật` (Ngày, Nội dung thay đổi, Cách thức hoạt động).
-* **Sửa lỗi:** Thêm vào mục `Lỗi đã sửa` (Ngày sửa, Nguyên nhân lỗi, Cách khắc phục, Ảnh hưởng).
-* **Tuyệt đối không** xóa lịch sử cập nhật cũ.
+
+### Bổ sung tính năng
+
+Thêm vào mục:
+
+```
+Sửa đổi / Cập nhật
+```
+
+Bao gồm:
+
+- Ngày cập nhật.
+- Nội dung thay đổi.
+- Mô tả chi tiết cách hoạt động.
 
 ---
 
-## 2.5 Quy định về Comment mã nguồn (JavaDoc & Inline)
-Khi sửa đổi hoặc viết mới mã nguồn Java, AI Agent phải bổ sung hoặc cập nhật comment cho các đoạn code liên quan.
+### Sửa lỗi
+
+Thêm vào mục:
+
+```
+Lỗi đã sửa
+```
+
+Bao gồm:
+
+- Ngày sửa.
+- Nguyên nhân lỗi.
+- Cách khắc phục.
+- Ảnh hưởng tới hệ thống (nếu có).
+
+Không được ghi đè hoặc xóa lịch sử cập nhật cũ.
+
+## 2.5 Quy định về Comment mã nguồn
+
+Khi sửa đổi hoặc viết mới mã nguồn, AI Agent phải bổ sung hoặc cập nhật comment cho các đoạn code liên quan.
 
 ### Bắt buộc
-- Mọi Class, Interface và Method mới phải có JavaDoc (`/** ... */`) tóm tắt vai trò và tham số/kết quả trả về.
-- Các biến hoặc hằng số cân bằng quan trọng cần có comment giải thích vai trò nếu tên gọi chưa đủ rõ nghĩa.
-- Khi thay đổi logic, **bắt buộc đồng bộ comment** để phản ánh đúng hành vi mới. Không để code một đằng comment một nẻo.
 
-### Nội dung comment: Ưu tiên giải thích WHY hơn là WHAT
-Comment không chỉ mô tả *code đang làm gì*, mà phải giải thích:
-- **Tại sao** cần đoạn code đó?
-- Đoạn code giải quyết bài toán gì?
-- Hệ thống nào phụ thuộc vào đoạn code này?
-- Các trường hợp biên (Edge Cases) cần lưu ý?
+- Mọi hàm (Method) mới phải có comment tóm tắt chức năng (`/// <summary>` nếu phù hợp).
+- Các biến hoặc thuộc tính quan trọng cần có comment giải thích vai trò nếu tên gọi chưa đủ rõ nghĩa.
+- Khi thay đổi logic của một hệ thống, phải cập nhật comment của các đoạn code liên quan để phản ánh đúng hành vi mới.
+- Nếu một hàm hoặc đoạn code được refactor đáng kể, comment cũ phải được sửa hoặc xóa nếu không còn chính xác.
 
-*Ví dụ tốt (Java):*
-```java
-/**
- * Smoothly interpolates camera position toward target using Linear Interpolation (Lerp).
- * Prevents camera jitter when player changes movement direction rapidly on 60 FPS tick.
- */
-public void update(double targetX, double targetY) {
-    // Lerp factor balances responsiveness with visual smoothness
-    this.x += (targetX - this.x) * LERP_FACTOR;
-}
+---
+
+### Nội dung comment
+
+Comment không chỉ mô tả **code đang làm gì**, mà còn phải giải thích:
+
+- Tại sao cần đoạn code đó.
+- Đoạn code giải quyết vấn đề gì.
+- Những hệ thống nào phụ thuộc vào đoạn code này (nếu có).
+- Các trường hợp đặc biệt (Edge Cases) cần lưu ý.
+
+Ưu tiên giải thích **WHY** hơn là **WHAT**.
+
+Ví dụ tốt:
+
+```csharp
+// Prevent facing jitter caused by Camera Smooth Follow.
+// When the cursor is close to the player, ScreenToWorldPoint may
+// cause CursorDeltaX to oscillate every frame.
+// Temporarily lock the facing direction until the cursor moves away.
 ```
 
-*Ví dụ chưa tốt:*
-```java
-// Cập nhật camera
-public void update(double targetX, double targetY) { ... }
+Ví dụ chưa tốt:
+
+```csharp
+// Set facing direction.
 ```
 
 ---
 
-# 3. Quy định về Vibe Coding & Kiến trúc Mã nguồn
+### Đồng bộ comment
 
-Mục tiêu của **Project DontKnow** là xây dựng mã nguồn có tính nhất quán cao, cấu trúc sạch đẹp, dễ mở rộng và đạt điểm tối đa tiêu chí OOP & SOLID của môn học.
+Khi chỉnh sửa một tính năng, AI Agent phải kiểm tra các comment liên quan trong cùng hệ thống.
+
+Nếu hành vi đã thay đổi nhưng comment vẫn mô tả logic cũ, phải cập nhật lại ngay.
+
+Không được để comment và mã nguồn mâu thuẫn với nhau.
+
+---
+
+### Mục tiêu
+
+Comment phải giúp:
+
+- Người mới tham gia dự án hiểu nhanh hệ thống.
+- AI Agent khác hiểu đúng ý đồ thiết kế.
+- Giảm thời gian đọc và bảo trì mã nguồn trong tương lai.
+
+# 3. Quy định về Vibe Coding
+
+Mục tiêu của Project Unknown là xây dựng mã nguồn có tính nhất quán, dễ mở rộng và dễ bảo trì.
+
+AI Agent không chỉ có nhiệm vụ hoàn thành yêu cầu, mà còn phải giữ cho toàn bộ dự án phát triển theo cùng một phong cách.
 
 ---
 
 ## 3.1 Tư duy khi lập trình
-- **Đơn giản hơn là thông minh**: Ưu tiên giải pháp sáng sủa, dễ đọc hơn là code mẹo phức tạp.
-- **Dễ đọc hơn là ngắn**: Viết code tự diễn giải (Self-documenting code), tên biến và tên hàm rõ ràng.
-- **Dễ mở rộng hơn là tối ưu sớm**: Tuân thủ SOLID, tránh over-engineering những tính năng chưa cần đến.
-- **Refactor khi cần**: Giữ nguyên hành vi gameplay nhưng dọn dẹp cấu trúc khi phát hiện code bốc mùi (code smell).
+
+Ưu tiên:
+
+- Đơn giản hơn là thông minh.
+- Dễ đọc hơn là ngắn.
+- Dễ mở rộng hơn là tối ưu sớm.
+- Refactor khi cần, không over-engineering.
 
 ---
 
-## 3.2 Không phá vỡ kiến trúc (Kiểm soát God Object)
-- **CẤM God Object**: Tuyệt đối không nhét toàn bộ logic game vào `GamePanel` hoặc `Player`. Mỗi tính năng (Bắn súng, Va chạm, AI, Quản lý trạng thái) phải thuộc về Class/System riêng biệt.
-- **Phân tách trách nhiệm (Separation of Concerns)**:
-  - `GameLoop`: Chỉ điều phối thời gian và nhịp cập nhật.
-  - `State`: Chỉ xử lý logic của màn hình tương ứng.
-  - `Entity`: Chứa dữ liệu và hành vi của đối tượng trong game.
-  - `Physics`: Xử lý tính toán va chạm.
-- Nếu phát hiện kiến trúc chưa hợp lý: Phải giải thích ưu/nhược điểm và đề xuất với người dùng trước khi sửa.
+## 3.2 Không phá vỡ kiến trúc
+
+Không được:
+
+- Nhét thêm logic vào một System nếu logic đó có thể tách riêng.
+- Biến một class thành God Object.
+- Tự ý thay đổi kiến trúc hiện có nếu người dùng không yêu cầu.
+
+Nếu phát hiện kiến trúc chưa hợp lý:
+
+- Đưa ra đề xuất.
+- Giải thích ưu và nhược điểm.
+- Chỉ thực hiện sau khi người dùng đồng ý.
 
 ---
 
-## 3.3 Chuẩn hóa phong cách Java (Coding Conventions)
-- **Tên Class / Interface**: `PascalCase` (ví dụ: `Player`, `GameStateManager`, `BulletFactory`).
-- **Tên Method / Variable**: `camelCase` (ví dụ: `calculateDamage()`, `aimAngle`, `currentHealth`).
-- **Tên Hằng số**: `UPPER_SNAKE_CASE` (ví dụ: `TARGET_FPS`, `PLAYER_DEFAULT_SPEED`).
-- **Hàm ngắn gọn**: Mỗi hàm chỉ nên làm đúng một nhiệm vụ duy nhất (Single Responsibility Principle).
+## 3.3 Khi viết code
+
+Ưu tiên:
+
+- Hàm ngắn.
+- Một hàm chỉ nên thực hiện một nhiệm vụ.
+- Tên biến thể hiện rõ mục đích.
+- Không lặp code nếu có thể tái sử dụng.
 
 ---
 
-## 3.4 Quy định về Quản lý Sprite, Hoạt ảnh & Đồ họa (Java 2D)
-Vì dự án xây dựng trên nền **Java Swing / Graphics2D**, việc quản lý tài nguyên và hiển thị đồ họa phải tuân thủ nghiêm ngặt:
+## 3.4 Khi Refactor
 
-### Quản lý Asset tập trung (Tránh Memory Leak)
-- **CẤM** đọc ảnh (`ImageIO.read()`) hoặc file âm thanh từ ổ cứng bên trong vòng lặp game (`update()` hoặc `render()`).
-- Mọi hình ảnh (Spritesheet, Icon, Background) phải được nạp trước một lần thông qua `AssetManager` tập trung tại thời điểm khởi động game hoặc chuyển State.
+Mục tiêu của Refactor là:
 
-### Quản lý Hoạt ảnh (Animation State Machine)
-- Quản lý trạng thái chuyển động của thực thể bằng Enum rõ ràng:
-  ```java
-  public enum AnimationState {
-      IDLE,
-      WALK,
-      SHOOT,
-      DASH,
-      HURT,
-      DEATH
-  }
-  ```
-- Tính toán chuyển frame dựa trên delta time (`elapsedTime += deltaTime`), không phụ thuộc vào tốc độ khung hình của máy tính.
+- Giữ nguyên hành vi.
+- Cải thiện cấu trúc.
+- Không thay đổi gameplay.
+
+Nếu gameplay cần thay đổi, phải được người dùng xác nhận trước.
 
 ---
 
-## 3.5 Quy định về Đa luồng & An toàn Luồng (Concurrency Safety)
-Dự án có sử dụng Đa luồng (luồng Game Loop 60 FPS tách biệt với EDT và Audio Thread):
-- Danh sách các thực thể (Quái vật, Đạn bay, Hiệu ứng) được cập nhật trên Game Loop thread và vẽ trên Paint thread: Phải dùng cấu trúc an toàn luồng hoặc kỹ thuật snapshot (như `CopyOnWriteArrayList` hoặc danh sách buffer thêm/xóa `pendingAdd` / `pendingRemove`) để **tránh hoàn toàn ngoại lệ `ConcurrentModificationException`**.
-- Không gọi các thao tác I/O nặng (ghi file điểm, load màn chơi lớn) làm tắc nghẽn luồng `GameLoop`.
+## 3.5 Khi bổ sung tính năng
+
+Mỗi tính năng mới cần trả lời được:
+
+- Vì sao hệ thống này tồn tại?
+- Nó thuộc domain nào?
+- Có nên là một System riêng không?
+- Có ảnh hưởng tới hệ thống nào khác không?
+
+Nếu có thể tồn tại độc lập, ưu tiên tạo thành một System riêng.
 
 ---
 
-## 3.6 Quy định về Kiểm thử (Unit Testing JUnit 5)
-Để đáp ứng tiêu chí 15% điểm Testing của Rubric môn học:
-- Mọi module logic cốt lõi (Công thức tính sát thương, Hệ thống va chạm Hitbox AABB, Thẻ nâng cấp perks, Lưu/Đọc bảng điểm) khi hoàn thành phải có ít nhất 1 tệp Unit Test tương ứng trong `src/test/java/`.
-- Test case phải kiểm tra cả trường hợp bình thường lẫn trường hợp biên (Boundary/Edge Cases).
+## 3.6 Chuẩn hóa mã nguồn
+
+Mọi mã nguồn mới cần tuân thủ phong cách của dự án hiện tại.
+
+Không được:
+
+- Đổi phong cách đặt tên.
+- Đổi cách tổ chức code.
+- Đổi cách comment.
+- Đổi kiến trúc chỉ vì sở thích cá nhân.
+
+Mục tiêu là toàn bộ dự án có cảm giác như được viết bởi **một lập trình viên duy nhất**.
 
 ---
 
-## 3.7 Hỏi ý kiến khi không chắc chắn
-- Nếu một thay đổi có thể ảnh hưởng lớn đến Gameplay, Cân bằng vũ khí, hoặc Kiến trúc hệ thống: AI Agent phải hỏi ý kiến người dùng trước khi triển khai, không được tự ý sửa đổi theo sở thích cá nhân.
+## 3.7 Đặt câu hỏi khi không chắc chắn
+
+Nếu yêu cầu của người dùng có thể ảnh hưởng đến:
+
+- Gameplay.
+- Kiến trúc.
+- Khả năng mở rộng.
+
+AI Agent nên hỏi lại trước khi thực hiện, thay vì tự đưa ra quyết định.
+
+AI không được tự ý "cải tiến" gameplay nếu chưa có yêu cầu rõ ràng.
+
+## 3.X Quy định về Animator Controller
+
+Nếu người dùng yêu cầu chỉnh sửa hoặc bổ sung Animator Controller, AI Agent phải tuân thủ các quy định sau.
+
+### Khi AI có khả năng chỉnh sửa Animator Controller
+
+AI được phép:
+
+- Tạo State mới.
+- Xóa State không còn sử dụng.
+- Tạo hoặc xóa Transition.
+- Thêm, sửa hoặc xóa Condition.
+- Sắp xếp lại vị trí các State để Animator dễ đọc hơn.
+
+Tuy nhiên, việc chỉnh sửa chỉ được thực hiện đúng theo yêu cầu của người dùng và không tự ý thay đổi gameplay.
+
+---
+
+### Chuẩn hóa bố cục Animator
+
+Khi thêm hoặc sắp xếp State, AI phải nhóm các State theo chức năng.
+
+Ví dụ:
+
+```
+
+MovementLayer:
+Locomotion
+├── Idle
+├── Walk
+├── Run
+└── Crouch
+
+Jump
+├── Jump
+├── Falling
+└── Landing
+
+Dodge
+├── Roll
+└── AirDash
+Climbing
+├── RopeClimb
+├── LedgeGrab
+└── ClimbUp
+
+CombatLayer:
+Combat
+├── Attack1
+├── Attack2
+├── Attack3
+└── Recovery
+
+SurvivalLayer:
+Heal
+├── PreHeal
+└── Healing
+```
+
+Các nhóm nên được đặt gần nhau, hạn chế đường nối chồng chéo và giữ bố cục dễ quan sát.
+
+---
+
+### Khi AI không thể chỉnh sửa Animator Controller
+
+Nếu AI không thể trực tiếp chỉnh sửa Animator Controller, phải hướng dẫn người dùng chi tiết.
+
+Hướng dẫn cần bao gồm:
+
+- State bắt đầu.
+- State kết thúc.
+- Transition cần tạo hoặc chỉnh sửa.
+- Có bật **Has Exit Time** hay không.
+- Exit Time (nếu cần).
+- Transition Duration (nếu cần).
+- Danh sách Condition.
+- Giá trị của từng Condition.
+- Chiều nối của Transition.
+- Các thiết lập đặc biệt (Interruption Source, Fixed Duration...) nếu liên quan.
+
+Ví dụ:
+
+```
+Transition
+
+Attack1
+↓
+
+Attack2
+
+Has Exit Time:
+✔ Enabled
+
+Exit Time:
+0.9
+
+Transition Duration:
+0.05
+
+Condition:
+ComboIndex == 2
+```
+
+---
+
+### Không tự ý thay đổi State Machine
+
+AI không được:
+
+- Tự ý đổi tên State.
+- Tự ý thay đổi Parameter.
+- Tự ý thay đổi Blend Tree.
+- Tự ý sửa Animation Clip.
+- Tự ý thay đổi luồng Animation nếu người dùng chưa yêu cầu.
+
+Nếu việc sửa đổi có thể ảnh hưởng đến gameplay hoặc hệ thống Animation hiện có, AI phải giải thích trước và chờ người dùng xác nhận.
+
+---
+
+### Mục tiêu
+
+Animator Controller phải:
+
+- Dễ đọc.
+- Dễ bảo trì.
+- Dễ mở rộng.
+- Các State được phân nhóm rõ ràng theo chức năng.
+- Hạn chế tối đa các đường Transition giao nhau.
