@@ -259,6 +259,38 @@ public class DungeonMap {
     }
 
     /**
+     * Determines whether an area blocks or absorbs flying projectiles.
+     *
+     * <p>WHY: Walls, cover pillars, and closed doors block bullets physically. Open doors
+     * (DOOR_OPEN) also absorb bullets to prevent operatives from cheesing combat encounters
+     * by sniping hostiles from outside corridors before entering the room.
+     *
+     * @param worldX Left X coordinate in world space.
+     * @param worldY Top Y coordinate in world space.
+     * @param width  Hitbox width in pixels.
+     * @param height Hitbox height in pixels.
+     * @return true if the area blocks or absorbs projectiles.
+     */
+    public boolean isAreaBlockingProjectiles(double worldX, double worldY, double width, double height) {
+        int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
+        int maxCol = (int) Math.floor((worldX + width - 0.001) / GameConfig.TILE_SIZE);
+        int minRow = (int) Math.floor(worldY / GameConfig.TILE_SIZE);
+        int maxRow = (int) Math.floor((worldY + height - 0.001) / GameConfig.TILE_SIZE);
+
+        for (int c = minCol; c <= maxCol; c++) {
+            for (int r = minRow; r <= maxRow; r++) {
+                if (!isValidGrid(c, r)) {
+                    return true; // Out of bounds blocks bullets
+                }
+                if (tiles[c][r].blocksProjectiles()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Renders visible tiles using Viewport Culling.
      */
     public void render(Graphics2D g, Camera camera) {

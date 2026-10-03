@@ -50,11 +50,13 @@ public class ProjectileManager {
 
             p.update(deltaTime);
 
-            // Test if the bullet collided with a solid dungeon wall or cover pillar
+            // Test if the bullet collided with a solid dungeon wall, cover barrier, or open/closed door
             if (dungeonMap != null) {
                 // Bullet collision box: 4x4 px
-                if (!dungeonMap.isAreaWalkable(p.getX() - 2, p.getY() - 2, 4, 4)) {
-                    p.deactivate(); // Impact absorbed by terrain
+                // WHY: isAreaBlockingProjectiles absorbs bullets on walls, cover, closed doors,
+                // and open doors (DOOR_OPEN) to prevent cheesing encounters from corridors.
+                if (dungeonMap.isAreaBlockingProjectiles(p.getX() - 2, p.getY() - 2, 4, 4)) {
+                    p.deactivate(); // Impact absorbed by terrain or door energy threshold
                 }
             }
         }

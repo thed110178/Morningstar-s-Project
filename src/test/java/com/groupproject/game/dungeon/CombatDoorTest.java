@@ -80,6 +80,39 @@ public class CombatDoorTest {
     }
 
     @Test
+    @DisplayName("Verify open door absorbs projectiles while allowing player walking")
+    void testOpenDoorAbsorbsBulletsWhileAllowingWalk() {
+        for (Tile door : combatRoom.getDoorTiles()) {
+            assertEquals(TileType.DOOR_OPEN, door.getType());
+            assertTrue(door.blocksProjectiles(), "Open door must block/absorb projectiles");
+            assertFalse(door.isSolid(), "Open door must not block player movement");
+
+            double doorX = door.getWorldX();
+            double doorY = door.getWorldY();
+
+            // Player can walk through
+            assertTrue(map.isAreaWalkable(doorX + 2, doorY + 2, 20, 20));
+
+            // But projectiles are blocked
+            assertTrue(map.isAreaBlockingProjectiles(doorX + 2, doorY + 2, 4, 4));
+        }
+
+        // Test with ProjectileManager simulation
+        com.groupproject.game.entity.projectile.ProjectileManager pm =
+                new com.groupproject.game.entity.projectile.ProjectileManager();
+
+        Tile firstDoor = combatRoom.getDoorTiles().get(0);
+        com.groupproject.game.entity.projectile.Projectile p =
+                new com.groupproject.game.entity.projectile.Projectile(
+                        firstDoor.getWorldX() + 5, firstDoor.getWorldY() + 5,
+                        0, 600, 25, 1.0, true);
+        pm.spawn(p);
+        pm.update(0.016, map);
+
+        assertFalse(p.isActive(), "Bullet must be absorbed and deactivated upon hitting open door");
+    }
+
+    @Test
     @DisplayName("Verify TargetDummy takes damage and dies upon reaching 0 HP")
     void testTargetDummyDamage() {
         TargetDummy dummy = new TargetDummy(500, 500, 50);

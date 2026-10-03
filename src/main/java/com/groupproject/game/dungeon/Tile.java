@@ -36,10 +36,21 @@ public class Tile {
     }
 
     /**
-     * Checks if this tile blocks movement and projectile trajectories.
+     * Checks if this tile blocks movement (physical obstruction).
      */
     public boolean isSolid() {
         return type.isSolid();
+    }
+
+    /**
+     * Checks if this tile blocks or absorbs projectile trajectories.
+     *
+     * <p>WHY: Walls, cover barriers, and closed doors block projectiles physically.
+     * Open doors (DOOR_OPEN) also absorb bullets to prevent operatives from cheesing
+     * combat encounters by eliminating hostiles from the outside corridor before entering.
+     */
+    public boolean blocksProjectiles() {
+        return isSolid() || type == TileType.DOOR_OPEN;
     }
 
     public int getGridX() {

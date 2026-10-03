@@ -18,7 +18,8 @@ Cập nhật mới nhất vào ngày: 03/10/2026
 ---
 
 ## 3. API
-* `public boolean isSolid()`: Kiểm tra ô có cản trở di chuyển hay không.
+* `public boolean isSolid()`: Kiểm tra ô có cản trở di chuyển vật lý của nhân vật hay không.
+* `public boolean blocksProjectiles()`: Kiểm tra ô có cản trở hoặc hấp thụ đường bay của đạn hay không (bao gồm tường, vật cản và cửa mở `DOOR_OPEN`).
 * `public int getGridX()`, `public int getGridY()`: Lấy tọa độ cột và hàng trên lưới.
 * `public int getWorldX()`, `public int getWorldY()`: Lấy tọa độ pixel góc trên bên trái trong thế giới.
 * `public TileType getType()` / `public void setType(TileType type)`: Đọc/ghi kiểu ô gạch.
@@ -29,11 +30,13 @@ Cập nhật mới nhất vào ngày: 03/10/2026
 ## 4. Quan hệ với hệ thống khác
 * Chứa thuộc tính: `TileType`.
 * Được quản lý bởi: `DungeonMap.java`.
+* Tương tác với: `ProjectileManager.java` (kiểm tra va chạm triệt tiêu đạn bay).
 
 ---
 
 ## 5. Sửa đổi / Cập nhật
-* **03/10/2026**: Khởi tạo ban đầu với khả năng vẽ chi tiết từng loại địa hình.
+* **03/10/2026 (Lần 1)**: Khởi tạo ban đầu với khả năng vẽ chi tiết từng loại địa hình.
+* **03/10/2026 (Lần 2)**: Bổ sung phương thức `blocksProjectiles()` cho phép cửa mở (`DOOR_OPEN`) hấp thụ đạn bay qua để ngăn người chơi bắn tỉa quái từ hành lang trước khi bước vào phòng đấu trường.
 
 ---
 
