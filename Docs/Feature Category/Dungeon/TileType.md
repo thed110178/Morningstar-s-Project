@@ -14,6 +14,8 @@ Cập nhật mới nhất vào ngày: 03/10/2026
    * `WALL`: Bức tường kiên cố, cản trở di chuyển và đạn bay.
    * `FLOOR`: Mặt đất thông thoáng cho phép đi lại và bắn xuyên qua.
    * `COVER`: Cột trụ che chắn chiến thuật (giảm sát thương, ẩn nấp né đạn kiểu POBG).
+   * `DOOR_CLOSED`: Cửa phòng chiến đấu trong trạng thái khóa chặn (`solid = true`, rào chắn laser đỏ).
+   * `DOOR_OPEN`: Cửa phòng chiến đấu trong trạng thái mở thông (`solid = false`, viền xanh lục dạ quang).
    * `SPAWN_ZONE`: Vùng xuất hiện an toàn cho người chơi.
    * `EXTRACT_ZONE`: Cổng sơ tán / chuyển màn chơi kế tiếp.
    * `VOID`: Khoảng không ngoài rìa bản đồ, hoàn toàn không thể đi vào.
@@ -28,12 +30,13 @@ Cập nhật mới nhất vào ngày: 03/10/2026
 ---
 
 ## 4. Quan hệ với hệ thống khác
-* Được sử dụng bởi: `Tile.java`, `DungeonMap.java`, `PlayingState.java`.
+* Được sử dụng bởi: `Tile.java`, `DungeonMap.java`, `Room.java`, `PlayingState.java`.
 
 ---
 
 ## 5. Sửa đổi / Cập nhật
-* **03/10/2026**: Khởi tạo ban đầu phục vụ bản đồ 3 phòng (Spawn, Combat, Extract).
+* **03/10/2026 (Lần 1)**: Khởi tạo ban đầu phục vụ bản đồ 3 phòng (Spawn, Combat, Extract).
+* **03/10/2026 (Lần 2)**: Bổ sung `DOOR_CLOSED` và `DOOR_OPEN` phục vụ cơ chế khóa/mở cửa tự động theo tình trạng kẻ địch trong Combat Room.
 
 ---
 

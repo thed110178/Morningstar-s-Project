@@ -9,13 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Manages the discrete 2D grid matrix of terrain tiles, collision checks, and rooms.
+ * Manages the discrete 2D grid matrix of terrain tiles, collision checks, rooms, and lockdown doors.
  *
- * <p>WHY: Centralizes map generation and spatial queries. Implementing an AABB bounding-box
- * to grid lookup ({@link #isAreaWalkable}) avoids iterating over thousands of static colliders
- * every frame, reducing collision checks to an ultra-fast $O(1)$ coordinate projection lookup.
- * Viewport Culling ensures only the ~400 tiles currently visible on the monitor are painted,
- * preserving a solid 60 FPS update rate.
+ * <p>WHY: Centralizes map generation, spatial queries, and door state transitions. Implementing
+ * dynamic door tiles allows combat chambers to seal the operative inside during hostile encounters
+ * and unlock once all threats are eliminated, authentic to the Soul Knight gameplay loop.
  */
 public class DungeonMap {
 
@@ -30,7 +28,7 @@ public class DungeonMap {
     private Room extractRoom;
 
     /**
-     * Constructs the dungeon matrix and builds the 3-room layout (Spawn, Combat, Extract).
+     * Constructs the dungeon matrix and builds the 3-room layout (Spawn, Combat, Extract) with blast doors.
      */
     public DungeonMap() {
         this.tiles = new Tile[COLS][ROWS];
@@ -52,7 +50,7 @@ public class DungeonMap {
     /**
      * Constructs a structured Roguelite 3-chamber facility connected by tactical corridors:
      * 1. Spawn Room (West staging ground)
-     * 2. Combat Arena (Central chamber with cover pillars)
+     * 2. Combat Arena (Central chamber with blast doors and cover pillars)
      * 3. Extract Chamber (East evacuation portal)
      */
     private void buildThreeRoomLayout() {
@@ -105,6 +103,27 @@ public class DungeonMap {
         // Corridor 2: Combat -> Extract
         carveHorizontalCorridor(combatRoom.getGridX() + combatRoom.getWidthInTiles() - 1,
                 extractRoom.getGridX(), 20, 4);
+
+        // --- 5. Install Combat Room Lockdown Doors ---
+        // West Entrance Door (col = 28, rows 21 and 22)
+        installDoorTile(combatRoom, combatRoom.getGridX(), 21);
+        installDoorTile(combatRoom, combatRoom.getGridX(), 22);
+
+        // East Exit Door (col = 51, rows 21 and 22)
+        int eastDoorCol = combatRoom.getGridX() + combatRoom.getWidthInTiles() - 1;
+        installDoorTile(combatRoom, eastDoorCol, 21);
+        installDoorTile(combatRoom, eastDoorCol, 22);
+    }
+
+    /**
+     * Installs an open door tile at the given grid coordinates and registers it with the room.
+     */
+    private void installDoorTile(Room room, int col, int row) {
+        if (isValidGrid(col, row)) {
+            Tile doorTile = tiles[col][row];
+            doorTile.setType(TileType.DOOR_OPEN); // Default open until lockdown triggers
+            room.addDoorTile(doorTile);
+        }
     }
 
     /**
@@ -180,16 +199,7 @@ public class DungeonMap {
 
     /**
      * Performs an ultra-fast $O(1)$ spatial check to determine if an axis-aligned bounding box
-     * (AABB) can move to the specified world position without colliding with walls or cover.
-     *
-     * <p>WHY: Instead of testing every wall in the world, this method converts pixel coordinates
-     * directly into min/max tile indices and tests only the 4 to 9 tiles overlapped by the entity.
-     *
-     * @param worldX Left edge in pixels.
-     * @param worldY Top edge in pixels.
-     * @param width  Width in pixels.
-     * @param height Height in pixels.
-     * @return {@code true} if all overlapped tiles are walkable, {@code false} if blocked.
+     * (AABB) can move to the specified world position without colliding with walls, cover, or closed doors.
      */
     public boolean isAreaWalkable(double worldX, double worldY, double width, double height) {
         int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
@@ -213,8 +223,6 @@ public class DungeonMap {
 
     /**
      * Renders visible tiles using Viewport Culling.
-     *
-     * <p>WHY: Skips drawing thousands of off-screen tiles, drastically saving CPU rasterization cycles.
      */
     public void render(Graphics2D g, Camera camera) {
         int startCol = Math.max(0, (int) Math.floor(camera.getX() / GameConfig.TILE_SIZE));
@@ -237,26 +245,35 @@ public class DungeonMap {
     }
 
     /**
-     * Displays floating tactical room banners inside each chamber.
+     * Displays floating tactical room banners inside each chamber with lockdown warnings.
      */
     private void renderRoomLabels(Graphics2D g, Camera camera) {
         g.setFont(new Font("SansSerif", Font.BOLD, 18));
         for (Room room : rooms) {
-            int screenX = camera.worldToScreenX(room.getCenterWorldX() - 100);
+            int screenX = camera.worldToScreenX(room.getCenterWorldX() - 110);
             int screenY = camera.worldToScreenY(room.getGridY() * GameConfig.TILE_SIZE + 28);
 
-            // Only draw if label is roughly within the viewport
-            if (screenX >= -150 && screenX <= camera.getViewportWidth() + 150
+            if (screenX >= -180 && screenX <= camera.getViewportWidth() + 180
                     && screenY >= -50 && screenY <= camera.getViewportHeight() + 50) {
 
                 if (room.getRoomType() == Room.RoomType.SPAWN) {
                     g.setColor(new Color(60, 220, 160, 200));
+                    g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                 } else if (room.getRoomType() == Room.RoomType.COMBAT) {
-                    g.setColor(new Color(255, 120, 60, 200));
+                    if (room.isLocked()) {
+                        g.setColor(new Color(255, 60, 60, 240));
+                        g.drawString("[ ! COMBAT LOCKDOWN ! ]", screenX, screenY);
+                    } else if (room.isCleared()) {
+                        g.setColor(new Color(60, 220, 120, 200));
+                        g.drawString("[ CLEARED - DOORS UNLOCKED ]", screenX, screenY);
+                    } else {
+                        g.setColor(new Color(255, 120, 60, 200));
+                        g.drawString("[ " + room.getName() + " ]", screenX, screenY);
+                    }
                 } else {
                     g.setColor(new Color(190, 100, 255, 200));
+                    g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                 }
-                g.drawString("[ " + room.getName() + " ]", screenX, screenY);
             }
         }
     }

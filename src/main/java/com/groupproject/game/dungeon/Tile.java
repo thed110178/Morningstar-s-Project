@@ -1,6 +1,7 @@
 package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.GameConfig;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
@@ -82,7 +83,7 @@ public class Tile {
         g.setColor(type.getDefaultColor());
         g.fillRect(screenX, screenY, size, size);
 
-        // Subtle geometric outline styling
+        // Visual ornamentation based on tile classification
         if (type == TileType.WALL) {
             // Beveled 3D top-down wall border
             g.setColor(new Color(65, 75, 100));
@@ -95,6 +96,23 @@ public class Tile {
             g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
             g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
             g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
+        } else if (type == TileType.DOOR_CLOSED) {
+            // Heavy lockdown blast gate with bright red warning barrier
+            g.setColor(new Color(255, 60, 60));
+            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+            g.setStroke(new BasicStroke(2.5f));
+            g.drawLine(screenX + 6, screenY + size / 2, screenX + size - 6, screenY + size / 2);
+            g.drawLine(screenX + size / 2, screenY + 6, screenX + size / 2, screenY + size - 6);
+            g.setStroke(new BasicStroke(1.0f));
+            // Warning beacon dot
+            g.setColor(new Color(255, 220, 50));
+            g.fillOval(screenX + size / 2 - 3, screenY + size / 2 - 3, 6, 6);
+        } else if (type == TileType.DOOR_OPEN) {
+            // Unlocked green transition threshold
+            g.setColor(new Color(50, 220, 120, 140));
+            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+            g.drawLine(screenX + 6, screenY + 8, screenX + size - 6, screenY + 8);
+            g.drawLine(screenX + 6, screenY + size - 8, screenX + size - 6, screenY + size - 8);
         } else if (type == TileType.SPAWN_ZONE) {
             // Glowing cyan deployment grid pattern
             g.setColor(new Color(50, 160, 120, 80));

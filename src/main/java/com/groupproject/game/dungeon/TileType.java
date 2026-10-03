@@ -27,6 +27,18 @@ public enum TileType {
     COVER(true, new Color(70, 80, 105), "Tactical Cover"),
 
     /**
+     * Combat room blast door in locked state (impassable solid barrier).
+     * Engaged when hostiles are active inside the combat arena.
+     */
+    DOOR_CLOSED(true, new Color(180, 40, 40), "Security Door (Locked)"),
+
+    /**
+     * Combat room blast door in open state (passable corridor).
+     * Disengaged once all room hostiles have been neutralized.
+     */
+    DOOR_OPEN(false, new Color(40, 150, 90), "Security Door (Unlocked)"),
+
+    /**
      * Designates the safe staging area where the player operative deploys into the mission.
      */
     SPAWN_ZONE(false, new Color(30, 60, 50), "Spawn Pad"),
