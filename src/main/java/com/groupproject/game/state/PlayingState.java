@@ -70,6 +70,9 @@ public class PlayingState extends GameState {
      */
     @Override
     public void init() {
+        // Reset dungeon rooms and doors so new mission starts with unvisited/open state
+        dungeonMap.reset();
+
         Room spawnRoom = dungeonMap.getSpawnRoom();
         if (spawnRoom != null) {
             this.playerX = spawnRoom.getCenterWorldX() - (playerSize / 2.0);
@@ -181,10 +184,22 @@ public class PlayingState extends GameState {
         // --- 4. Combat Room Lockdown & Trigger Detection ---
         Room combatRoom = dungeonMap.getCombatRoom();
         if (combatRoom != null) {
-            // Trigger lockdown once player has entered deep into the room and hostiles remain
+            // Trigger lockdown as soon as operative enters the combat arena while hostiles remain
             if (combatRoom.getStatus() == Room.RoomStatus.UNVISITED
-                    && combatRoom.containsWorldPointInterior(playerCenterX, playerCenterY)
+                    && combatRoom.hasEntityEntered(playerX, playerY, playerSize, playerSize)
                     && !combatTargets.isEmpty()) {
+
+                // WHY: Gently nudge operative forward if still slightly overlapping doorway tile
+                // so the operative hitbox is fully contained on interior floor tiles and is never
+                // clipped, trapped, or blocked inside the solidifying blast gate.
+                double westDoorBoundary = (combatRoom.getGridX() + 1.0) * GameConfig.TILE_SIZE;
+                if (playerX < westDoorBoundary) {
+                    playerX = westDoorBoundary;
+                }
+                double eastDoorBoundary = (combatRoom.getGridX() + combatRoom.getWidthInTiles() - 1.0) * GameConfig.TILE_SIZE;
+                if (playerX + playerSize > eastDoorBoundary) {
+                    playerX = eastDoorBoundary - playerSize;
+                }
 
                 combatRoom.lockdown();
                 showBanner("! COMBAT LOCKDOWN: DOORS SEALED - ELIMINATE ALL TARGETS !",
@@ -215,7 +230,7 @@ public class PlayingState extends GameState {
         // --- 10. Check Room Clear Condition and Unlock Doors ---
         if (combatRoom != null && combatRoom.isLocked() && combatTargets.isEmpty()) {
             combatRoom.unlock();
-            showBanner("★ ROOM CLEARED: DOORS UNLOCKED - PROCEED TO EXTRACTION ★",
+            showBanner("★ ROOM CLEARED: DOORS UNLOCKED ★",
                     new Color(60, 220, 120), 4.0);
         }
     }

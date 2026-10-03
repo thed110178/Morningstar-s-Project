@@ -293,4 +293,16 @@ public class DungeonMap {
     public List<Room> getRooms() {
         return rooms;
     }
+
+    /**
+     * Resets all room lifecycle states and doors across the entire dungeon facility.
+     *
+     * <p>WHY: Ensures clean state initialization on mission start, avoiding residual
+     * lockdown or cleared flags from prior game sessions.
+     */
+    public void reset() {
+        for (Room room : rooms) {
+            room.reset();
+        }
+    }
 }

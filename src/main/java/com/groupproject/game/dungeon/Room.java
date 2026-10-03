@@ -93,6 +93,20 @@ public class Room {
         }
     }
 
+    /**
+     * Resets the room lifecycle status to UNVISITED and re-opens all registered blast doors.
+     *
+     * <p>WHY: When starting a new mission or restarting the gameplay loop via
+     * {@link com.groupproject.game.state.PlayingState#init()}, rooms must return to their
+     * pristine state so that subsequent lockdown encounters trigger reliably.
+     */
+    public void reset() {
+        this.status = RoomStatus.UNVISITED;
+        for (Tile door : doorTiles) {
+            door.setType(TileType.DOOR_OPEN);
+        }
+    }
+
     public boolean isLocked() {
         return status == RoomStatus.ACTIVE_LOCKDOWN;
     }
@@ -136,13 +150,40 @@ public class Room {
     }
 
     /**
-     * Checks if a world coordinate (X, Y) is well inside the room (excluding perimeter wall boundary).
+     * Determines whether an entity's center point has entered the room's interior floor area
+     * beyond the perimeter doorway threshold.
+     *
+     * <p>WHY: Used by PlayingState to detect when an operative has crossed into the combat arena.
+     * Checking against the interior floor boundaries (1 tile inward from outer perimeter walls/doors)
+     * ensures detection triggers reliably as soon as the operative steps into the chamber.
+     *
+     * @param x      Entity top-left X in world space.
+     * @param y      Entity top-left Y in world space.
+     * @param width  Entity hitbox width in pixels.
+     * @param height Entity hitbox height in pixels.
+     * @return true if the entity's center point is situated within the interior floor bounds.
+     */
+    public boolean hasEntityEntered(double x, double y, double width, double height) {
+        double centerX = x + (width / 2.0);
+        double centerY = y + (height / 2.0);
+
+        double minInteriorX = (gridX + 1.0) * GameConfig.TILE_SIZE;
+        double maxInteriorX = (gridX + widthInTiles - 1.0) * GameConfig.TILE_SIZE;
+        double minInteriorY = (gridY + 1.0) * GameConfig.TILE_SIZE;
+        double maxInteriorY = (gridY + heightInTiles - 1.0) * GameConfig.TILE_SIZE;
+
+        return centerX >= minInteriorX && centerX <= maxInteriorX
+                && centerY >= minInteriorY && centerY <= maxInteriorY;
+    }
+
+    /**
+     * Checks if a world coordinate (X, Y) is inside the interior floor region (excluding perimeter walls).
      */
     public boolean containsWorldPointInterior(double worldX, double worldY) {
-        double minX = (gridX + 1.2) * GameConfig.TILE_SIZE;
-        double minY = (gridY + 1.2) * GameConfig.TILE_SIZE;
-        double maxX = (gridX + widthInTiles - 1.2) * GameConfig.TILE_SIZE;
-        double maxY = (gridY + heightInTiles - 1.2) * GameConfig.TILE_SIZE;
+        double minX = (gridX + 1.0) * GameConfig.TILE_SIZE;
+        double minY = (gridY + 1.0) * GameConfig.TILE_SIZE;
+        double maxX = (gridX + widthInTiles - 1.0) * GameConfig.TILE_SIZE;
+        double maxY = (gridY + heightInTiles - 1.0) * GameConfig.TILE_SIZE;
 
         return worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY;
     }
