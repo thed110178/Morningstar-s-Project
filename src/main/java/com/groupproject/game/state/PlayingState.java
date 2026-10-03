@@ -52,6 +52,12 @@ public class PlayingState extends GameState {
     private Color bannerColor = Color.WHITE;
     private double bannerTimer = 0.0;
 
+    // Extraction zone interaction and victory transition
+    private boolean isStandingOnExtract = false;
+    private boolean isExtracting = false;
+    private double extractTransitionTimer = 0.0;
+    private static final double EXTRACT_DURATION = 4.0; // 4.0 seconds black screen before auto return
+
     /**
      * Constructs the playing state, builds the dungeon facility, camera, and combat managers.
      *
@@ -84,6 +90,10 @@ public class PlayingState extends GameState {
 
         projectileManager.clear();
         spawnCombatTargets();
+
+        this.isStandingOnExtract = false;
+        this.isExtracting = false;
+        this.extractTransitionTimer = 0.0;
 
         showBanner("MISSION START - PROCEED TO COMBAT ARENA", new Color(60, 220, 160), 3.5);
 
@@ -122,6 +132,22 @@ public class PlayingState extends GameState {
      */
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        // --- Handle Extraction Victory Transition Sequence ---
+        // WHY: Freezes all combat updates and presents the black debriefing screen
+        if (isExtracting) {
+            extractTransitionTimer += deltaTime;
+
+            // Allow skipping black screen by pressing ENTER, SPACE, ESC, or F
+            if (extractTransitionTimer >= EXTRACT_DURATION
+                    || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
+                    || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)
+                    || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)
+                    || keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+                gsm.setState(GameStateManager.StateType.MENU);
+            }
+            return;
+        }
+
         // Handle pause request: returns to Main Menu
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
             gsm.setState(GameStateManager.StateType.MENU);
@@ -233,6 +259,14 @@ public class PlayingState extends GameState {
             showBanner("★ ROOM CLEARED: DOORS UNLOCKED ★",
                     new Color(60, 220, 120), 4.0);
         }
+
+        // --- 11. Check Extraction Zone Interaction [F] ---
+        // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract
+        isStandingOnExtract = dungeonMap.isIntersectsExtractZone(playerX, playerY, playerSize, playerSize);
+        if (isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+            isExtracting = true;
+            extractTransitionTimer = 0.0;
+        }
     }
 
     /**
@@ -321,6 +355,16 @@ public class PlayingState extends GameState {
         if (bannerTimer > 0 && !bannerMessage.isEmpty()) {
             renderBanner(g);
         }
+
+        // 9. Floating Extract Interaction Prompt if standing on extract pad
+        if (isStandingOnExtract && !isExtracting) {
+            renderExtractPrompt(g, screenPX, screenPY);
+        }
+
+        // 10. Extraction Victory Black Screen Overlay (Report Stage 0-1 Completed)
+        if (isExtracting) {
+            renderExtractionVictoryScreen(g);
+        }
     }
 
     /**
@@ -378,6 +422,122 @@ public class PlayingState extends GameState {
 
         g.setColor(bannerColor);
         g.drawString(bannerMessage, boxX + pad, boxY + 28);
+    }
+
+    /**
+     * Displays a tactical prompt prompting the operative to press [F] to extract.
+     */
+    private void renderExtractPrompt(Graphics2D g, int screenPX, int screenPY) {
+        String prompt = "[F] SƠ TÁN (HOÀN THÀNH MÀN 0-1)";
+        g.setFont(new Font("SansSerif", Font.BOLD, 14));
+        FontMetrics fm = g.getFontMetrics();
+        int textW = fm.stringWidth(prompt);
+        int pad = 12;
+
+        int boxW = textW + pad * 2;
+        int boxH = 32;
+        int boxX = screenPX - boxW / 2;
+        int boxY = screenPY - 50;
+
+        // Background box with glowing border
+        g.setColor(new Color(15, 25, 35, 230));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setColor(new Color(160, 80, 255)); // Purple portal glow
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+
+        // Keycap [F] indicator
+        g.setColor(new Color(255, 220, 60));
+        g.drawString("[F]", boxX + pad, boxY + 21);
+
+        g.setColor(Color.WHITE);
+        g.drawString(prompt.substring(3), boxX + pad + fm.stringWidth("[F] "), boxY + 21);
+    }
+
+    /**
+     * Renders a solid black screen with tactical debriefing reporting Stage 0-1 completion.
+     */
+    private void renderExtractionVictoryScreen(Graphics2D g) {
+        int width = GameConfig.SCREEN_WIDTH;
+        int height = GameConfig.SCREEN_HEIGHT;
+
+        // 1. Solid Black Screen
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, width, height);
+
+        // 2. Cyber grid decorative border
+        g.setColor(new Color(30, 45, 60));
+        g.drawRect(40, 40, width - 80, height - 80);
+        g.drawRect(44, 44, width - 88, height - 88);
+
+        // Corner accents
+        g.setColor(new Color(60, 220, 160));
+        int cSize = 24;
+        g.drawLine(40, 40, 40 + cSize, 40);
+        g.drawLine(40, 40, 40, 40 + cSize);
+        g.drawLine(width - 40, 40, width - 40 - cSize, 40);
+        g.drawLine(width - 40, 40, width - 40, 40 + cSize);
+        g.drawLine(40, height - 40, 40 + cSize, height - 40);
+        g.drawLine(40, height - 40, 40, height - 40 - cSize);
+        g.drawLine(width - 40, height - 40, width - 40 - cSize, height - 40);
+        g.drawLine(width - 40, height - 40, width - 40, height - 40 - cSize);
+
+        // 3. Victory Title: ★ MÀN 0-1 HOÀN THÀNH ★
+        g.setFont(new Font("SansSerif", Font.BOLD, 42));
+        FontMetrics fmTitle = g.getFontMetrics();
+        String title = "★ MÀN 0-1 HOÀN THÀNH ★";
+        int titleX = (width - fmTitle.stringWidth(title)) / 2;
+        int titleY = 210;
+
+        g.setColor(new Color(20, 60, 40));
+        g.drawString(title, titleX + 2, titleY + 2);
+        g.setColor(new Color(60, 240, 140));
+        g.drawString(title, titleX, titleY);
+
+        // Subtitle
+        g.setFont(new Font("SansSerif", Font.BOLD, 22));
+        FontMetrics fmSub = g.getFontMetrics();
+        String subtitle = "SƠ TÁN THÀNH CÔNG (EXTRACTION SUCCESSFUL)";
+        int subX = (width - fmSub.stringWidth(subtitle)) / 2;
+        g.setColor(new Color(255, 215, 60));
+        g.drawString(subtitle, subX, 260);
+
+        // 4. Mission Debriefing Tactical Card
+        int cardW = 620;
+        int cardH = 180;
+        int cardX = (width - cardW) / 2;
+        int cardY = 310;
+        g.setColor(new Color(15, 20, 30, 220));
+        g.fillRoundRect(cardX, cardY, cardW, cardH, 12, 12);
+        g.setColor(new Color(60, 80, 110));
+        g.drawRoundRect(cardX, cardY, cardW, cardH, 12, 12);
+
+        g.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        g.setColor(new Color(200, 220, 245));
+        g.drawString("• Khu vực: Hầm Ngục Thử Nghiệm Alpha (Chamber 0-1)", cardX + 30, cardY + 45);
+        g.drawString("• Kết quả: Toàn bộ mục tiêu chiến đấu đã bị tiêu diệt", cardX + 30, cardY + 80);
+        g.drawString("• Trạng thái: Dữ liệu màn tiếp theo đang được cập nhật...", cardX + 30, cardY + 115);
+        g.drawString("• Tạm thời: Chuyển tiếp về Màn hình Chính (Main Menu)", cardX + 30, cardY + 150);
+
+        // 5. User prompt at bottom
+        g.setFont(new Font("SansSerif", Font.ITALIC, 16));
+        FontMetrics fmPrompt = g.getFontMetrics();
+        String prompt = "[ Nhấn ENTER hoặc F để quay về Menu ngay ]";
+        int promptX = (width - fmPrompt.stringWidth(prompt)) / 2;
+        g.setColor(new Color(160, 180, 210));
+        g.drawString(prompt, promptX, 550);
+    }
+
+    public boolean isStandingOnExtract() {
+        return isStandingOnExtract;
+    }
+
+    public boolean isExtracting() {
+        return isExtracting;
+    }
+
+    public void setPlayerPosition(double x, double y) {
+        this.playerX = x;
+        this.playerY = y;
     }
 
     public DungeonMap getDungeonMap() {

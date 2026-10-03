@@ -95,4 +95,25 @@ public class DungeonMapTest {
         assertFalse(map.isAreaWalkable(GameConfig.WORLD_WIDTH + 50, 100, 30, 30),
                 "Coordinates exceeding world width must be impassable");
     }
+
+    @Test
+    @DisplayName("Verify Extract Room contains EXTRACT_ZONE tiles and collision detection accurately identifies it")
+    void testExtractZoneDetection() {
+        Room extract = map.getExtractRoom();
+        assertNotNull(extract);
+
+        double cx = extract.getCenterWorldX();
+        double cy = extract.getCenterWorldY();
+
+        // Center pad should be EXTRACT_ZONE
+        assertTrue(map.isIntersectsExtractZone(cx - 10, cy - 10, 20, 20),
+                "Center of Extract Room must intersect EXTRACT_ZONE tiles");
+        assertTrue(map.isOnExtractZone(cx, cy),
+                "Center point of Extract Room must be an EXTRACT_ZONE tile");
+
+        // Spawn room center should NOT be EXTRACT_ZONE
+        Room spawn = map.getSpawnRoom();
+        assertFalse(map.isOnExtractZone(spawn.getCenterWorldX(), spawn.getCenterWorldY()),
+                "Spawn room must not be considered EXTRACT_ZONE");
+    }
 }

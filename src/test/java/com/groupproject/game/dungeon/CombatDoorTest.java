@@ -174,4 +174,52 @@ public class CombatDoorTest {
                 "init() must reset combat room back to UNVISITED");
         assertFalse(stateArena.isLocked());
     }
+
+    @Test
+    @DisplayName("Verify pressing [F] on Extract Pad triggers victory screen and transitions to Menu")
+    void testExtractInteractionTriggersBlackScreenVictory() {
+        com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+        com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+        com.groupproject.game.state.MenuState menu = new com.groupproject.game.state.MenuState(gsm);
+
+        gsm.registerState(com.groupproject.game.state.GameStateManager.StateType.MENU, menu);
+        gsm.registerState(com.groupproject.game.state.GameStateManager.StateType.PLAYING, state);
+        gsm.setState(com.groupproject.game.state.GameStateManager.StateType.PLAYING);
+
+        Room extract = state.getDungeonMap().getExtractRoom();
+        assertNotNull(extract);
+
+        // Teleport operative onto the extraction pad
+        state.setPlayerPosition(extract.getCenterWorldX() - 14, extract.getCenterWorldY() - 14);
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+
+        // 1. Update one frame: operative is standing on extract pad
+        state.update(0.016, keyH, mouseH);
+        assertTrue(state.isStandingOnExtract(), "Operative must be recognized standing on EXTRACT_ZONE");
+        assertFalse(state.isExtracting(), "Extraction victory sequence should not trigger without pressing [F]");
+
+        // 2. Press interaction key [F]
+        java.awt.Canvas dummy = new java.awt.Canvas();
+        java.awt.event.KeyEvent pressF = new java.awt.event.KeyEvent(
+                dummy, java.awt.event.KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, java.awt.event.KeyEvent.VK_F, 'F');
+        keyH.keyPressed(pressF);
+        keyH.update();
+
+        state.update(0.016, keyH, mouseH);
+        assertTrue(state.isExtracting(), "Pressing [F] on extraction pad must activate victory sequence");
+
+        // 3. Skip black screen by pressing [ENTER]
+        java.awt.event.KeyEvent pressEnter = new java.awt.event.KeyEvent(
+                dummy, java.awt.event.KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, java.awt.event.KeyEvent.VK_ENTER, '\n');
+        keyH.keyPressed(pressEnter);
+        keyH.update();
+
+        state.update(0.016, keyH, mouseH);
+        assertEquals(com.groupproject.game.state.GameStateManager.StateType.MENU,
+                gsm.getCurrentStateType(), "Victory debriefing must return player to Main Menu");
+    }
 }
