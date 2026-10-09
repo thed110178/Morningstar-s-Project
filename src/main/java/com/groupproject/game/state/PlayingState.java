@@ -5,12 +5,15 @@ import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.dungeon.Room;
 import com.groupproject.game.entity.enemy.TargetDummy;
+import com.groupproject.game.entity.item.WeaponChest;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.weapon.MeleeSlash;
+import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
+import com.groupproject.game.ui.BackpackUI;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -58,6 +61,14 @@ public class PlayingState extends GameState {
     private double extractTransitionTimer = 0.0;
     private static final double EXTRACT_DURATION = 4.0; // 4.0 seconds black screen before auto return
 
+    // Hòm tiếp tế vũ khí xuất hiện tại các phòng chiến đấu đã dọn sạch
+    private final List<WeaponChest> weaponChests = new ArrayList<>();
+    private Room activeCombatRoom = null;
+
+    // Giao diện Balo chiến thuật (Tab)
+    private final BackpackUI backpackUI = new BackpackUI();
+    private boolean isBackpackOpen = false;
+
     /**
      * Constructs the playing state, builds the dungeon facility, camera, and combat managers.
      *
@@ -72,11 +83,11 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Deploys the player operative in the center of the Spawn Room and populates the Combat Arena.
+     * Deploys the player operative in the center of the Spawn Room and initializes the procedural run.
      */
     @Override
     public void init() {
-        // Reset dungeon rooms and doors so new mission starts with unvisited/open state
+        // Reset dungeon rooms and doors so new mission starts with procedural layout
         dungeonMap.reset();
 
         Room spawnRoom = dungeonMap.getSpawnRoom();
@@ -89,32 +100,39 @@ public class PlayingState extends GameState {
         }
 
         projectileManager.clear();
-        spawnCombatTargets();
+        combatTargets.clear();
+        weaponChests.clear();
+        activeCombatRoom = null;
 
         this.isStandingOnExtract = false;
         this.isExtracting = false;
         this.extractTransitionTimer = 0.0;
+        this.isBackpackOpen = false;
+        this.weaponManager.reset();
 
-        showBanner("MISSION START - PROCEED TO COMBAT ARENA", new Color(60, 220, 160), 3.5);
+        int numCombat = dungeonMap.getCombatRooms().size();
+        showBanner(String.format("STAGE BẮT ĐẦU: TIÊU DIỆT %d PHÒNG CHIẾN ĐẤU ĐỂ SƠ TÁN", numCombat),
+                new Color(60, 220, 160), 4.0);
 
         // Center camera on operative immediately on mission start
         camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
     }
 
     /**
-     * Spawns training targets inside the Combat Arena.
+     * Sinh các mục tiêu chiến đấu riêng biệt cho từng phòng combat khi bị phong tỏa.
      */
-    private void spawnCombatTargets() {
+    private void spawnTargetsForRoom(Room arena) {
         combatTargets.clear();
-        Room arena = dungeonMap.getCombatRoom();
         if (arena != null) {
             double cx = arena.getCenterWorldX();
             double cy = arena.getCenterWorldY();
 
-            // 3 hostile test targets positioned tactically around the cover pillars
             combatTargets.add(new TargetDummy(cx, cy, 75));
-            combatTargets.add(new TargetDummy(cx + 190, cy - 140, 75));
-            combatTargets.add(new TargetDummy(cx + 190, cy + 140, 75));
+            combatTargets.add(new TargetDummy(cx + 140, cy - 80, 75));
+            combatTargets.add(new TargetDummy(cx + 140, cy + 80, 75));
+            if (arena.getWidthInTiles() >= 13) {
+                combatTargets.add(new TargetDummy(cx - 140, cy, 75));
+            }
         }
     }
 
@@ -148,6 +166,20 @@ public class PlayingState extends GameState {
             return;
         }
 
+        // --- Handle Tactical Backpack (TAB / B) ---
+        // WHY: Cho phép xem kho trang bị và hoán đổi vị trí vũ khí 1 và 2 trong không gian an toàn
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_TAB) || keyH.isKeyPressedOnce(KeyEvent.VK_B)) {
+            isBackpackOpen = !isBackpackOpen;
+        }
+
+        if (isBackpackOpen) {
+            boolean closeRequested = backpackUI.update(keyH, mouseH, weaponManager, deltaTime);
+            if (closeRequested) {
+                isBackpackOpen = false;
+            }
+            return; // Đóng băng vòng lặp chiến đấu khi đang xem Balo
+        }
+
         // Handle pause request: returns to Main Menu
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
             gsm.setState(GameStateManager.StateType.MENU);
@@ -159,11 +191,17 @@ public class PlayingState extends GameState {
         }
 
         // --- 1. Weapon Hotkey Switching & Reloading ---
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
+            weaponManager.selectSlot(1); // Trang bị Assault Rifle (Súng trường tấn công AR)
+        }
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
+            weaponManager.selectSlot(2); // Trang bị Shotgun (Súng săn cự ly gần)
+        }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
-            weaponManager.selectSlot(3); // Equip 7-round Tactical Pistol
+            weaponManager.selectSlot(3); // Trang bị Tactical Pistol (Súng lục)
         }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_4) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD4)) {
-            weaponManager.selectSlot(4); // Equip Combat Knife
+            weaponManager.selectSlot(4); // Trang bị Combat Knife (Dao găm chiến thuật)
         }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_Q)) {
             weaponManager.quickSwap(); // Quick swap between last 2 weapons
@@ -207,29 +245,33 @@ public class PlayingState extends GameState {
         double playerCenterX = playerX + (playerSize / 2.0);
         double playerCenterY = playerY + (playerSize / 2.0);
 
-        // --- 4. Combat Room Lockdown & Trigger Detection ---
-        Room combatRoom = dungeonMap.getCombatRoom();
-        if (combatRoom != null) {
-            // Trigger lockdown as soon as operative enters the combat arena while hostiles remain
-            if (combatRoom.getStatus() == Room.RoomStatus.UNVISITED
-                    && combatRoom.hasEntityEntered(playerX, playerY, playerSize, playerSize)
-                    && !combatTargets.isEmpty()) {
+        // --- 4. Multi-Chamber Combat Lockdown & Detection ---
+        if (activeCombatRoom == null) {
+            for (Room cr : dungeonMap.getCombatRooms()) {
+                if (cr.getStatus() == Room.RoomStatus.UNVISITED
+                        && cr.hasEntityEntered(playerX, playerY, playerSize, playerSize)) {
 
-                // WHY: Gently nudge operative forward if still slightly overlapping doorway tile
-                // so the operative hitbox is fully contained on interior floor tiles and is never
-                // clipped, trapped, or blocked inside the solidifying blast gate.
-                double westDoorBoundary = (combatRoom.getGridX() + 1.0) * GameConfig.TILE_SIZE;
-                if (playerX < westDoorBoundary) {
-                    playerX = westDoorBoundary;
-                }
-                double eastDoorBoundary = (combatRoom.getGridX() + combatRoom.getWidthInTiles() - 1.0) * GameConfig.TILE_SIZE;
-                if (playerX + playerSize > eastDoorBoundary) {
-                    playerX = eastDoorBoundary - playerSize;
-                }
+                    activeCombatRoom = cr;
 
-                combatRoom.lockdown();
-                showBanner("! COMBAT LOCKDOWN: DOORS SEALED - ELIMINATE ALL TARGETS !",
-                        new Color(255, 60, 60), 3.5);
+                    double minInteriorX = (cr.getGridX() + 1.0) * GameConfig.TILE_SIZE;
+                    double maxInteriorX = (cr.getGridX() + cr.getWidthInTiles() - 1.0) * GameConfig.TILE_SIZE;
+                    double minInteriorY = (cr.getGridY() + 1.0) * GameConfig.TILE_SIZE;
+                    double maxInteriorY = (cr.getGridY() + cr.getHeightInTiles() - 1.0) * GameConfig.TILE_SIZE;
+
+                    if (playerX < minInteriorX) playerX = minInteriorX;
+                    if (playerX + playerSize > maxInteriorX) playerX = maxInteriorX - playerSize;
+                    if (playerY < minInteriorY) playerY = minInteriorY;
+                    if (playerY + playerSize > maxInteriorY) playerY = maxInteriorY - playerSize;
+
+                    cr.lockdown();
+                    spawnTargetsForRoom(cr);
+
+                    int idx = dungeonMap.getCombatRooms().indexOf(cr) + 1;
+                    int total = dungeonMap.getCombatRooms().size();
+                    showBanner(String.format("! PHÒNG CHIẾN ĐẤU %d/%d PHONG TỎA - TIÊU DIỆT KẺ ĐỊCH !", idx, total),
+                            new Color(255, 60, 60), 3.5);
+                    break;
+                }
             }
         }
 
@@ -242,7 +284,18 @@ public class PlayingState extends GameState {
         aimAngle = Math.atan2(mouseWorldY - playerCenterY, mouseWorldX - playerCenterX);
 
         // --- 7. Weapon Attack Execution ---
-        if (mouseH.isLeftPressed()) {
+        // Súng tự động (AR) cho phép giữ chuột liên thanh (isLeftPressed)
+        // Súng bán tự động (Pistol/Shotgun/Dao) yêu cầu bấm chuột từng phát một (isLeftClickedOnce)
+        Weapon currentWeapon = weaponManager.getActiveWeapon();
+        boolean shouldTriggerAttack = false;
+        if (currentWeapon != null) {
+            if (currentWeapon.isAutomatic()) {
+                shouldTriggerAttack = mouseH.isLeftPressed();
+            } else {
+                shouldTriggerAttack = mouseH.isLeftClickedOnce();
+            }
+        }
+        if (shouldTriggerAttack) {
             weaponManager.attack(playerCenterX, playerCenterY, aimAngle, projectileManager);
         }
 
@@ -254,13 +307,45 @@ public class PlayingState extends GameState {
         updateCombatDamageResolution();
 
         // --- 10. Check Room Clear Condition and Unlock Doors ---
-        if (combatRoom != null && combatRoom.isLocked() && combatTargets.isEmpty()) {
-            combatRoom.unlock();
-            showBanner("★ ROOM CLEARED: DOORS UNLOCKED ★",
-                    new Color(60, 220, 120), 4.0);
+        if (activeCombatRoom != null && activeCombatRoom.isLocked() && combatTargets.isEmpty()) {
+            activeCombatRoom.unlock();
+
+            long clearedCount = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
+            int totalCount = dungeonMap.getCombatRooms().size();
+
+            // Rơi ra hòm tiếp tế chứa ngẫu nhiên vũ khí chính tại tâm phòng chiến đấu vừa dọn sạch
+            weaponChests.add(new WeaponChest(activeCombatRoom.getCenterWorldX() - 19, activeCombatRoom.getCenterWorldY() - 19));
+
+            if (clearedCount >= totalCount) {
+                showBanner("★ TOÀN BỘ PHÒNG ĐÃ DỌN SẠCH - CỬA SƠ TÁN ĐÃ MỞ ★",
+                        new Color(60, 240, 140), 4.0);
+            } else {
+                showBanner(String.format("★ PHÒNG %d/%d DỌN SẠCH: CỬA TIẾP TỤC ĐÃ MỞ ★", clearedCount, totalCount),
+                        new Color(60, 220, 120), 3.5);
+            }
+
+            activeCombatRoom = null;
         }
 
-        // --- 11. Check Extraction Zone Interaction [F] ---
+        // --- 11. Handle Weapon Chests Auto-Open & Pickup Interaction [F] ---
+        for (WeaponChest chest : weaponChests) {
+            // Hòm tự động mở khi người chơi đi lại gần (bán kính ~58px) và lộ diện khẩu súng
+            chest.update(deltaTime, playerX, playerY, playerSize);
+
+            // Khi hòm đã mở và súng chưa được nhặt, bấm phím tương tác chính [F] để nhặt súng vào trang bị
+            if (chest.isPlayerInRange(playerX, playerY, playerSize) && chest.isOpened() && !chest.isCollected()) {
+                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+                    Weapon dropped = chest.collect();
+                    if (dropped != null) {
+                        weaponManager.equipWeapon(dropped);
+                        showBanner("★ ĐÃ TRANG BỊ: " + dropped.getName().toUpperCase() + " (SLOT " + dropped.getSlotIndex() + ") ★",
+                                new Color(255, 215, 60), 3.5);
+                    }
+                }
+            }
+        }
+
+        // --- 12. Check Extraction Zone Interaction [F] ---
         // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract
         isStandingOnExtract = dungeonMap.isIntersectsExtractZone(playerX, playerY, playerSize, playerSize);
         if (isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
@@ -320,6 +405,12 @@ public class PlayingState extends GameState {
         // 3. Render Active Flying Projectiles
         projectileManager.render(g, camera);
 
+        // 3.5 Render Danh sách Hòm tiếp tế vũ khí (Weapon Chests)
+        for (WeaponChest chest : weaponChests) {
+            boolean inRange = chest.isPlayerInRange(playerX, playerY, playerSize);
+            chest.render(g, camera, inRange);
+        }
+
         // 4. Render Player Operative (Screen Space)
         double playerCenterX = playerX + (playerSize / 2.0);
         double playerCenterY = playerY + (playerSize / 2.0);
@@ -365,6 +456,11 @@ public class PlayingState extends GameState {
         if (isExtracting) {
             renderExtractionVictoryScreen(g);
         }
+
+        // 11. Giao diện Balo chiến thuật (TAB Overlay)
+        if (isBackpackOpen) {
+            backpackUI.render(g, weaponManager, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
+        }
     }
 
     /**
@@ -372,9 +468,9 @@ public class PlayingState extends GameState {
      */
     private void renderSectorHUD(Graphics2D g, double pcx, double pcy) {
         g.setColor(new Color(15, 20, 30, 200));
-        g.fillRoundRect(20, 20, 440, 88, 12, 12);
+        g.fillRoundRect(20, 20, 480, 88, 12, 12);
         g.setColor(new Color(60, 80, 110));
-        g.drawRoundRect(20, 20, 440, 88, 12, 12);
+        g.drawRoundRect(20, 20, 480, 88, 12, 12);
 
         String currentRoomName = "Connecting Corridor";
         for (Room r : dungeonMap.getRooms()) {
@@ -384,13 +480,16 @@ public class PlayingState extends GameState {
             }
         }
 
+        long clearedRooms = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
+        int totalRooms = dungeonMap.getCombatRooms().size();
+
         g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        if (dungeonMap.getCombatRoom().isLocked()) {
+        if (activeCombatRoom != null && activeCombatRoom.isLocked()) {
             g.setColor(new Color(255, 60, 60));
-            g.drawString("SECTOR: COMBAT LOCKDOWN (" + combatTargets.size() + " HOSTILES REMAIN)", 35, 45);
+            g.drawString(String.format("SECTOR: %s [PHONG TỎA: %d MỤC TIÊU]", activeCombatRoom.getName().toUpperCase(), combatTargets.size()), 35, 45);
         } else {
             g.setColor(new Color(255, 200, 50));
-            g.drawString("SECTOR: " + currentRoomName.toUpperCase(), 35, 45);
+            g.drawString(String.format("SECTOR: %s [TIẾN ĐỘ: %d/%d PHÒNG]", currentRoomName.toUpperCase(), clearedRooms, totalRooms), 35, 45);
         }
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 13));
@@ -398,7 +497,7 @@ public class PlayingState extends GameState {
         g.drawString(String.format("Operative: (%.0f, %.0f) | Bullets: %d | Hostiles: %d",
                 pcx, pcy, projectileManager.getCount(), combatTargets.size()), 35, 68);
         g.setColor(new Color(140, 160, 185));
-        g.drawString("Move: [WASD] | Aim/Shoot: [Mouse 360°] | Weapons: [3] [4] [Q]", 35, 88);
+        g.drawString("Di chuyển: [WASD] | [TAB] Balo | [F] Tương tác | Slots: [1] [2] [3] [4] [Q]", 35, 88);
     }
 
     /**
@@ -554,5 +653,32 @@ public class PlayingState extends GameState {
 
     public List<TargetDummy> getCombatTargets() {
         return combatTargets;
+    }
+
+    public WeaponChest getWeaponChest() {
+        return weaponChests.isEmpty() ? null : weaponChests.get(0);
+    }
+
+    public void setWeaponChest(WeaponChest chest) {
+        weaponChests.clear();
+        if (chest != null) {
+            weaponChests.add(chest);
+        }
+    }
+
+    public List<WeaponChest> getWeaponChests() {
+        return weaponChests;
+    }
+
+    public Room getActiveCombatRoom() {
+        return activeCombatRoom;
+    }
+
+    public boolean isBackpackOpen() {
+        return isBackpackOpen;
+    }
+
+    public void setBackpackOpen(boolean backpackOpen) {
+        this.isBackpackOpen = backpackOpen;
     }
 }

@@ -34,6 +34,19 @@ public class MouseHandler extends MouseAdapter {
     }
 
     /**
+     * Resets all mouse input states including held buttons and click pulses.
+     *
+     * <p>WHY: Called on state transitions (e.g. entering PlayingState from MenuState)
+     * to prevent click leakage causing the operative to unintentionally fire a weapon upon spawn.
+     */
+    public void reset() {
+        leftPressed = false;
+        rightPressed = false;
+        leftClickedOnce = false;
+        rightClickedOnce = false;
+    }
+
+    /**
      * Returns the horizontal pixel coordinate of the cursor relative to the canvas.
      */
     public int getScreenX() {

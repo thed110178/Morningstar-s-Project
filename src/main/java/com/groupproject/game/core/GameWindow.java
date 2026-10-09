@@ -26,6 +26,7 @@ public class GameWindow extends JFrame {
 
         // WHY: Fixed resolution simplifies coordinate calculations for HUD and aiming mechanics
         setResizable(false);
+        setFocusTraversalKeysEnabled(false);
 
         this.gamePanel = new GamePanel();
         this.gameLoop = new GameLoop(gamePanel);

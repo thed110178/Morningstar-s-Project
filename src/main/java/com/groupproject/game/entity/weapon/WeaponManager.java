@@ -27,7 +27,26 @@ public class WeaponManager {
     private Weapon previousWeapon;
 
     public WeaponManager() {
-        // Equip default loadout requested by user: Slot 3 = Pistol, Slot 4 = Knife
+        // Khởi đầu người chơi chỉ có súng lục phụ (Slot 3) và dao găm (Slot 4)
+        // Chưa có vũ khí chính (Slot 1 và Slot 2 sẽ được mở khóa ngẫu nhiên khi nhặt hòm)
+        Pistol pistol = new Pistol();
+        CombatKnife knife = new CombatKnife();
+
+        addWeapon(pistol);
+        addWeapon(knife);
+
+        // Mặc định ban đầu kích hoạt ô số 3 (Pistol) và phụ là ô số 4 (Knife)
+        this.activeWeapon = pistol;
+        this.previousWeapon = knife;
+    }
+
+    /**
+     * Resets loadout to starting setup (Pistol + Knife only).
+     */
+    public void reset() {
+        weaponSlots.clear();
+        activeSlashes.clear();
+
         Pistol pistol = new Pistol();
         CombatKnife knife = new CombatKnife();
 
@@ -36,6 +55,57 @@ public class WeaponManager {
 
         this.activeWeapon = pistol;
         this.previousWeapon = knife;
+    }
+
+    /**
+     * Registers and immediately equips a newly collected primary weapon.
+     * Tự động ưu tiên xếp vào Slot 1 nếu Slot 1 đang trống, hoặc Slot 2 nếu Slot 1 đã có súng.
+     */
+    public void equipWeapon(Weapon weapon) {
+        if (weapon != null) {
+            // Nếu là vũ khí chính (slot 1 hoặc 2), ưu tiên lấp vào slot trống
+            if (!weapon.isMelee() && weapon.getSlotIndex() != 3 && weapon.getSlotIndex() != 4) {
+                if (!weaponSlots.containsKey(1)) {
+                    weapon.setSlotIndex(1);
+                } else if (!weaponSlots.containsKey(2)) {
+                    weapon.setSlotIndex(2);
+                }
+            }
+            addWeapon(weapon);
+            previousWeapon = activeWeapon;
+            activeWeapon = weapon;
+        }
+    }
+
+    /**
+     * Hoán đổi vị trí của 2 vũ khí chính giữa Slot [1] và Slot [2].
+     *
+     * <p>WHY: Cho phép người chơi tự do sắp xếp vũ khí yêu thích vào ô số 1 hoặc ô số 2
+     * thông qua giao diện Balo (Tab) hoặc phím tắt hoán đổi.
+     *
+     * @return {@code true} nếu hoán đổi thành công; {@code false} nếu cả 2 slot đều trống.
+     */
+    public boolean swapPrimarySlots() {
+        Weapon w1 = weaponSlots.get(1);
+        Weapon w2 = weaponSlots.get(2);
+
+        if (w1 == null && w2 == null) {
+            return false;
+        }
+
+        weaponSlots.remove(1);
+        weaponSlots.remove(2);
+
+        if (w1 != null) {
+            w1.setSlotIndex(2);
+            weaponSlots.put(2, w1);
+        }
+        if (w2 != null) {
+            w2.setSlotIndex(1);
+            weaponSlots.put(1, w2);
+        }
+
+        return true;
     }
 
     /**
@@ -169,10 +239,15 @@ public class WeaponManager {
                     hudX + 15, hudY + 60);
         }
 
-        // Quick tip
+        // Quick tip dynamically showing owned weapons
+        StringBuilder tip = new StringBuilder();
+        if (weaponSlots.containsKey(1)) tip.append(String.format("[1] %s | ", weaponSlots.get(1).getName()));
+        if (weaponSlots.containsKey(2)) tip.append(String.format("[2] %s | ", weaponSlots.get(2).getName()));
+        tip.append("[3] Pistol | [4] Knife | [Q] Swap | [R] Reload");
+
         g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         g.setColor(new Color(140, 160, 185));
-        g.drawString("[3] Pistol | [4] Knife | [Q] Swap | [R] Reload", hudX + 15, hudY + 75);
+        g.drawString(tip.toString(), hudX + 15, hudY + 75);
     }
 
     public Weapon getActiveWeapon() {
@@ -185,5 +260,9 @@ public class WeaponManager {
 
     public Weapon getWeaponInSlot(int slotIndex) {
         return weaponSlots.get(slotIndex);
+    }
+
+    public Map<Integer, Weapon> getWeaponSlots() {
+        return java.util.Collections.unmodifiableMap(weaponSlots);
     }
 }

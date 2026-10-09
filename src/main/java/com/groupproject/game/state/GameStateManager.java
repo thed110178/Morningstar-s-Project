@@ -35,9 +35,17 @@ public class GameStateManager {
      * The currently active state type.
      */
     private StateType currentState;
+    private MouseHandler mouseHandler;
 
     public GameStateManager() {
         // States will be registered via registerState()
+    }
+
+    /**
+     * Binds mouse handler reference so state transitions can clear residual click states.
+     */
+    public void setMouseHandler(MouseHandler mouseHandler) {
+        this.mouseHandler = mouseHandler;
     }
 
     /**
@@ -52,11 +60,15 @@ public class GameStateManager {
 
     /**
      * Switches the active state and automatically invokes {@link GameState#init()} on the new state.
+     * Also resets mouse click flags to prevent click leakage between states.
      *
      * @param type The state to activate.
      */
     public void setState(StateType type) {
         this.currentState = type;
+        if (mouseHandler != null) {
+            mouseHandler.reset();
+        }
         GameState state = states.get(type);
         if (state != null) {
             state.init();

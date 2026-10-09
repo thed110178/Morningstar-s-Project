@@ -17,7 +17,7 @@ import java.util.List;
 public abstract class Weapon {
 
     protected final String name;
-    protected final int slotIndex; // 3 for Pistol, 4 for Knife, etc.
+    protected int slotIndex; // Slot số 1 hoặc 2 cho vũ khí chính, 3 cho Pistol, 4 cho Knife
     protected final int damage;
     protected final double fireRateCooldown; // Seconds between successive strikes/shots
     protected final int magazineSize;        // Maximum magazine capacity (0 for melee)
@@ -91,6 +91,16 @@ public abstract class Weapon {
     }
 
     /**
+     * Cancels an ongoing reload cycle immediately (e.g. when interrupted by shooting).
+     */
+    public void cancelReload() {
+        if (reloading) {
+            reloading = false;
+            reloadTimer = 0.0;
+        }
+    }
+
+    /**
      * Checks if the weapon is ready to strike or fire.
      */
     public boolean canAttack() {
@@ -108,6 +118,10 @@ public abstract class Weapon {
 
     public int getSlotIndex() {
         return slotIndex;
+    }
+
+    public void setSlotIndex(int slotIndex) {
+        this.slotIndex = slotIndex;
     }
 
     public int getDamage() {
@@ -133,5 +147,13 @@ public abstract class Weapon {
 
     public boolean isMelee() {
         return magazineSize == 0;
+    }
+
+    /**
+     * Indicates whether this firearm supports continuous full-auto fire by holding the mouse trigger.
+     * Semi-automatic weapons (such as pistols) return false and require distinct mouse clicks.
+     */
+    public boolean isAutomatic() {
+        return false;
     }
 }

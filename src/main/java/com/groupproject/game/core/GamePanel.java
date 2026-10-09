@@ -39,9 +39,14 @@ public class GamePanel extends JPanel {
         // WHY: Component must be focusable to receive keyboard KeyEvents from the operating system
         setFocusable(true);
 
+        // WHY: Java Swing mặc định tiêu thụ (consume) phím TAB để chuyển focus traversal giữa các component.
+        // Tắt focus traversal keys để KeyListener nhận được đầy đủ sự kiện KeyEvent.VK_TAB cho tính năng Balo.
+        setFocusTraversalKeysEnabled(false);
+
         this.keyHandler = new KeyboardHandler();
         this.mouseHandler = new MouseHandler();
         this.stateManager = new GameStateManager();
+        this.stateManager.setMouseHandler(this.mouseHandler);
 
         // Register all input adapters on this canvas
         addKeyListener(keyHandler);
@@ -55,6 +60,7 @@ public class GamePanel extends JPanel {
 
         // Set default startup state to the Main Menu
         stateManager.setState(GameStateManager.StateType.MENU);
+        mouseHandler.reset();
     }
 
     /**

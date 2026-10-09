@@ -1,6 +1,7 @@
 package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.GameConfig;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,8 +32,8 @@ public class DungeonMapTest {
     }
 
     @Test
-    @DisplayName("Verify all three required chambers exist with correct types")
-    void testThreeRoomsExist() {
+    @DisplayName("Verify procedural generation instantiates 3-5 combat chambers plus spawn and extract")
+    void testProceduralRoomsExist() {
         assertNotNull(map.getSpawnRoom(), "Spawn Room must be instantiated");
         assertEquals(Room.RoomType.SPAWN, map.getSpawnRoom().getRoomType());
 
@@ -42,7 +43,11 @@ public class DungeonMapTest {
         assertNotNull(map.getExtractRoom(), "Extract Room must be instantiated");
         assertEquals(Room.RoomType.EXTRACT, map.getExtractRoom().getRoomType());
 
-        assertEquals(3, map.getRooms().size(), "There should be exactly 3 rooms registered");
+        int combatCount = map.getCombatRooms().size();
+        assertTrue(combatCount >= 3 && combatCount <= 5,
+                "Procedural dungeon must generate between 3 and 5 combat rooms, got: " + combatCount);
+        assertEquals(combatCount + 2, map.getRooms().size(),
+                "Total rooms must match combat rooms plus spawn and extract");
     }
 
     @Test
@@ -79,8 +84,8 @@ public class DungeonMapTest {
     @DisplayName("Verify tactical cover pillars in Combat Arena are solid")
     void testCombatCoverPillars() {
         Room combat = map.getCombatRoom();
-        int pillarCol = combat.getGridX() + 5;
-        int pillarRow = combat.getGridY() + 5;
+        int pillarCol = combat.getGridX() + 3;
+        int pillarRow = combat.getGridY() + 3;
 
         Tile pillarTile = map.getTile(pillarCol, pillarRow);
         assertNotNull(pillarTile);
@@ -115,5 +120,55 @@ public class DungeonMapTest {
         Room spawn = map.getSpawnRoom();
         assertFalse(map.isOnExtractZone(spawn.getCenterWorldX(), spawn.getCenterWorldY()),
                 "Spawn room must not be considered EXTRACT_ZONE");
+    }
+
+    @Test
+    @DisplayName("Verify reset() procedural generation produces valid 3-5 chambers across multiple runs")
+    void testProceduralGenerationVariabilityAndBounds() {
+        for (int run = 0; run < 15; run++) {
+            map.reset();
+            int combatCount = map.getCombatRooms().size();
+            assertTrue(combatCount >= 3 && combatCount <= 5,
+                    "Run " + run + " must generate 3 to 5 combat chambers, got: " + combatCount);
+
+            assertEquals(combatCount + 2, map.getRooms().size(),
+                    "Total room count must equal combat rooms + 2");
+
+            for (Room r : map.getRooms()) {
+                assertTrue(r.getGridX() >= 0 && r.getGridX() + r.getWidthInTiles() <= DungeonMap.COLS,
+                        "Room " + r.getName() + " exceeds grid X boundaries");
+                assertTrue(r.getGridY() >= 0 && r.getGridY() + r.getHeightInTiles() <= DungeonMap.ROWS,
+                        "Room " + r.getName() + " exceeds grid Y boundaries");
+
+                // Center of every chamber must be walkable floor
+                assertTrue(map.isAreaWalkable(r.getCenterWorldX() - 8, r.getCenterWorldY() - 8, 16, 16),
+                        "Center of room " + r.getName() + " must be walkable");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Verify rooms never overlap and strictly align to directional grid slots")
+    void testNoOverlappingRoomsAndStrictGridAlignment() {
+        for (int run = 0; run < 15; run++) {
+            map.reset();
+            List<Room> allRooms = map.getRooms();
+
+            for (int i = 0; i < allRooms.size(); i++) {
+                Room r1 = allRooms.get(i);
+                for (int j = i + 1; j < allRooms.size(); j++) {
+                    Room r2 = allRooms.get(j);
+
+                    // Check if two rooms overlap
+                    boolean xOverlap = r1.getGridX() < r2.getGridX() + r2.getWidthInTiles()
+                            && r1.getGridX() + r1.getWidthInTiles() > r2.getGridX();
+                    boolean yOverlap = r1.getGridY() < r2.getGridY() + r2.getHeightInTiles()
+                            && r1.getGridY() + r1.getHeightInTiles() > r2.getGridY();
+
+                    assertFalse(xOverlap && yOverlap,
+                            String.format("Run %d: Room %s overlaps with Room %s", run, r1.getName(), r2.getName()));
+                }
+            }
+        }
     }
 }

@@ -7,13 +7,14 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Manages the discrete 2D grid matrix of terrain tiles, collision checks, rooms, and lockdown doors.
  *
- * <p>WHY: Centralizes map generation, spatial queries, and door state transitions. Implementing
- * dynamic door tiles allows combat chambers to seal the operative inside during hostile encounters
- * and unlock once all threats are eliminated, authentic to the Soul Knight gameplay loop.
+ * <p>WHY: Centralizes procedural map generation, spatial queries, and door state transitions.
+ * Supports generating 3 to 5 randomized combat chambers per run connected by procedural corridors,
+ * each with automatic blast doors sealing the operative during combat encounters and unlocking upon clearance.
  */
 public class DungeonMap {
 
@@ -22,18 +23,19 @@ public class DungeonMap {
 
     private final Tile[][] tiles;
     private final List<Room> rooms = new ArrayList<>();
+    private final List<Room> combatRooms = new ArrayList<>();
 
     private Room spawnRoom;
-    private Room combatRoom;
+    private Room combatRoom; // First combat room for backward compatibility
     private Room extractRoom;
 
     /**
-     * Constructs the dungeon matrix and builds the 3-room layout (Spawn, Combat, Extract) with blast doors.
+     * Constructs the dungeon matrix and builds the procedural multi-room layout.
      */
     public DungeonMap() {
         this.tiles = new Tile[COLS][ROWS];
         initializeEmptyWorld();
-        buildThreeRoomLayout();
+        generateProceduralDungeon();
     }
 
     /**
@@ -47,72 +49,316 @@ public class DungeonMap {
         }
     }
 
+    // Kích thước chuẩn của mỗi phòng và khoảng cách hành lang trên lưới ô
+    public static final int ROOM_WIDTH = 14;
+    public static final int ROOM_HEIGHT = 10;
+    public static final int CORRIDOR_LEN_X = 6;
+    public static final int CORRIDOR_LEN_Y = 4;
+    public static final int GRID_COLS = 4;
+    public static final int GRID_ROWS = 3;
+    public static final int OFFSET_X = 3;
+    public static final int OFFSET_Y = 4;
+
     /**
-     * Constructs a structured Roguelite 3-chamber facility connected by tactical corridors:
-     * 1. Spawn Room (West staging ground)
-     * 2. Combat Arena (Central chamber with blast doors and cover pillars)
-     * 3. Extract Chamber (East evacuation portal)
+     * 4 hướng kết nối chính giữa các phòng liền kề: 12h (Bắc), 3h (Đông), 6h (Nam), 9h (Tây).
      */
-    private void buildThreeRoomLayout() {
-        // --- 1. Spawn Room (Staging Area) ---
-        spawnRoom = new Room(6, 16, 14, 12, Room.RoomType.SPAWN, "Deployment Staging Room");
-        rooms.add(spawnRoom);
-        carveRoom(spawnRoom);
+    public enum Direction {
+        NORTH(0, -1, "12h"),
+        EAST(1, 0, "3h"),
+        SOUTH(0, 1, "6h"),
+        WEST(-1, 0, "9h");
 
-        // Mark 4x4 central pad as SPAWN_ZONE
-        int spawnPadStartX = spawnRoom.getGridX() + 5;
-        int spawnPadStartY = spawnRoom.getGridY() + 4;
-        for (int c = spawnPadStartX; c < spawnPadStartX + 4; c++) {
-            for (int r = spawnPadStartY; r < spawnPadStartY + 4; r++) {
-                tiles[c][r].setType(TileType.SPAWN_ZONE);
-            }
+        public final int dx;
+        public final int dy;
+        public final String clockName;
+
+        Direction(int dx, int dy, String clockName) {
+            this.dx = dx;
+            this.dy = dy;
+            this.clockName = clockName;
         }
 
-        // --- 2. Combat Room (Central Battle Arena) ---
-        combatRoom = new Room(28, 11, 24, 22, Room.RoomType.COMBAT, "Central Combat Arena");
-        rooms.add(combatRoom);
-        carveRoom(combatRoom);
+        public Direction opposite() {
+            switch (this) {
+                case NORTH: return SOUTH;
+                case SOUTH: return NORTH;
+                case EAST: return WEST;
+                case WEST: return EAST;
+            }
+            return NORTH;
+        }
+    }
 
-        // Add 4 tactical cover pillars inside the combat arena
-        int cx = combatRoom.getGridX();
-        int cy = combatRoom.getGridY();
-        carvePillar(cx + 5, cy + 5, 2, 2);
-        carvePillar(cx + 17, cy + 5, 2, 2);
-        carvePillar(cx + 5, cy + 15, 2, 2);
-        carvePillar(cx + 17, cy + 15, 2, 2);
+    private static class RoomNode {
+        final int gx;
+        final int gy;
+        final Room room;
 
-        // --- 3. Extract Room (Evacuation Zone) ---
-        extractRoom = new Room(60, 16, 14, 12, Room.RoomType.EXTRACT, "Evacuation Landing Zone");
-        rooms.add(extractRoom);
-        carveRoom(extractRoom);
+        RoomNode(int gx, int gy, Room room) {
+            this.gx = gx;
+            this.gy = gy;
+            this.room = room;
+        }
+    }
 
-        // Mark 4x4 central pad as EXTRACT_ZONE
-        int extractPadStartX = extractRoom.getGridX() + 5;
-        int extractPadStartY = extractRoom.getGridY() + 4;
-        for (int c = extractPadStartX; c < extractPadStartX + 4; c++) {
-            for (int r = extractPadStartY; r < extractPadStartY + 4; r++) {
-                tiles[c][r].setType(TileType.EXTRACT_ZONE);
+    private static class RoomConnection {
+        final RoomNode from;
+        final RoomNode to;
+        final Direction dir;
+
+        RoomConnection(RoomNode from, RoomNode to, Direction dir) {
+            this.from = from;
+            this.to = to;
+            this.dir = dir;
+        }
+    }
+
+    private int gridOriginX(int gx) {
+        return OFFSET_X + gx * (ROOM_WIDTH + CORRIDOR_LEN_X);
+    }
+
+    private int gridOriginY(int gy) {
+        return OFFSET_Y + gy * (ROOM_HEIGHT + CORRIDOR_LEN_Y);
+    }
+
+    /**
+     * Sinh bản đồ hầm ngục theo mô hình lưới các phòng liền kề theo 4 hướng 12h, 3h, 6h, 9h:
+     * - 1 Spawn Room (ở ô (0, 1))
+     * - 3 đến 5 Combat Rooms bố trí liền kề theo các hướng 12h, 3h, 6h, 9h
+     * - 1 Extract Room (ở cuối chuỗi)
+     * - Mỗi cặp phòng kề nhau được nối bởi 1 hành lang thẳng tắp duy nhất, bọc tường và lắp blast doors.
+     */
+    public void generateProceduralDungeon() {
+        int numCombat = ThreadLocalRandom.current().nextInt(3, 6);
+        boolean success = false;
+        int maxAttempts = 60;
+
+        for (int attempt = 0; attempt < maxAttempts && !success; attempt++) {
+            rooms.clear();
+            combatRooms.clear();
+            initializeEmptyWorld();
+
+            RoomNode[][] grid = new RoomNode[GRID_COLS][GRID_ROWS];
+            List<RoomNode> combatNodes = new ArrayList<>();
+            List<RoomConnection> connections = new ArrayList<>();
+
+            // 1. Đặt Spawn Room tại ô lưới (0, 1)
+            int spawnCol = gridOriginX(0);
+            int spawnRow = gridOriginY(1);
+            spawnRoom = new Room(spawnCol, spawnRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.SPAWN, "Deployment Staging Room");
+            RoomNode spawnNode = new RoomNode(0, 1, spawnRoom);
+            grid[0][1] = spawnNode;
+            rooms.add(spawnRoom);
+
+            // 2. Đặt Combat Arena 1 tại (1, 1) - luôn ở hướng 3h (Đông) của Spawn
+            // để người chơi nhấn D đi thẳng vào buồng chiến đấu đầu tiên
+            int c1Col = gridOriginX(1);
+            int c1Row = gridOriginY(1);
+            Room combat1 = new Room(c1Col, c1Row, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.COMBAT, "Combat Arena 1");
+            RoomNode c1Node = new RoomNode(1, 1, combat1);
+            grid[1][1] = c1Node;
+            combatRooms.add(combat1);
+            rooms.add(combat1);
+            combatNodes.add(c1Node);
+            connections.add(new RoomConnection(spawnNode, c1Node, Direction.EAST));
+
+            // 3. Sinh các phòng combat tiếp theo liền kề ở 12h, 3h, 6h, 9h
+            boolean failedCombat = false;
+            for (int i = 2; i <= numCombat; i++) {
+                RoomNode sourceNode = null;
+                Direction chosenDir = null;
+
+                List<RoomNode> candidates = new ArrayList<>(combatNodes);
+                java.util.Collections.reverse(candidates);
+
+                for (RoomNode cand : candidates) {
+                    List<Direction> validDirs = getValidAdjacentDirections(cand, grid);
+                    if (!validDirs.isEmpty()) {
+                        sourceNode = cand;
+                        chosenDir = validDirs.get(ThreadLocalRandom.current().nextInt(validDirs.size()));
+                        break;
+                    }
+                }
+
+                if (sourceNode == null || chosenDir == null) {
+                    failedCombat = true;
+                    break;
+                }
+
+                int nextGx = sourceNode.gx + chosenDir.dx;
+                int nextGy = sourceNode.gy + chosenDir.dy;
+                int nextCol = gridOriginX(nextGx);
+                int nextRow = gridOriginY(nextGy);
+
+                Room nextCombat = new Room(nextCol, nextRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.COMBAT, "Combat Arena " + i);
+                RoomNode nextNode = new RoomNode(nextGx, nextGy, nextCombat);
+                grid[nextGx][nextGy] = nextNode;
+                combatRooms.add(nextCombat);
+                rooms.add(nextCombat);
+                combatNodes.add(nextNode);
+                connections.add(new RoomConnection(sourceNode, nextNode, chosenDir));
+            }
+
+            if (failedCombat) {
+                continue;
+            }
+
+            // 4. Đặt Extract Room ở ô lân cận theo 12h, 3h, 6h, 9h
+            RoomNode extractSource = null;
+            Direction extractDir = null;
+
+            List<RoomNode> extractCandidates = new ArrayList<>(combatNodes);
+            java.util.Collections.reverse(extractCandidates);
+
+            for (RoomNode cand : extractCandidates) {
+                List<Direction> validDirs = getValidAdjacentDirections(cand, grid);
+                if (!validDirs.isEmpty()) {
+                    extractSource = cand;
+                    if (validDirs.contains(Direction.EAST)) {
+                        extractDir = Direction.EAST;
+                    } else {
+                        extractDir = validDirs.get(ThreadLocalRandom.current().nextInt(validDirs.size()));
+                    }
+                    break;
+                }
+            }
+
+            if (extractSource == null || extractDir == null) {
+                continue;
+            }
+
+            int extGx = extractSource.gx + extractDir.dx;
+            int extGy = extractSource.gy + extractDir.dy;
+            int extCol = gridOriginX(extGx);
+            int extRow = gridOriginY(extGy);
+
+            extractRoom = new Room(extCol, extRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.EXTRACT, "Evacuation Landing Zone");
+            RoomNode extNode = new RoomNode(extGx, extGy, extractRoom);
+            grid[extGx][extGy] = extNode;
+            rooms.add(extractRoom);
+            connections.add(new RoomConnection(extractSource, extNode, extractDir));
+
+            // 5. Chạm trổ tất cả các phòng và bệ / cột bên trong
+            for (Room r : rooms) {
+                carveRoom(r);
+            }
+
+            // Bệ Spawn 4x4 tại tâm Spawn Room
+            carvePad(spawnRoom.getGridX() + 5, spawnRoom.getGridY() + 3, 4, 4, TileType.SPAWN_ZONE);
+
+            // Bệ Extract 4x4 tại tâm Extract Room
+            carvePad(extractRoom.getGridX() + 5, extractRoom.getGridY() + 3, 4, 4, TileType.EXTRACT_ZONE);
+
+            // Cột che chắn ở các góc phòng combat, để trống tâm cho giao tranh và hòm
+            for (Room cr : combatRooms) {
+                int c = cr.getGridX();
+                int r = cr.getGridY();
+                carvePillar(c + 2, r + 2, 2, 2);
+                carvePillar(c + ROOM_WIDTH - 4, r + ROOM_HEIGHT - 4, 2, 2);
+            }
+
+            // 6. Nối các phòng bằng hành lang thẳng tắp theo 4 hướng và lắp đặt blast doors
+            for (RoomConnection conn : connections) {
+                connectAdjacentRooms(conn.from.room, conn.to.room, conn.dir);
+            }
+
+            this.combatRoom = combatRooms.get(0);
+            success = true;
+        }
+    }
+
+    private List<Direction> getValidAdjacentDirections(RoomNode node, RoomNode[][] grid) {
+        List<Direction> validDirs = new ArrayList<>();
+        for (Direction dir : Direction.values()) {
+            int nx = node.gx + dir.dx;
+            int ny = node.gy + dir.dy;
+            if (nx >= 0 && nx < GRID_COLS && ny >= 0 && ny < GRID_ROWS && grid[nx][ny] == null) {
+                validDirs.add(dir);
             }
         }
+        return validDirs;
+    }
 
-        // --- 4. Connecting Corridors ---
-        // Corridor 1: Spawn -> Combat
-        carveHorizontalCorridor(spawnRoom.getGridX() + spawnRoom.getWidthInTiles() - 1,
-                combatRoom.getGridX(), 20, 4);
+    private void carvePad(int startCol, int startRow, int width, int height, TileType type) {
+        for (int c = startCol; c < startCol + width; c++) {
+            for (int r = startRow; r < startRow + height; r++) {
+                if (isValidGrid(c, r)) {
+                    tiles[c][r].setType(type);
+                }
+            }
+        }
+    }
 
-        // Corridor 2: Combat -> Extract
-        carveHorizontalCorridor(combatRoom.getGridX() + combatRoom.getWidthInTiles() - 1,
-                extractRoom.getGridX(), 20, 4);
+    /**
+     * Nối 2 phòng liền kề bằng 1 hành lang thẳng tắp theo đúng hướng dir (12h, 3h, 6h, 9h).
+     */
+    private void connectAdjacentRooms(Room from, Room to, Direction dir) {
+        if (dir == Direction.EAST) {
+            int exitCol = from.getGridX() + ROOM_WIDTH - 1;
+            int entryCol = to.getGridX();
+            int startRow = from.getGridY() + 3;
+            int endRow = from.getGridY() + 6;
 
-        // --- 5. Install Combat Room Lockdown Doors ---
-        // West Entrance Door (col = 28, rows 21 and 22)
-        installDoorTile(combatRoom, combatRoom.getGridX(), 21);
-        installDoorTile(combatRoom, combatRoom.getGridX(), 22);
+            for (int c = exitCol; c <= entryCol; c++) {
+                for (int r = startRow; r <= endRow; r++) {
+                    tiles[c][r].setType(TileType.FLOOR);
+                }
+            }
 
-        // East Exit Door (col = 51, rows 21 and 22)
-        int eastDoorCol = combatRoom.getGridX() + combatRoom.getWidthInTiles() - 1;
-        installDoorTile(combatRoom, eastDoorCol, 21);
-        installDoorTile(combatRoom, eastDoorCol, 22);
+            for (int r = startRow; r <= endRow; r++) {
+                if (from.getRoomType() == Room.RoomType.COMBAT) {
+                    installDoorTile(from, exitCol, r);
+                }
+                if (to.getRoomType() == Room.RoomType.COMBAT) {
+                    installDoorTile(to, entryCol, r);
+                }
+            }
+
+            for (int c = exitCol; c <= entryCol; c++) {
+                if (tiles[c][startRow - 1].getType() == TileType.VOID) {
+                    tiles[c][startRow - 1].setType(TileType.WALL);
+                }
+                if (tiles[c][endRow + 1].getType() == TileType.VOID) {
+                    tiles[c][endRow + 1].setType(TileType.WALL);
+                }
+            }
+
+        } else if (dir == Direction.WEST) {
+            connectAdjacentRooms(to, from, Direction.EAST);
+
+        } else if (dir == Direction.SOUTH) {
+            int exitRow = from.getGridY() + ROOM_HEIGHT - 1;
+            int entryRow = to.getGridY();
+            int startCol = from.getGridX() + 5;
+            int endCol = from.getGridX() + 8;
+
+            for (int r = exitRow; r <= entryRow; r++) {
+                for (int c = startCol; c <= endCol; c++) {
+                    tiles[c][r].setType(TileType.FLOOR);
+                }
+            }
+
+            for (int c = startCol; c <= endCol; c++) {
+                if (from.getRoomType() == Room.RoomType.COMBAT) {
+                    installDoorTile(from, c, exitRow);
+                }
+                if (to.getRoomType() == Room.RoomType.COMBAT) {
+                    installDoorTile(to, c, entryRow);
+                }
+            }
+
+            for (int r = exitRow; r <= entryRow; r++) {
+                if (tiles[startCol - 1][r].getType() == TileType.VOID) {
+                    tiles[startCol - 1][r].setType(TileType.WALL);
+                }
+                if (tiles[endCol + 1][r].getType() == TileType.VOID) {
+                    tiles[endCol + 1][r].setType(TileType.WALL);
+                }
+            }
+
+        } else if (dir == Direction.NORTH) {
+            connectAdjacentRooms(to, from, Direction.SOUTH);
+        }
     }
 
     /**
@@ -160,27 +406,6 @@ public class DungeonMap {
     }
 
     /**
-     * Carves a horizontal corridor with top and bottom walls.
-     */
-    private void carveHorizontalCorridor(int startCol, int endCol, int startRow, int corridorHeight) {
-        for (int c = startCol; c <= endCol; c++) {
-            for (int r = startRow; r < startRow + corridorHeight; r++) {
-                if (!isValidGrid(c, r)) continue;
-
-                if (r == startRow || r == startRow + corridorHeight - 1) {
-                    // Only place wall if not already an open floor from a room interior
-                    if (tiles[c][r].getType() == TileType.VOID) {
-                        tiles[c][r].setType(TileType.WALL);
-                    }
-                } else {
-                    // Open pathway
-                    tiles[c][r].setType(TileType.FLOOR);
-                }
-            }
-        }
-    }
-
-    /**
      * Validates whether a grid index falls within the map matrix boundaries.
      */
     public boolean isValidGrid(int col, int row) {
@@ -210,7 +435,6 @@ public class DungeonMap {
         for (int c = minCol; c <= maxCol; c++) {
             for (int r = minRow; r <= maxRow; r++) {
                 if (!isValidGrid(c, r)) {
-                    // Outside world bounds is impassable
                     return false;
                 }
                 if (tiles[c][r].isSolid()) {
@@ -223,15 +447,6 @@ public class DungeonMap {
 
     /**
      * Determines whether an entity's axis-aligned bounding box (AABB) overlaps any EXTRACT_ZONE tile.
-     *
-     * <p>WHY: Used by the gameplay system to detect when the operative has entered the extraction pad,
-     * triggering the [F] EXTRACT interaction prompt and enabling mission completion.
-     *
-     * @param worldX Left X coordinate in world space.
-     * @param worldY Top Y coordinate in world space.
-     * @param width  Entity hitbox width in pixels.
-     * @param height Entity hitbox height in pixels.
-     * @return true if any portion of the entity intersects an extraction pad tile.
      */
     public boolean isIntersectsExtractZone(double worldX, double worldY, double width, double height) {
         int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
@@ -260,16 +475,6 @@ public class DungeonMap {
 
     /**
      * Determines whether an area blocks or absorbs flying projectiles.
-     *
-     * <p>WHY: Walls, cover pillars, and closed doors block bullets physically. Open doors
-     * (DOOR_OPEN) also absorb bullets to prevent operatives from cheesing combat encounters
-     * by sniping hostiles from outside corridors before entering the room.
-     *
-     * @param worldX Left X coordinate in world space.
-     * @param worldY Top Y coordinate in world space.
-     * @param width  Hitbox width in pixels.
-     * @param height Hitbox height in pixels.
-     * @return true if the area blocks or absorbs projectiles.
      */
     public boolean isAreaBlockingProjectiles(double worldX, double worldY, double width, double height) {
         int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
@@ -280,7 +485,7 @@ public class DungeonMap {
         for (int c = minCol; c <= maxCol; c++) {
             for (int r = minRow; r <= maxRow; r++) {
                 if (!isValidGrid(c, r)) {
-                    return true; // Out of bounds blocks bullets
+                    return true;
                 }
                 if (tiles[c][r].blocksProjectiles()) {
                     return true;
@@ -309,7 +514,6 @@ public class DungeonMap {
             }
         }
 
-        // Render Room Label Indicators when camera views them
         renderRoomLabels(g, camera);
     }
 
@@ -317,15 +521,25 @@ public class DungeonMap {
      * Displays floating tactical room banners inside each chamber with lockdown warnings.
      */
     private void renderRoomLabels(Graphics2D g, Camera camera) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 18));
+        g.setFont(new Font("SansSerif", Font.BOLD, 17));
+        double camCenterX = camera.getX() + camera.getViewportWidth() / 2.0;
+        double camCenterY = camera.getY() + camera.getViewportHeight() / 2.0;
+
         for (Room room : rooms) {
+            double rx = room.getCenterWorldX();
+            double ry = room.getCenterWorldY();
+            double distSq = (camCenterX - rx) * (camCenterX - rx) + (camCenterY - ry) * (camCenterY - ry);
+
+            // Chỉ hiển thị nhãn của phòng khi camera thực sự ở gần buồng phòng đó (<= 480px)
+            // Ngăn chặn hoàn toàn việc nhãn của phòng khác bị lọt mép vào màn hình
+            if (distSq > 480 * 480) {
+                continue;
+            }
+
             int screenX = camera.worldToScreenX(room.getCenterWorldX() - 110);
             int screenY = camera.worldToScreenY(room.getGridY() * GameConfig.TILE_SIZE + 28);
 
-            if (screenX >= -180 && screenX <= camera.getViewportWidth() + 180
-                    && screenY >= -50 && screenY <= camera.getViewportHeight() + 50) {
-
-                if (room.getRoomType() == Room.RoomType.SPAWN) {
+            if (room.getRoomType() == Room.RoomType.SPAWN) {
                     g.setColor(new Color(60, 220, 160, 200));
                     g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                 } else if (room.getRoomType() == Room.RoomType.COMBAT) {
@@ -334,16 +548,15 @@ public class DungeonMap {
                         g.drawString("[ ! COMBAT LOCKDOWN ! ]", screenX, screenY);
                     } else if (room.isCleared()) {
                         g.setColor(new Color(60, 220, 120, 200));
-                        g.drawString("[ CLEARED - DOORS UNLOCKED ]", screenX, screenY);
+                        g.drawString("[ CLEARED - DOORS OPEN ]", screenX, screenY);
                     } else {
-                        g.setColor(new Color(255, 120, 60, 200));
+                        g.setColor(new Color(255, 140, 60, 200));
                         g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                     }
                 } else {
                     g.setColor(new Color(190, 100, 255, 200));
                     g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                 }
-            }
         }
     }
 
@@ -351,8 +564,18 @@ public class DungeonMap {
         return spawnRoom;
     }
 
+    /**
+     * Returns the primary / first combat arena for backward compatibility.
+     */
     public Room getCombatRoom() {
         return combatRoom;
+    }
+
+    /**
+     * Returns the complete list of procedural combat chambers (3 to 5 rooms).
+     */
+    public List<Room> getCombatRooms() {
+        return combatRooms;
     }
 
     public Room getExtractRoom() {
@@ -364,14 +587,12 @@ public class DungeonMap {
     }
 
     /**
-     * Resets all room lifecycle states and doors across the entire dungeon facility.
-     *
-     * <p>WHY: Ensures clean state initialization on mission start, avoiding residual
-     * lockdown or cleared flags from prior game sessions.
+     * Resets the dungeon by regenerating a fresh procedural layout with new random rooms and corridors.
      */
     public void reset() {
         for (Room room : rooms) {
             room.reset();
         }
+        generateProceduralDungeon();
     }
 }
