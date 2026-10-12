@@ -121,8 +121,28 @@ public class DungeonMap {
         return OFFSET_Y + gy * (ROOM_HEIGHT + CORRIDOR_LEN_Y);
     }
 
+    private int currentStage = 1;
+
+    // Kích thước phòng Bossfight cho Stage 3
+    public static final int BOSS_ROOM_WIDTH = 28;
+    public static final int BOSS_ROOM_HEIGHT = 18;
+
     /**
-     * Sinh bản đồ hầm ngục theo mô hình lưới các phòng liền kề theo 4 hướng 12h, 3h, 6h, 9h:
+     * Sinh bản đồ hầm ngục theo stage được chỉ định (1, 2: Standard Procedural Grid, 3: Grand Boss Arena).
+     *
+     * @param stage Chỉ số stage trong Biome (1, 2, hoặc 3).
+     */
+    public void generateStage(int stage) {
+        this.currentStage = stage;
+        if (stage == 3) {
+            generateBossStage();
+        } else {
+            generateProceduralDungeon();
+        }
+    }
+
+    /**
+     * Sinh bản đồ hầm ngục tiêu chuẩn theo mô hình lưới các phòng liền kề theo 4 hướng 12h, 3h, 6h, 9h:
      * - 1 Spawn Room (ở ô (0, 1))
      * - 3 đến 5 Combat Rooms bố trí liền kề theo các hướng 12h, 3h, 6h, 9h
      * - 1 Extract Room (ở cuối chuỗi)
@@ -249,22 +269,59 @@ public class DungeonMap {
             // Bệ Extract 4x4 tại tâm Extract Room
             carvePad(extractRoom.getGridX() + 5, extractRoom.getGridY() + 3, 4, 4, TileType.EXTRACT_ZONE);
 
-            // Cột che chắn ở các góc phòng combat, để trống tâm cho giao tranh và hòm
-            for (Room cr : combatRooms) {
-                int c = cr.getGridX();
-                int r = cr.getGridY();
-                carvePillar(c + 2, r + 2, 2, 2);
-                carvePillar(c + ROOM_WIDTH - 4, r + ROOM_HEIGHT - 4, 2, 2);
+
+            // 6. Tự động kết nối TẤT CẢ các phòng Combat ở cạnh nhau (theo 4 hướng 12h, 3h, 6h, 9h)
+            // để người chơi hoàn toàn tự do trong lối di chuyển qua lại giữa các phòng chiến đấu
+            for (int gx = 0; gx < GRID_COLS; gx++) {
+                for (int gy = 0; gy < GRID_ROWS; gy++) {
+                    RoomNode nodeA = grid[gx][gy];
+                    if (nodeA == null || nodeA.room.getRoomType() != Room.RoomType.COMBAT) {
+                        continue;
+                    }
+
+                    // Kiểm tra phòng combat lân cận bên phải (hướng 3h / EAST)
+                    if (gx + 1 < GRID_COLS) {
+                        RoomNode nodeB = grid[gx + 1][gy];
+                        if (nodeB != null && nodeB.room.getRoomType() == Room.RoomType.COMBAT) {
+                            addUniqueConnection(connections, nodeA, nodeB, Direction.EAST);
+                        }
+                    }
+
+                    // Kiểm tra phòng combat lân cận bên dưới (hướng 6h / SOUTH)
+                    if (gy + 1 < GRID_ROWS) {
+                        RoomNode nodeC = grid[gx][gy + 1];
+                        if (nodeC != null && nodeC.room.getRoomType() == Room.RoomType.COMBAT) {
+                            addUniqueConnection(connections, nodeA, nodeC, Direction.SOUTH);
+                        }
+                    }
+                }
             }
 
-            // 6. Nối các phòng bằng hành lang thẳng tắp theo 4 hướng và lắp đặt blast doors
+            // 7. Chạm trổ tất cả các hành lang thẳng tắp theo 4 hướng và lắp đặt blast doors
             for (RoomConnection conn : connections) {
                 connectAdjacentRooms(conn.from.room, conn.to.room, conn.dir);
+            }
+
+            // 8. Sinh đồng thời cả Cover Cứng (Tactical Pillar) và Cover Tạm Thời (Destructible Crate)
+            // Tuyệt đối không sinh tại lối ra vào hoặc tâm phòng để tránh tắc nghẽn gameplay
+            for (Room cr : combatRooms) {
+                spawnSolidCovers(cr);
+                int coverCount = ThreadLocalRandom.current().nextInt(3, 6);
+                spawnRandomDestructibleCovers(cr, coverCount);
             }
 
             this.combatRoom = combatRooms.get(0);
             success = true;
         }
+    }
+
+    private void addUniqueConnection(List<RoomConnection> connections, RoomNode from, RoomNode to, Direction dir) {
+        for (RoomConnection c : connections) {
+            if ((c.from == from && c.to == to) || (c.from == to && c.to == from)) {
+                return;
+            }
+        }
+        connections.add(new RoomConnection(from, to, dir));
     }
 
     private List<Direction> getValidAdjacentDirections(RoomNode node, RoomNode[][] grid) {
@@ -587,12 +644,268 @@ public class DungeonMap {
     }
 
     /**
+     * Sinh bản đồ cho Stage 3 (Bossfight Stage / Grand Arena):
+     * - 1 Spawn Room chuẩn ở phía Tây (cột 4, hàng 17, 12x10 tiles)
+     * - 1 Phòng Combat to (Grand Boss Arena, 28x18 tiles) ở trung tâm bản đồ
+     * - Hành lang rộng kết nối thẳng từ Spawn Room sang Boss Arena có lắp blast door
+     * - 4 cột trụ che chắn bố trí tại 4 góc phòng Boss
+     * - Ban đầu CHƯA có bệ extract riêng; bệ extract sẽ xuất hiện ngay tại tâm phòng khi clear.
+     */
+    public void generateBossStage() {
+        rooms.clear();
+        combatRooms.clear();
+        initializeEmptyWorld();
+
+        // 1. Đặt Spawn Room ở Tây
+        int spawnCol = 4;
+        int spawnRow = 17;
+        int spawnW = 12;
+        int spawnH = 10;
+        spawnRoom = new Room(spawnCol, spawnRow, spawnW, spawnH, Room.RoomType.SPAWN, "Deployment Staging Room");
+        rooms.add(spawnRoom);
+        carveRoom(spawnRoom);
+
+        // Bệ Spawn 4x4 tại tâm Spawn Room
+        carvePad(spawnCol + 4, spawnRow + 3, 4, 4, TileType.SPAWN_ZONE);
+
+        // 2. Đặt Boss Arena to ở giữa bản đồ
+        int bossCol = 24;
+        int bossRow = 13;
+        int bossW = BOSS_ROOM_WIDTH;
+        int bossH = BOSS_ROOM_HEIGHT;
+        Room bossRoom = new Room(bossCol, bossRow, bossW, bossH, Room.RoomType.COMBAT, "Grand Boss Arena");
+        combatRooms.add(bossRoom);
+        rooms.add(bossRoom);
+        carveRoom(bossRoom);
+
+        // 4 Cột trụ che chắn chiến thuật ở 4 góc xa của Boss Arena (không bao quanh lối vào)
+        carvePillar(bossCol + 8, bossRow + 2, 2, 2);
+        carvePillar(bossCol + bossW - 8, bossRow + 2, 2, 2);
+        carvePillar(bossCol + 8, bossRow + bossH - 4, 2, 2);
+        carvePillar(bossCol + bossW - 8, bossRow + bossH - 4, 2, 2);
+
+        // Sinh ngẫu nhiên 8 ô cover tạm thời (thùng gỗ che chắn) trong Grand Boss Arena
+        spawnRandomDestructibleCovers(bossRoom, 8);
+
+        // 3. Nối hành lang thẳng từ Spawn Room sang Boss Arena (hướng EAST)
+        int exitCol = spawnCol + spawnW - 1;
+        int entryCol = bossCol;
+        int corridorStartRow = spawnRow + 3;
+        int corridorEndRow = spawnRow + 6;
+
+        for (int c = exitCol; c <= entryCol; c++) {
+            for (int r = corridorStartRow; r <= corridorEndRow; r++) {
+                tiles[c][r].setType(TileType.FLOOR);
+            }
+        }
+
+        // Lắp cửa Blast Door ở lối vào Boss Arena
+        for (int r = corridorStartRow; r <= corridorEndRow; r++) {
+            installDoorTile(bossRoom, entryCol, r);
+        }
+
+        // Tường bảo vệ hai bên hành lang nếu gặp VOID
+        for (int c = exitCol; c <= entryCol; c++) {
+            if (tiles[c][corridorStartRow - 1].getType() == TileType.VOID) {
+                tiles[c][corridorStartRow - 1].setType(TileType.WALL);
+            }
+            if (tiles[c][corridorEndRow + 1].getType() == TileType.VOID) {
+                tiles[c][corridorEndRow + 1].setType(TileType.WALL);
+            }
+        }
+
+        this.combatRoom = bossRoom;
+        this.extractRoom = null; // Chưa có phòng sơ tán độc lập, sẽ mở bệ ngay trong phòng sau khi clear
+    }
+
+    /**
+     * Mở bệ sơ tán (Extract Pad) ngay tại tâm của một căn phòng cụ thể (dành cho Stage 3 Boss Arena).
+     *
+     * @param room Phòng cần kích hoạt bệ sơ tán.
+     */
+    public void spawnExtractZoneInRoom(Room room) {
+        if (room == null) return;
+        int padW = 4;
+        int padH = 4;
+        int startCol = room.getGridX() + (room.getWidthInTiles() - padW) / 2;
+        int startRow = room.getGridY() + (room.getHeightInTiles() - padH) / 2;
+        carvePad(startCol, startRow, padW, padH, TileType.EXTRACT_ZONE);
+        this.extractRoom = room;
+    }
+
+    public int getCurrentStage() {
+        return currentStage;
+    }
+
+    /**
+     * Kiểm tra xem ô gạch (c, r) có nằm trong phạm vi lối ra vào của phòng hay không.
+     * Khu vực này bắt buộc phải thông thoáng 100%, tuyệt đối cấm đặt cover cứng hoặc cover tạm thời.
+     *
+     * @param room Phòng cần kiểm tra.
+     * @param c Tọa độ cột lưới.
+     * @param r Tọa độ hàng lưới.
+     * @return true nếu ô này nằm gần lối ra vào hoặc tâm phòng.
+     */
+    public boolean isNearDoorway(Room room, int c, int r) {
+        int rx = room.getGridX();
+        int ry = room.getGridY();
+        int rw = room.getWidthInTiles();
+        int rh = room.getHeightInTiles();
+
+        int midX = rx + rw / 2;
+        int midY = ry + rh / 2;
+
+        // 1. Kiểm tra trực tiếp khoảng cách đến tất cả các ô cửa thực tế đã lắp đặt
+        for (Tile door : room.getDoorTiles()) {
+            if (Math.abs(c - door.getCol()) + Math.abs(r - door.getRow()) <= 2) {
+                return true;
+            }
+        }
+
+        // 2. Vùng đệm lối vào phía Tây (9h): Cửa nằm ở giữa cạnh Tây
+        if (c >= rx && c <= rx + 2 && Math.abs(r - midY) <= 2) {
+            return true;
+        }
+
+        // 3. Vùng đệm lối vào phía Đông (3h): Cửa nằm ở giữa cạnh Đông
+        if (c >= rx + rw - 3 && c <= rx + rw - 1 && Math.abs(r - midY) <= 2) {
+            return true;
+        }
+
+        // 4. Vùng đệm lối vào phía Bắc (12h): Cửa nằm ở giữa cạnh Bắc
+        if (r >= ry && r <= ry + 2 && Math.abs(c - midX) <= 2) {
+            return true;
+        }
+
+        // 5. Vùng đệm lối vào phía Nam (6h): Cửa nằm ở giữa cạnh Nam
+        if (r >= ry + rh - 3 && r <= ry + rh - 1 && Math.abs(c - midX) <= 2) {
+            return true;
+        }
+
+        // 6. Khu vực tâm phòng: Dành cho giao tranh, bệ sơ tán và hòm tiếp tế
+        if (Math.abs(c - midX) <= 1 && Math.abs(r - midY) <= 1) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Sinh các ô cover cứng (Permanent Solid Cover) kiên cố tại các vị trí chiến thuật an toàn bên trong phòng.
+     * Tuyệt đối không sinh ở gần bất kỳ cửa ra vào nào để tránh cản trở và gây tắc nghẽn gameplay.
+     *
+     * @param room Phòng chiến đấu cần bố trí cover cứng.
+     */
+    public void spawnSolidCovers(Room room) {
+        if (room == null || room.getRoomType() != Room.RoomType.COMBAT) return;
+
+        int rx = room.getGridX();
+        int ry = room.getGridY();
+        int rw = room.getWidthInTiles();
+        int rh = room.getHeightInTiles();
+
+        // Bố trí các cột trụ chiến thuật tại các góc phòng (cách xa lối đi cửa và tâm phòng)
+        int[][] candidatePositions = {
+            {rx + 3, ry + 2},
+            {rx + rw - 4, ry + 2},
+            {rx + 3, ry + rh - 3},
+            {rx + rw - 4, ry + rh - 3}
+        };
+
+        for (int[] pos : candidatePositions) {
+            int c = pos[0];
+            int r = pos[1];
+            if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
+                // Bắt buộc kiểm tra không nằm trong phạm vi lối ra vào của phòng
+                if (!isNearDoorway(room, c, r)) {
+                    tiles[c][r].setType(TileType.COVER);
+                }
+            }
+        }
+    }
+
+    /**
+     * Sinh các ô cover tạm thời (Destructible Cover) ngẫu nhiên bên trong phòng chiến đấu.
+     * Tuyệt đối không sinh tại các ô lối ra vào hoặc khu vực tâm phòng.
+     *
+     * @param room Phòng cần sinh cover tạm thời.
+     * @param count Số lượng ô cover tạm thời cần sinh.
+     */
+    public void spawnRandomDestructibleCovers(Room room, int count) {
+        List<int[]> candidates = new ArrayList<>();
+        int rx = room.getGridX();
+        int ry = room.getGridY();
+        int rw = room.getWidthInTiles();
+        int rh = room.getHeightInTiles();
+
+        for (int c = rx + 1; c < rx + rw - 1; c++) {
+            for (int r = ry + 1; r < ry + rh - 1; r++) {
+                if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
+                    if (!isNearDoorway(room, c, r)) {
+                        candidates.add(new int[]{c, r});
+                    }
+                }
+            }
+        }
+
+        java.util.Collections.shuffle(candidates);
+        int spawned = 0;
+        for (int[] pos : candidates) {
+            if (spawned >= count) break;
+            tiles[pos[0]][pos[1]].setType(TileType.DESTRUCTIBLE_COVER);
+            spawned++;
+        }
+    }
+
+    /**
+     * Gây sát thương lên tất cả các ô cover tạm thời (Destructible Cover) trong vùng AABB chỉ định.
+     *
+     * @param worldX Tọa độ X bắt đầu của vùng (pixel).
+     * @param worldY Tọa độ Y bắt đầu của vùng (pixel).
+     * @param width Chiều rộng của vùng (pixel).
+     * @param height Chiều cao của vùng (pixel).
+     * @param damage Sát thương từ đạn hoặc vũ khí cận chiến.
+     * @return true nếu có ít nhất 1 ô cover tạm thời nhận sát thương.
+     */
+    public boolean damageDestructibleCoverInArea(double worldX, double worldY, double width, double height, int damage) {
+        int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
+        int maxCol = (int) Math.floor((worldX + width - 0.001) / GameConfig.TILE_SIZE);
+        int minRow = (int) Math.floor(worldY / GameConfig.TILE_SIZE);
+        int maxRow = (int) Math.floor((worldY + height - 0.001) / GameConfig.TILE_SIZE);
+
+        boolean damaged = false;
+        for (int c = minCol; c <= maxCol; c++) {
+            for (int r = minRow; r <= maxRow; r++) {
+                if (isValidGrid(c, r) && tiles[c][r].isDestructible()) {
+                    tiles[c][r].takeDamage(damage);
+                    damaged = true;
+                }
+            }
+        }
+        return damaged;
+    }
+
+    /**
+     * Gây sát thương lên ô cover tạm thời tại tọa độ thế giới xác định.
+     */
+    public boolean damageDestructibleCoverAt(double worldX, double worldY, int damage) {
+        int col = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
+        int row = (int) Math.floor(worldY / GameConfig.TILE_SIZE);
+        if (isValidGrid(col, row) && tiles[col][row].isDestructible()) {
+            return tiles[col][row].takeDamage(damage);
+        }
+        return false;
+    }
+
+    /**
      * Resets the dungeon by regenerating a fresh procedural layout with new random rooms and corridors.
      */
     public void reset() {
         for (Room room : rooms) {
             room.reset();
         }
-        generateProceduralDungeon();
+        this.currentStage = 1;
+        generateStage(1);
     }
 }
+

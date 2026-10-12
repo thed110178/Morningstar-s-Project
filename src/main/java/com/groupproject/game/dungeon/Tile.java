@@ -19,6 +19,8 @@ public class Tile {
     private final int worldX;
     private final int worldY;
     private TileType type;
+    private int health = 0;
+    private int maxHealth = 0;
 
     /**
      * Constructs a tile at the designated grid coordinates.
@@ -32,7 +34,7 @@ public class Tile {
         this.gridY = gridY;
         this.worldX = gridX * GameConfig.TILE_SIZE;
         this.worldY = gridY * GameConfig.TILE_SIZE;
-        this.type = type;
+        setType(type);
     }
 
     /**
@@ -57,7 +59,15 @@ public class Tile {
         return gridX;
     }
 
+    public int getCol() {
+        return gridX;
+    }
+
     public int getGridY() {
+        return gridY;
+    }
+
+    public int getRow() {
         return gridY;
     }
 
@@ -75,6 +85,47 @@ public class Tile {
 
     public void setType(TileType type) {
         this.type = type;
+        if (type == TileType.DESTRUCTIBLE_COVER) {
+            this.maxHealth = 40;
+            this.health = 40;
+        } else {
+            this.health = 0;
+            this.maxHealth = 0;
+        }
+    }
+
+    /**
+     * Xác định xem ô này có phải là cover tạm thời có thể phá hủy được hay không.
+     */
+    public boolean isDestructible() {
+        return type == TileType.DESTRUCTIBLE_COVER;
+    }
+
+    /**
+     * Gây sát thương lên ô cover tạm thời. Khi máu giảm về 0 hoặc thấp hơn,
+     * ô này sẽ bị phá hủy và tự động chuyển hóa thành ô sàn thông thường (FLOOR).
+     *
+     * @param damage Lượng sát thương từ đạn bắn hoặc nhát chém cận chiến.
+     * @return true nếu ô cover đã bị phá hủy hoàn toàn.
+     */
+    public boolean takeDamage(int damage) {
+        if (!isDestructible() || damage <= 0) {
+            return false;
+        }
+        this.health -= damage;
+        if (this.health <= 0) {
+            setType(TileType.FLOOR);
+            return true;
+        }
+        return false;
+    }
+
+    public int getHealth() {
+        return health;
+    }
+
+    public int getMaxHealth() {
+        return maxHealth;
     }
 
     /**
@@ -107,6 +158,47 @@ public class Tile {
             g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
             g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
             g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
+        } else if (type == TileType.DESTRUCTIBLE_COVER) {
+            // Thùng gỗ che chắn chiến thuật phá hủy được (Tactical Wooden Crate)
+            g.setColor(new Color(85, 55, 30));
+            g.drawRect(screenX + 1, screenY + 1, size - 3, size - 3);
+
+            // Nan gỗ chéo chữ X gia cố
+            g.setColor(new Color(105, 75, 40));
+            g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
+            g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
+
+            // 4 Nẹp kim loại ở các góc
+            g.setColor(new Color(70, 75, 85));
+            int bSize = 6;
+            g.fillRect(screenX + 2, screenY + 2, bSize, bSize);
+            g.fillRect(screenX + size - 2 - bSize, screenY + 2, bSize, bSize);
+            g.fillRect(screenX + 2, screenY + size - 2 - bSize, bSize, bSize);
+            g.fillRect(screenX + size - 2 - bSize, screenY + size - 2 - bSize, bSize, bSize);
+
+            // Hiệu ứng rạn nứt khi bị nhận sát thương
+            if (health < maxHealth) {
+                g.setColor(new Color(25, 15, 10, 220));
+                g.drawLine(screenX + 14, screenY + 8, screenX + 26, screenY + 24);
+                g.drawLine(screenX + 26, screenY + 24, screenX + 20, screenY + 38);
+                if (health <= maxHealth / 2) {
+                    g.drawLine(screenX + 34, screenY + 12, screenX + 28, screenY + 28);
+                    g.drawLine(screenX + 10, screenY + 30, screenX + 22, screenY + 32);
+                }
+
+                // Thanh HP nhỏ màu vàng cam phía trên đỉnh thùng
+                int barW = 30;
+                int barH = 4;
+                int barX = screenX + (size - barW) / 2;
+                int barY = screenY + 4;
+                g.setColor(new Color(0, 0, 0, 180));
+                g.fillRect(barX, barY, barW, barH);
+                int fillW = (int) Math.round((barW * health) / (double) maxHealth);
+                g.setColor(new Color(255, 160, 40));
+                g.fillRect(barX, barY, fillW, barH);
+                g.setColor(new Color(255, 255, 255, 140));
+                g.drawRect(barX, barY, barW, barH);
+            }
         } else if (type == TileType.DOOR_CLOSED) {
             // Heavy lockdown blast gate with bright red warning barrier
             g.setColor(new Color(255, 60, 60));

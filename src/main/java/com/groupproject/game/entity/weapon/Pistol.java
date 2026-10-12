@@ -11,15 +11,18 @@ import java.util.List;
 /**
  * Standard-issue Tactical Sidearm (Pistol) mapped to hotkey slot [3].
  *
- * <p>WHY: Provides reliable, accurate semi-automatic firepower. Holds a strict 7-round magazine
- * as specified in design requirements. Once all 7 rounds are expended or the player presses [R],
+ * <p>
+ * WHY: Provides reliable, accurate semi-automatic firepower. Holds a strict
+ * 7-round magazine
+ * as specified in design requirements. Once all 7 rounds are expended or the
+ * player presses [R],
  * a 1.2-second tactical reload cycle is enforced.
  */
 public class Pistol extends Weapon {
 
     private static final int DEFAULT_DAMAGE = 25;
-    private static final double FIRE_RATE = 0.22; // Seconds between semi-auto trigger pulls
-    private static final int MAG_CAPACITY = 7;    // 7-round magazine
+    private static final double FIRE_RATE = 0.09; // Seconds between semi-auto trigger pulls
+    private static final int MAG_CAPACITY = 7; // 7-round magazine
     private static final double RELOAD_TIME = 1.2; // 1.2s reload duration
     private static final double BULLET_SPEED = 700.0; // Fast travel velocity
 
@@ -29,8 +32,9 @@ public class Pistol extends Weapon {
 
     @Override
     public boolean attack(double originX, double originY, double aimAngle,
-                          ProjectileManager pm, List<MeleeSlash> slashList) {
-        if (!canAttack()) return false;
+            ProjectileManager pm, List<MeleeSlash> slashList) {
+        if (!canAttack())
+            return false;
 
         // If magazine is empty, trigger reload automatically
         if (currentAmmo <= 0) {

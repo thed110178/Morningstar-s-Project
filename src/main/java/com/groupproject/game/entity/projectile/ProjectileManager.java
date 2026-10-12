@@ -56,6 +56,8 @@ public class ProjectileManager {
                 // WHY: isAreaBlockingProjectiles absorbs bullets on walls, cover, closed doors,
                 // and open doors (DOOR_OPEN) to prevent cheesing encounters from corridors.
                 if (dungeonMap.isAreaBlockingProjectiles(p.getX() - 2, p.getY() - 2, 4, 4)) {
+                    // Gây sát thương lên ô cover tạm thời (nếu trúng)
+                    dungeonMap.damageDestructibleCoverInArea(p.getX() - 4, p.getY() - 4, 8, 8, p.getDamage());
                     p.deactivate(); // Impact absorbed by terrain or door energy threshold
                 }
             }

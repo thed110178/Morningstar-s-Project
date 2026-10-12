@@ -22,9 +22,14 @@ public enum TileType {
     FLOOR(false, new Color(28, 33, 46), "Floor"),
 
     /**
-     * Destructible / solid cover pillar providing tactical shelter from enemy gunfire.
+     * Permanent solid cover pillar providing indestructible shelter.
      */
     COVER(true, new Color(70, 80, 105), "Tactical Cover"),
+
+    /**
+     * Temporary destructible cover crate / barrier absorbing bullets and breakable upon gunfire or melee strikes.
+     */
+    DESTRUCTIBLE_COVER(true, new Color(130, 95, 55), "Destructible Cover"),
 
     /**
      * Combat room blast door in locked state (impassable solid barrier).

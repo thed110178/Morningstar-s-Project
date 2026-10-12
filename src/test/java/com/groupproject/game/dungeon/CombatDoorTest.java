@@ -2,6 +2,7 @@ package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.entity.enemy.TargetDummy;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -233,7 +234,7 @@ public class CombatDoorTest {
         assertTrue(state.isStandingOnExtract(), "Operative must be recognized standing on EXTRACT_ZONE");
         assertFalse(state.isExtracting(), "Extraction victory sequence should not trigger without pressing [F]");
 
-        // 2. Press interaction key [F]
+        // 2. Press interaction key [F] at Stage 1 -> should advance to Stage 2
         java.awt.Canvas dummy = new java.awt.Canvas();
         java.awt.event.KeyEvent pressF = new java.awt.event.KeyEvent(
                 dummy, java.awt.event.KeyEvent.KEY_PRESSED,
@@ -242,17 +243,79 @@ public class CombatDoorTest {
         keyH.update();
 
         state.update(0.016, keyH, mouseH);
-        assertTrue(state.isExtracting(), "Pressing [F] on extraction pad must activate victory sequence");
+        assertEquals(2, state.getCurrentStage(), "Pressing [F] on extraction pad in Stage 1 must advance to Stage 2");
 
-        // 3. Skip black screen by pressing [ENTER]
+        // 3. Set to Stage 3 (Final Bossfight Stage) and place on extract pad
+        state.setCurrentStage(com.groupproject.game.state.PlayingState.MAX_STAGES);
+        state.getDungeonMap().generateStage(com.groupproject.game.state.PlayingState.MAX_STAGES);
+        Room bossRoom = state.getDungeonMap().getCombatRoom();
+        assertNotNull(bossRoom);
+        state.getDungeonMap().spawnExtractZoneInRoom(bossRoom);
+        state.setPlayerPosition(bossRoom.getCenterWorldX() - 14, bossRoom.getCenterWorldY() - 14);
+
+        // Fresh keyboard handler for second key press
+        com.groupproject.game.input.KeyboardHandler keyH2 = new com.groupproject.game.input.KeyboardHandler();
+        keyH2.keyPressed(pressF);
+        keyH2.update();
+
+        state.update(0.016, keyH2, mouseH);
+        assertTrue(state.isExtracting(), "Pressing [F] on extraction pad in Final Stage must activate victory sequence");
+
+        // 4. Skip black screen by pressing [ENTER]
         java.awt.event.KeyEvent pressEnter = new java.awt.event.KeyEvent(
                 dummy, java.awt.event.KeyEvent.KEY_PRESSED,
                 System.currentTimeMillis(), 0, java.awt.event.KeyEvent.VK_ENTER, '\n');
-        keyH.keyPressed(pressEnter);
-        keyH.update();
+        keyH2.keyPressed(pressEnter);
+        keyH2.update();
 
-        state.update(0.016, keyH, mouseH);
+        state.update(0.016, keyH2, mouseH);
         assertEquals(com.groupproject.game.state.GameStateManager.StateType.MENU,
                 gsm.getCurrentStateType(), "Victory debriefing must return player to Main Menu");
+    }
+
+    @Test
+    @DisplayName("Verify hostile combat targets never spawn inside solid cover, destructible crates, or walls")
+    void testEnemySpawnNeverOverlapsCoverOrSolidTiles() {
+        for (int stage = 1; stage <= 3; stage++) {
+            com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+            com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+            state.setCurrentStage(stage);
+            state.getDungeonMap().generateStage(stage);
+
+            com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+            com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+
+            for (Room room : state.getDungeonMap().getCombatRooms()) {
+                // Đưa người chơi vào phòng combat để kích hoạt lockdown và sinh enemies
+                state.setPlayerPosition(room.getCenterWorldX() - 14, room.getCenterWorldY() - 14);
+                state.update(0.016, keyH, mouseH);
+
+                List<TargetDummy> targets = state.getCombatTargets();
+                assertFalse(targets.isEmpty(), "Combat targets must be spawned when room locks down");
+
+                for (TargetDummy dummy : targets) {
+                    double dx = dummy.getX();
+                    double dy = dummy.getY();
+
+                    // 1. Toàn bộ hitbox của dummy (30x30) phải nằm trên ô có thể di chuyển (isAreaWalkable)
+                    boolean walkable = state.getDungeonMap().isAreaWalkable(dx - 15, dy - 15, 30, 30);
+                    assertTrue(walkable, String.format("Stage %d: Enemy at (%.1f, %.1f) must be on 100%% walkable floor",
+                            stage, dx, dy));
+
+                    // 2. Ô gạch tại tâm của dummy không được phép là COVER, DESTRUCTIBLE_COVER hoặc WALL
+                    int col = (int) (dx / GameConfig.TILE_SIZE);
+                    int row = (int) (dy / GameConfig.TILE_SIZE);
+                    Tile centerTile = state.getDungeonMap().getTile(col, row);
+                    assertNotNull(centerTile);
+                    assertNotEquals(TileType.COVER, centerTile.getType(),
+                            String.format("Stage %d: Enemy must NOT spawn on solid COVER at grid (%d, %d)", stage, col, row));
+                    assertNotEquals(TileType.DESTRUCTIBLE_COVER, centerTile.getType(),
+                            String.format("Stage %d: Enemy must NOT spawn on DESTRUCTIBLE_COVER at grid (%d, %d)", stage, col, row));
+                    assertNotEquals(TileType.WALL, centerTile.getType(),
+                            String.format("Stage %d: Enemy must NOT spawn on WALL at grid (%d, %d)", stage, col, row));
+                    assertFalse(centerTile.isSolid(), "Center tile of enemy must NOT be solid");
+                }
+            }
+        }
     }
 }
