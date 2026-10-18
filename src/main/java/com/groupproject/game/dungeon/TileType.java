@@ -44,6 +44,12 @@ public enum TileType {
     DOOR_OPEN(false, new Color(40, 150, 90), "Security Door (Unlocked)"),
 
     /**
+     * Permanent open gateway into the Tactical Field Shop.
+     * Always unlocked and features distinct golden/amber holographic shop threshold.
+     */
+    DOOR_SHOP(false, new Color(255, 215, 60), "Shop Gateway (Always Open)"),
+
+    /**
      * Designates the safe staging area where the player operative deploys into the mission.
      */
     SPAWN_ZONE(false, new Color(30, 60, 50), "Spawn Pad"),

@@ -216,6 +216,30 @@ public class Tile {
             g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
             g.drawLine(screenX + 6, screenY + 8, screenX + size - 6, screenY + 8);
             g.drawLine(screenX + 6, screenY + size - 8, screenX + size - 6, screenY + size - 8);
+        } else if (type == TileType.DOOR_SHOP) {
+            // Permanent open Tactical Shop doorway with warm amber floor and neon gold portal threshold
+            g.setColor(new Color(45, 38, 20));
+            g.fillRect(screenX, screenY, size, size);
+
+            // Glowing golden border
+            g.setColor(new Color(255, 215, 60, 210));
+            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+
+            // Energy threshold scanlines
+            g.setStroke(new BasicStroke(1.5f));
+            g.drawLine(screenX + 5, screenY + 7, screenX + size - 5, screenY + 7);
+            g.drawLine(screenX + 5, screenY + size - 7, screenX + size - 5, screenY + size - 7);
+
+            // Holographic diamond credit beacon in center
+            int cx = screenX + size / 2;
+            int cy = screenY + size / 2;
+            g.setColor(new Color(255, 225, 75));
+            int[] dx = { cx, cx + 5, cx, cx - 5 };
+            int[] dy = { cy - 5, cy, cy + 5, cy };
+            g.drawPolygon(dx, dy, 4);
+            g.setColor(new Color(255, 250, 180));
+            g.fillOval(cx - 2, cy - 2, 4, 4);
+            g.setStroke(new BasicStroke(1.0f));
         } else if (type == TileType.SPAWN_ZONE) {
             // Glowing cyan deployment grid pattern
             g.setColor(new Color(50, 160, 120, 80));

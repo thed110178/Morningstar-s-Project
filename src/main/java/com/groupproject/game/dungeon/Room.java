@@ -76,11 +76,13 @@ public class Room {
      * Engages combat lockdown by closing and solidifying all entrance/exit blast gates.
      */
     public void lockdown() {
-        if (status == RoomStatus.CLEARED) return; // Do not relock cleared rooms
+        if (roomType == RoomType.SHOP || status == RoomStatus.CLEARED) return; // Shop never locks down
 
         this.status = RoomStatus.ACTIVE_LOCKDOWN;
         for (Tile door : doorTiles) {
-            door.setType(TileType.DOOR_CLOSED);
+            if (door.getType() != TileType.DOOR_SHOP) {
+                door.setType(TileType.DOOR_CLOSED);
+            }
         }
     }
 
@@ -90,7 +92,9 @@ public class Room {
     public void unlock() {
         this.status = RoomStatus.CLEARED;
         for (Tile door : doorTiles) {
-            door.setType(TileType.DOOR_OPEN);
+            if (door.getType() != TileType.DOOR_SHOP) {
+                door.setType(TileType.DOOR_OPEN);
+            }
         }
     }
 
@@ -104,7 +108,9 @@ public class Room {
     public void reset() {
         this.status = RoomStatus.UNVISITED;
         for (Tile door : doorTiles) {
-            door.setType(TileType.DOOR_OPEN);
+            if (door.getType() != TileType.DOOR_SHOP) {
+                door.setType(TileType.DOOR_OPEN);
+            }
         }
     }
 

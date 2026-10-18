@@ -4,6 +4,7 @@ import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -402,9 +403,14 @@ public class DungeonMap {
             for (int r = startRow; r <= endRow; r++) {
                 if (from.getRoomType() == Room.RoomType.COMBAT) {
                     installDoorTile(from, exitCol, r);
+                } else if (from.getRoomType() == Room.RoomType.SHOP) {
+                    installShopDoorTile(from, exitCol, r);
                 }
+
                 if (to.getRoomType() == Room.RoomType.COMBAT) {
                     installDoorTile(to, entryCol, r);
+                } else if (to.getRoomType() == Room.RoomType.SHOP) {
+                    installShopDoorTile(to, entryCol, r);
                 }
             }
 
@@ -435,9 +441,14 @@ public class DungeonMap {
             for (int c = startCol; c <= endCol; c++) {
                 if (from.getRoomType() == Room.RoomType.COMBAT) {
                     installDoorTile(from, c, exitRow);
+                } else if (from.getRoomType() == Room.RoomType.SHOP) {
+                    installShopDoorTile(from, c, exitRow);
                 }
+
                 if (to.getRoomType() == Room.RoomType.COMBAT) {
                     installDoorTile(to, c, entryRow);
+                } else if (to.getRoomType() == Room.RoomType.SHOP) {
+                    installShopDoorTile(to, c, entryRow);
                 }
             }
 
@@ -462,6 +473,17 @@ public class DungeonMap {
         if (isValidGrid(col, row)) {
             Tile doorTile = tiles[col][row];
             doorTile.setType(TileType.DOOR_OPEN); // Default open until lockdown triggers
+            room.addDoorTile(doorTile);
+        }
+    }
+
+    /**
+     * Lắp đặt cửa cổng Shop luôn mở (DOOR_SHOP) tại vị trí chỉ định và đăng ký vào shopRoom.
+     */
+    private void installShopDoorTile(Room room, int col, int row) {
+        if (isValidGrid(col, row)) {
+            Tile doorTile = tiles[col][row];
+            doorTile.setType(TileType.DOOR_SHOP); // Luôn mở, nhận diện đặc trưng của Shop
             room.addDoorTile(doorTile);
         }
     }
@@ -650,11 +672,44 @@ public class DungeonMap {
                 } else if (room.getRoomType() == Room.RoomType.SHOP) {
                     g.setColor(new Color(255, 215, 60, 220));
                     g.drawString("[ TACTICAL FIELD SHOP ]", screenX, screenY);
+
+                    // Hiển thị biển hiệu cổng vào Shop [ ★ SHOP (LUÔN MỞ) ★ ] ngay trên ngưỡng cửa
+                    if (!room.getDoorTiles().isEmpty()) {
+                        double avgDoorX = 0, avgDoorY = 0;
+                        for (Tile dt : room.getDoorTiles()) {
+                            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
+                            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
+                        }
+                        avgDoorX /= room.getDoorTiles().size();
+                        avgDoorY /= room.getDoorTiles().size();
+
+                        int doorScreenX = camera.worldToScreenX(avgDoorX);
+                        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
+
+                        renderShopArchwayBadge(g, doorScreenX, doorScreenY, "★ CỬA SHOP (LUÔN MỞ) ★");
+                    }
                 } else {
                     g.setColor(new Color(190, 100, 255, 200));
                     g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                 }
         }
+    }
+
+    private void renderShopArchwayBadge(Graphics2D g, int centerX, int centerY, String text) {
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        FontMetrics fm = g.getFontMetrics();
+        int textW = fm.stringWidth(text);
+        int pad = 8;
+        int boxW = textW + pad * 2;
+        int boxH = 18;
+        int boxX = centerX - boxW / 2;
+        int boxY = centerY - boxH / 2;
+
+        g.setColor(new Color(25, 20, 10, 230));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+        g.setColor(new Color(255, 215, 60, 220));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+        g.drawString(text, boxX + pad, boxY + 13);
     }
 
     public Room getSpawnRoom() {

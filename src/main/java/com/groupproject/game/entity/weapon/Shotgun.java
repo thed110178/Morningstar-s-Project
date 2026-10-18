@@ -51,13 +51,14 @@ public class Shotgun extends Weapon {
     public Shotgun() {
         // reloadDuration ở lớp cha đại diện cho thời gian nạp 1 viên shell (0.45s)
         super("Shotgun", 2, 14, 0.75, 8, TIME_PER_SHELL, SPREAD_CONE_ANGLE);
+        this.ammoType = com.groupproject.game.entity.item.AmmoType.SHOTGUN;
     }
 
     /**
      * Cập nhật tiến trình nạp đạn từng viên một.
      * <p>
-     * Mỗi khi hết chu kỳ TIME_PER_SHELL (0.45s), đạn được cộng thêm 1 viên (+1 ammo).
-     * Nếu đạn chưa đầy, tiếp tục chu kỳ nạp viên tiếp theo cho đến khi đạt tối đa 8 viên.
+     * Mỗi khi hết chu kỳ TIME_PER_SHELL (0.45s), nếu kho còn đạn thì nạp 1 viên (+1 ammo, trừ 1 từ kho).
+     * Nếu đạn chưa đầy và kho còn đạn, tiếp tục chu kỳ nạp viên tiếp theo cho đến khi đạt tối đa 8 viên hoặc hết đạn.
      */
     @Override
     public void update(double deltaTime) {
@@ -68,27 +69,45 @@ public class Shotgun extends Weapon {
         if (reloading) {
             reloadTimer -= deltaTime;
             if (reloadTimer <= 0) {
-                // Nạp thành công 1 viên đạn
-                currentAmmo++;
+                if (ammoType != null && boundAmmoInventory != null) {
+                    if (boundAmmoInventory.getAmmo(ammoType) > 0) {
+                        currentAmmo++;
+                        boundAmmoInventory.consumeAmmo(ammoType, 1);
 
-                if (currentAmmo < magazineSize) {
-                    // Tiếp tục nạp viên tiếp theo
-                    reloadTimer = reloadDuration;
+                        if (currentAmmo < magazineSize && boundAmmoInventory.getAmmo(ammoType) > 0) {
+                            reloadTimer = reloadDuration;
+                        } else {
+                            reloading = false;
+                            reloadTimer = 0.0;
+                        }
+                    } else {
+                        reloading = false;
+                        reloadTimer = 0.0;
+                    }
                 } else {
-                    // Đã nạp đầy toàn bộ băng đạn
-                    reloading = false;
-                    reloadTimer = 0.0;
+                    // Nạp thành công 1 viên đạn (chế độ độc lập / unit test không gắn kho)
+                    currentAmmo++;
+
+                    if (currentAmmo < magazineSize) {
+                        reloadTimer = reloadDuration;
+                    } else {
+                        reloading = false;
+                        reloadTimer = 0.0;
+                    }
                 }
             }
         }
     }
 
     /**
-     * Bắt đầu tiến trình nạp đạn từng viên nếu chưa đầy.
+     * Bắt đầu tiến trình nạp đạn từng viên nếu chưa đầy và kho dự trữ còn đạn.
      */
     @Override
     public void reload() {
         if (magazineSize > 0 && currentAmmo < magazineSize && !reloading) {
+            if (ammoType != null && boundAmmoInventory != null && boundAmmoInventory.getAmmo(ammoType) <= 0) {
+                return;
+            }
             reloading = true;
             reloadTimer = reloadDuration; // 0.45s cho viên đầu tiên
         }

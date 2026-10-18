@@ -103,6 +103,11 @@ Shop Room cung cấp trạm dừng chân an toàn để người chơi chi tiêu
 ---
 
 ## 6. Sửa đổi / Cập nhật
+* **18/10/2026 (Tối ưu giao diện vật phẩm Shop & Cửa Shop luôn mở)**:
+  - **Khắc phục xung đột tên vật phẩm (Đè chữ)**: Loại bỏ toàn bộ nhãn tên hiển thị trực tiếp từ xa trên đầu vật phẩm. Người chơi chỉ xem thông tin chi tiết (thẻ chỉ số vũ khí, bảng nâng cấp, gói đạn) khi bước lại gần vật phẩm.
+  - **Hiển thị giá tiền bên dưới**: Bổ sung bảng giá công nghệ cao (`renderPriceTag`) nằm ngay dưới bệ đứng của mỗi vật phẩm (`135 CREDITS`, `80 CREDITS`, `70 CREDITS`), khi mua xong chuyển thành `[ ĐÃ BÁN ]`.
+  - **Cửa Shop luôn mở (`TileType.DOOR_SHOP`)**: Lắp đặt cửa cổng Shop chuyên biệt tại ngưỡng cửa hành lang dẫn vào phòng Shop. Cửa luôn ở trạng thái mở (không solid, không bao giờ bị khóa), nền vàng hổ phách với vạch neon vàng kim và biểu tượng kim cương credit.
+  - **Biển hiệu cổng vòm**: Treo biển hiệu nổi `★ CỬA SHOP (LUÔN MỞ) ★` ngay trên ngưỡng cửa Shop giúp người chơi nhận biết phòng Shop từ xa ngay trong hành lang.
 * **16/10/2026 (Đợt 4 - Thống nhất Quy tắc Cấp độ Súng Shop & Giới hạn 3 lần nâng)**:
   - Súng bán tại Shop có cấp độ bằng `Stage + 2`, với tỉ lệ nhỏ (~20%) đột biến lên `Stage + 3`.
   - Giới hạn Bàn Nâng Cấp: Mỗi khẩu súng độc lập chỉ được phép nâng cấp tối đa **3 lần** (`upgradeCount < 3`), từ chối khi đạt 3/3 lần.
@@ -126,5 +131,7 @@ Shop Room cung cấp trạm dừng chân an toàn để người chơi chi tiêu
 ---
 
 ## 7. Lỗi đã sửa
+* **Lỗi đè chữ tên vật phẩm Shop**: Khi 3 quầy hàng đặt gần nhau, các nhãn tên dài trên đầu vật phẩm va quệt và che khuất lẫn nhau. Đã giải quyết triệt để bằng cách gỡ nhãn tên trên đỉnh, chuyển giá tiền xuống dưới bệ và chỉ mở tooltip khi lại gần.
+* **Phân biệt phòng Shop trong mê cung**: Trước đây lối vào phòng Shop chỉ là gạch sàn bình thường, không có cửa hay ký hiệu nhận diện. Đã bổ sung cửa luôn mở `DOOR_SHOP` với hào quang vàng kim và biển hiệu nổi trên ngưỡng cửa.
 * **Tránh xung đột phím [F]**: Khi đứng gần quầy hàng Shop và bấm [F], cờ `shopInteracted` được kích hoạt để ngăn chặn việc người chơi vô tình kích hoạt chuyển stage nếu quầy hàng đặt gần lối đi hoặc bệ sơ tán.
 * **Bảo vệ tình trạng nạp đạn khi mua tiếp tế**: Gọi `resupplyAmmo()` sẽ tự động đặt lại `isReloading = false` và `reloadTimer = 0`, ngăn lỗi súng bị kẹt trong trạng thái nạp đạn vô tận nếu người chơi mua tiếp tế đúng lúc đang nạp đạn dở.

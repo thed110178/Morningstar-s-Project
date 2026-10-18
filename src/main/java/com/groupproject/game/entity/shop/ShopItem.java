@@ -84,10 +84,10 @@ public class ShopItem {
     }
 
     /**
-     * Factory tạo quầy HP (chưa phát triển nên available = false).
+     * Factory tạo quầy Cứu thương Nanite (hồi phục +50 HP).
      */
     public static ShopItem createHealthItem(double x, double y, int price) {
-        return new ShopItem(x, y, ShopItemType.HEALTH, price, null, false);
+        return new ShopItem(x, y, ShopItemType.HEALTH, price, null, true);
     }
 
     public void update(double deltaTime) {
@@ -146,7 +146,14 @@ public class ShopItem {
             return true;
         }
 
-        // 2. Xử lý các quầy hàng mua đứt
+        // 2. Kiểm tra điều kiện máu trước khi mua Cứu Thương
+        if (type == ShopItemType.HEALTH && state.getPlayerCurrentHealth() >= state.getPlayerMaxHealth()) {
+            state.showTacticalBanner("MÁU ĐÃ ĐẠT TỐI ĐA (" + state.getPlayerMaxHealth() + "/" + state.getPlayerMaxHealth() + " HP)! KHÔNG CẦN CỨU THƯƠNG",
+                    new Color(255, 180, 50), 2.2);
+            return false;
+        }
+
+        // 3. Xử lý các quầy hàng mua đứt: Kiểm tra đủ tiền
         if (state.getPlayerCredits() < price) {
             state.showTacticalBanner("KHÔNG ĐỦ CREDITS! (CẦN " + price + " CREDITS - HIỆN CÓ: " + state.getPlayerCredits() + ")",
                     new Color(255, 75, 75), 2.2);
@@ -173,8 +180,15 @@ public class ShopItem {
         } else if (type == ShopItemType.AMMO) {
             state.getWeaponManager().resupplyAllWeapons();
             purchased = true;
-            state.showTacticalBanner("ĐÃ NẠP ĐẦY TOÀN BỘ ĐẠN DƯỢC! (-" + price + " CREDITS)",
+            state.showTacticalBanner("★ ĐÃ TIẾP TẾ +2 STACK ĐẠN CHO TẤT CẢ VŨ KHÍ! (-" + price + " CREDITS) ★",
                     new Color(255, 215, 60), 2.5);
+            return true;
+
+        } else if (type == ShopItemType.HEALTH) {
+            state.healPlayer(50);
+            purchased = true;
+            state.showTacticalBanner("★ ĐÃ HỒI PHỤC +50 HP TẠI TRẠM CỨU THƯƠNG NANO! (-" + price + " CREDITS) ★",
+                    new Color(60, 240, 140), 2.5);
             return true;
         }
 
@@ -210,8 +224,11 @@ public class ShopItem {
             g.fillOval(screenX - 18, itemY - 6, 36, 26);
         }
 
+        Color accentColor = new Color(255, 215, 60);
+
         // 2. Vẽ mô hình vật phẩm tương ứng
         if (type == ShopItemType.PRIMARY_WEAPON && weapon != null) {
+            accentColor = new Color(255, 215, 60);
             if (!purchased) {
                 // Mô hình súng nổi lơ lửng
                 if (weapon instanceof AssaultRifle) {
@@ -240,22 +257,19 @@ public class ShopItem {
                     g.fillRect(screenX + 16, itemY - 3, 3, 5);
                 }
 
+                // Khi lại gần: Hiển thị thẻ chỉ số vũ khí chi tiết
                 if (showPrompt) {
                     WeaponChest.renderWeaponStatCard(g, screenX, itemY - 18, weapon,
                             "MUA " + weapon.getShortDisplayName().toUpperCase() + " (" + price + "C)");
-                } else {
-                    // Nhãn tên và giá tiền khi đứng xa
-                    String title = weapon.getShortDisplayName().toUpperCase() + " • " + price + " CREDITS";
-                    renderBadge(g, screenX, itemY - 18, title, new Color(255, 215, 60));
                 }
             } else {
                 // Đã mua xong (Sold out)
                 g.setColor(new Color(80, 90, 105));
                 g.fillRect(screenX - 12, itemY - 2, 24, 4);
-                renderBadge(g, screenX, itemY - 14, "[ SOLD OUT / ĐÃ BÁN ]", new Color(150, 160, 175));
             }
 
         } else if (type == ShopItemType.WEAPON_UPGRADE) {
+            accentColor = new Color(0, 230, 255);
             // Mô hình Bàn nâng cấp vũ khí công nghệ cao: Vòng hào quang Cyan và ký hiệu thăng cấp ▲
             g.setColor(new Color(0, 200, 255, 90));
             g.fillOval(screenX - 16, itemY - 12, 32, 24);
@@ -267,14 +281,13 @@ public class ShopItem {
             g.setColor(new Color(255, 225, 75));
             g.drawString("▲", screenX - 7, itemY + 5);
 
+            // Khi lại gần: Hiển thị bảng thông tin nâng cấp
             if (showPrompt) {
                 renderUpgradeTooltip(g, screenX, itemY - 18, price);
-            } else {
-                String title = "NÂNG CẤP VŨ KHÍ • " + price + " CREDITS";
-                renderBadge(g, screenX, itemY - 18, title, new Color(0, 230, 255));
             }
 
         } else if (type == ShopItemType.AMMO) {
+            accentColor = new Color(120, 240, 140);
             if (!purchased) {
                 // Mô hình Hộp đạn quân sự xanh ô-liu với nẹp vàng
                 g.setColor(new Color(55, 80, 45));
@@ -287,64 +300,164 @@ public class ShopItem {
                 g.setColor(new Color(200, 160, 30));
                 g.drawRect(screenX - 6, itemY - 3, 12, 6);
 
-                String title = "HỘP TIẾP TẾ ĐẠN • " + price + " CREDITS";
-                renderBadge(g, screenX, itemY - 18, title, new Color(120, 240, 140));
-
+                // Khi lại gần: Hiển thị tooltip gói tiếp tế đạn
                 if (showPrompt) {
-                    renderPrompt(g, screenX, itemY - 40, "[F] MUA ĐẠN DƯỢC (" + price + "C)");
+                    renderAmmoTooltip(g, screenX, itemY - 18, price);
                 }
             } else {
                 // Hộp đạn đã mở
                 g.setColor(new Color(45, 55, 40));
                 g.fillRoundRect(screenX - 14, itemY - 5, 28, 12, 4, 4);
-                renderBadge(g, screenX, itemY - 14, "[ ĐÃ TIẾP TẾ ]", new Color(140, 155, 140));
+            }
+
+        } else if (type == ShopItemType.HEALTH) {
+            accentColor = new Color(60, 230, 140);
+            if (!purchased) {
+                // Mô hình Trạm Cứu Thương Nano (Hộp kim loại trắng ngà viền xanh ngọc)
+                g.setColor(new Color(240, 245, 248));
+                g.fillRoundRect(screenX - 14, itemY - 9, 28, 18, 4, 4);
+                g.setColor(new Color(60, 230, 140));
+                g.drawRoundRect(screenX - 14, itemY - 9, 28, 18, 4, 4);
+
+                // Biểu tượng dấu thập y tế xanh ngọc phát quang
+                g.setColor(new Color(40, 210, 95));
+                g.fillRect(screenX - 5, itemY - 2, 10, 4);
+                g.fillRect(screenX - 2, itemY - 5, 4, 10);
+
+                // Tooltip cứu thương khi lại gần
+                if (showPrompt) {
+                    renderHealthTooltip(g, screenX, itemY - 18, price);
+                }
+            } else {
+                // Đã sử dụng: Khung kim loại xám
+                g.setColor(new Color(55, 65, 60));
+                g.fillRoundRect(screenX - 14, itemY - 5, 28, 12, 4, 4);
             }
         }
+
+        // 3. Hiển thị giá cả ngay dưới bệ vật phẩm bày bán (theo yêu cầu người dùng)
+        renderPriceTag(g, screenX, screenY + 16, price, purchased, accentColor);
 
         g.setStroke(new BasicStroke(1.0f));
     }
 
-    private void renderBadge(Graphics2D g, int centerX, int centerY, String text, Color textColor) {
+    /**
+     * Hiển thị bảng giá tiền gọn gàng ngay dưới bệ vật phẩm bày bán.
+     * Khi đã mua xong, chuyển sang nhãn [ ĐÃ BÁN ] màu xám công nghệ.
+     */
+    private void renderPriceTag(Graphics2D g, int centerX, int centerY, int price, boolean isPurchased, Color accentColor) {
         g.setFont(new Font("SansSerif", Font.BOLD, 11));
         FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(text);
-        int pad = 6;
-        int boxW = textW + pad * 2;
-        int boxH = 18;
-        int boxX = centerX - boxW / 2;
-        int boxY = centerY - boxH / 2;
 
-        g.setColor(new Color(15, 22, 32, 220));
-        g.fillRoundRect(boxX, boxY, boxW, boxH, 4, 4);
-        g.setColor(new Color(70, 95, 130));
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 4, 4);
-
-        g.setColor(textColor);
-        g.drawString(text, boxX + pad, boxY + 13);
-    }
-
-    private void renderPrompt(Graphics2D g, int centerX, int centerY, String text) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
-        FontMetrics fm = g.getFontMetrics();
+        String text = isPurchased ? "[ ĐÃ BÁN ]" : price + " CREDITS";
         int textW = fm.stringWidth(text);
         int pad = 8;
         int boxW = textW + pad * 2;
-        int boxH = 22;
+        int boxH = 18;
         int boxX = centerX - boxW / 2;
-        int boxY = centerY - boxH / 2;
+        int boxY = centerY;
 
-        g.setColor(new Color(15, 20, 30, 235));
+        // Nền tối công nghệ cao
+        g.setColor(new Color(12, 18, 26, 235));
         g.fillRoundRect(boxX, boxY, boxW, boxH, 6, 6);
-        g.setColor(new Color(255, 215, 60)); // Viền vàng kim tương tác mua hàng
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
 
-        // Phím [F] nổi bật màu vàng
+        // Viền và văn bản
+        if (isPurchased) {
+            g.setColor(new Color(65, 75, 90));
+            g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+            g.setColor(new Color(130, 140, 155));
+        } else {
+            g.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 180));
+            g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+            g.setColor(accentColor);
+        }
+        g.drawString(text, boxX + pad, boxY + 13);
+    }
+
+    /**
+     * Hiển thị bảng thông tin chi tiết gói tiếp tế đạn dược khi người chơi bước lại gần.
+     */
+    private void renderAmmoTooltip(Graphics2D g, int centerX, int bottomY, int price) {
+        int boxW = 224;
+        int boxH = 92;
+        int boxX = centerX - boxW / 2;
+        int boxY = bottomY - boxH;
+
+        g.setColor(new Color(15, 26, 20, 245));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setColor(new Color(120, 240, 140));
+        g.setStroke(new BasicStroke(1.5f));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(new Color(120, 240, 140));
+        String title = "★ TIẾP TẾ ĐẠN DƯỢC (+2 STACK) ★";
+        FontMetrics fm = g.getFontMetrics();
+        g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
+
+        g.setColor(new Color(35, 75, 50));
+        g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
+
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setColor(new Color(210, 245, 220));
+        g.drawString("• AR: +60 viên | SMG: +70 viên", boxX + 14, boxY + 38);
+        g.drawString("• Shotgun: +20 viên | Nạp đầy băng", boxX + 14, boxY + 54);
+
+        g.setColor(new Color(20, 60, 35, 230));
+        g.fillRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
+        g.setColor(new Color(120, 240, 140));
+        g.drawRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
         g.setColor(new Color(255, 220, 60));
-        g.drawString("[F]", boxX + pad, boxY + 15);
-
-        // Chữ nội dung
+        g.drawString("[F]", boxX + 16, boxY + 79);
         g.setColor(Color.WHITE);
-        g.drawString(text.substring(3), boxX + pad + fm.stringWidth("[F] "), boxY + 15);
+        g.drawString("MUA TIẾP TẾ (" + price + " CREDITS)", boxX + 38, boxY + 79);
+
+        g.setStroke(new BasicStroke(1.0f));
+    }
+
+    /**
+     * Hiển thị bảng thông tin chi tiết Trạm cứu thương Nano khi người chơi bước lại gần.
+     */
+    private void renderHealthTooltip(Graphics2D g, int centerX, int bottomY, int price) {
+        int boxW = 224;
+        int boxH = 92;
+        int boxX = centerX - boxW / 2;
+        int boxY = bottomY - boxH;
+
+        g.setColor(new Color(15, 28, 22, 245));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setColor(new Color(60, 230, 140));
+        g.setStroke(new BasicStroke(1.5f));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(new Color(60, 230, 140));
+        String title = "★ TRẠM CỨU THƯƠNG NANO (+50 HP) ★";
+        FontMetrics fm = g.getFontMetrics();
+        g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
+
+        g.setColor(new Color(30, 80, 55));
+        g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
+
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setColor(new Color(210, 250, 225));
+        g.drawString("• Hồi phục ngay lập tức +50 HP", boxX + 14, boxY + 38);
+        g.drawString("• Tối đa không vượt quá 100 HP", boxX + 14, boxY + 54);
+
+        g.setColor(new Color(20, 65, 40, 230));
+        g.fillRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
+        g.setColor(new Color(60, 230, 140));
+        g.drawRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setColor(new Color(255, 220, 60));
+        g.drawString("[F]", boxX + 16, boxY + 79);
+        g.setColor(Color.WHITE);
+        g.drawString("MUA CỨU THƯƠNG (" + price + " CREDITS)", boxX + 38, boxY + 79);
+
+        g.setStroke(new BasicStroke(1.0f));
     }
 
     private void renderUpgradeTooltip(Graphics2D g, int centerX, int bottomY, int price) {

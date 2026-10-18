@@ -334,12 +334,13 @@ public class WeaponSystemTest {
         assertEquals(20, state.getPlayerCredits(), "Credits unchanged on failed purchase");
         assertFalse(expensiveItem.isPurchased());
 
-        // 4. Quầy HP chưa phát triển: available = false, không tương tác được
+        // 4. Quầy HP nay đã phát triển: available = true, có thể tương tác và mua khi bị thương
         com.groupproject.game.entity.shop.ShopItem healthItem =
                 com.groupproject.game.entity.shop.ShopItem.createHealthItem(350, 200, 35);
-        assertFalse(healthItem.isAvailable(), "Health pack item must be unavailable / hidden");
-        assertFalse(healthItem.isPlayerInRange(350, 200, 30), "Hidden health item must never trigger player in range");
-        assertFalse(healthItem.purchase(state), "Hidden health item cannot be purchased");
+        assertTrue(healthItem.isAvailable(), "Health pack item is now available in shop");
+        assertTrue(healthItem.isPlayerInRange(350, 200, 30), "Player in range can interact with health station");
+        // State đang có 20 credits, healthItem giá 35 credits -> không đủ tiền mua
+        assertFalse(healthItem.purchase(state), "Cannot purchase health item when credits < price");
     }
 
     @Test

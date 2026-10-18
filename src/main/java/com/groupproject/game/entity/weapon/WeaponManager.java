@@ -21,6 +21,7 @@ public class WeaponManager {
 
     private final Map<Integer, Weapon> weaponSlots = new HashMap<>();
     private final List<MeleeSlash> activeSlashes = new ArrayList<>();
+    private final com.groupproject.game.entity.item.AmmoInventory ammoInventory = new com.groupproject.game.entity.item.AmmoInventory();
 
     private Weapon activeWeapon;
     private Weapon previousWeapon;
@@ -40,9 +41,10 @@ public class WeaponManager {
     }
 
     /**
-     * Resets loadout to starting setup (Pistol + Knife only).
+     * Resets loadout to starting setup (Pistol + Knife only) and resets ammo reserves.
      */
     public void reset() {
+        ammoInventory.reset();
         weaponSlots.clear();
         activeSlashes.clear();
 
@@ -122,10 +124,11 @@ public class WeaponManager {
     }
 
     /**
-     * Registers a weapon into its assigned slot.
+     * Registers a weapon into its assigned slot and binds player's ammo inventory.
      */
     public void addWeapon(Weapon weapon) {
         if (weapon != null) {
+            weapon.bindAmmoInventory(ammoInventory);
             weaponSlots.put(weapon.getSlotIndex(), weapon);
         }
     }
@@ -246,10 +249,26 @@ public class WeaponManager {
             g.setColor(Color.WHITE);
             g.drawRect(barX, barY, barW, barH);
         } else {
-            // Display: CurrentAmmo / MagSize (e.g. 7 / 7)
-            g.setColor(activeWeapon.getCurrentAmmo() <= 2 ? new Color(255, 80, 80) : Color.WHITE);
-            g.drawString(String.format("%d / %d", activeWeapon.getCurrentAmmo(), activeWeapon.getMagazineSize()),
-                    hudX + 15, hudY + 60);
+            // Súng lục (Slot 3): Vô hạn đạn dự trữ -> Hiển thị "7 / ∞"
+            // Súng chính (AR, SMG, Shotgun): Hiển thị "Current / Reserve" (VD: "30 / 120  [AR]")
+            if (activeWeapon.hasInfiniteAmmo()) {
+                g.setColor(activeWeapon.getCurrentAmmo() <= 2 ? new Color(255, 80, 80) : Color.WHITE);
+                g.drawString(String.format("%d / ∞", activeWeapon.getCurrentAmmo()), hudX + 15, hudY + 60);
+            } else if (activeWeapon.getAmmoType() != null) {
+                int reserve = ammoInventory.getAmmo(activeWeapon.getAmmoType());
+                boolean isOutOfAmmo = (activeWeapon.getCurrentAmmo() <= 0 && reserve <= 0);
+                boolean isLowAmmo = (activeWeapon.getCurrentAmmo() <= 2 || reserve <= 5);
+
+                g.setColor(isOutOfAmmo ? new Color(255, 60, 60) : (isLowAmmo ? new Color(255, 150, 50) : Color.WHITE));
+                String ammoDisplay = isOutOfAmmo
+                        ? "HẾT ĐẠN! [0 / 0]"
+                        : String.format("%d / %d  [%s]", activeWeapon.getCurrentAmmo(), reserve, activeWeapon.getAmmoType().name());
+                g.drawString(ammoDisplay, hudX + 15, hudY + 60);
+            } else {
+                g.setColor(activeWeapon.getCurrentAmmo() <= 2 ? new Color(255, 80, 80) : Color.WHITE);
+                g.drawString(String.format("%d / %d", activeWeapon.getCurrentAmmo(), activeWeapon.getMagazineSize()),
+                        hudX + 15, hudY + 60);
+            }
         }
 
         // Quick tip dynamically showing owned weapons
@@ -279,10 +298,25 @@ public class WeaponManager {
         return java.util.Collections.unmodifiableMap(weaponSlots);
     }
 
+    public com.groupproject.game.entity.item.AmmoInventory getAmmoInventory() {
+        return ammoInventory;
+    }
+
     /**
-     * Nạp đầy toàn bộ đạn cho tất cả vũ khí súng hiện có trong kho đồ.
+     * Tiếp tế 2 stack đạn cho toàn bộ các chủng loại đạn dự trữ (AR: +60, SMG: +70, Shotgun: +20)
+     * và nạp đầy băng đạn cho tất cả súng hiện có trong túi đồ.
      */
     public void resupplyAllWeapons() {
+        resupplyAmmoPackage(2);
+    }
+
+    /**
+     * Tiếp tế gói đạn theo số lượng stack cho mỗi chủng loại đạn và làm đầy băng đạn cho súng.
+     *
+     * @param stacksPerType Số lượng stack tiếp tế cho mỗi loại (mặc định là 2 stack khi mua tại Shop).
+     */
+    public void resupplyAmmoPackage(int stacksPerType) {
+        ammoInventory.addStacksForAllTypes(stacksPerType);
         for (Weapon w : weaponSlots.values()) {
             if (w != null && !w.isMelee()) {
                 w.resupplyAmmo();

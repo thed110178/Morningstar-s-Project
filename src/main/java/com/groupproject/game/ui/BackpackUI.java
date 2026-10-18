@@ -222,11 +222,42 @@ public class BackpackUI {
         renderSubCard(g, slot3X, slot3Y, subSlotW, subSlotH, 3, "SÚNG LỤC PHỤ (SIDEARM)", w3, activeW == w3);
         renderSubCard(g, slot4X, slot4Y, subSlotW, subSlotH, 4, "VŨ KHÍ CẬN CHIẾN (MELEE)", w4, activeW == w4);
 
+        // 5.5. KHU VỰC THỐNG KÊ KHO ĐẠN DỰ TRỮ (AMMO RESERVES HUD)
+        com.groupproject.game.entity.item.AmmoInventory ammoInv = weaponManager.getAmmoInventory();
+        int ammoBarY = panelY + 410;
+        int barW = 195;
+        int barH = 22;
+
+        // AR Ammo Badge
+        int arX = panelX + 35;
+        g.setColor(new Color(20, 35, 30, 220));
+        g.fillRoundRect(arX, ammoBarY, barW, barH, 6, 6);
+        g.setColor(new Color(60, 220, 120));
+        g.drawRoundRect(arX, ammoBarY, barW, barH, 6, 6);
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.drawString("• ĐẠN AR: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) + " / 150", arX + 12, ammoBarY + 15);
+
+        // SMG Ammo Badge
+        int smgX = arX + barW + 25;
+        g.setColor(new Color(15, 30, 45, 220));
+        g.fillRoundRect(smgX, ammoBarY, barW, barH, 6, 6);
+        g.setColor(new Color(0, 210, 255));
+        g.drawRoundRect(smgX, ammoBarY, barW, barH, 6, 6);
+        g.drawString("• ĐẠN SMG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SMG) + " / 180", smgX + 12, ammoBarY + 15);
+
+        // Shotgun Ammo Badge
+        int sgX = smgX + barW + 25;
+        g.setColor(new Color(40, 20, 20, 220));
+        g.fillRoundRect(sgX, ammoBarY, barW, barH, 6, 6);
+        g.setColor(new Color(255, 90, 70));
+        g.drawRoundRect(sgX, ammoBarY, barW, barH, 6, 6);
+        g.drawString("• ĐẠN SHOTGUN: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) + " / 50", sgX + 12, ammoBarY + 15);
+
         // 6. Thông báo phản hồi thao tác hoán đổi
         if (!feedbackMessage.isEmpty() && feedbackTimer > 0) {
             g.setFont(new Font("SansSerif", Font.BOLD, 13));
             g.setColor(new Color(255, 220, 80));
-            drawCenteredString(g, feedbackMessage, panelX + panelW / 2, panelY + 420);
+            drawCenteredString(g, feedbackMessage, panelX + panelW / 2, panelY + 400);
         }
 
         // 7. Chân bảng hướng dẫn thao tác (Footer Guide)
@@ -295,8 +326,11 @@ public class BackpackUI {
             g.drawString("• Sát thương:", x + 15, y + 74);
             g.drawString("• Tốc ra đạn:", x + 15, y + 94);
             g.drawString("• Chính xác:", x + 15, y + 114);
-            g.drawString("• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize() +
-                    (weapon.isAutomatic() ? " (Auto)" : " (Semi)"), x + 15, y + 134);
+            String ammoText = "• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize();
+            if (weapon.getAmmoType() != null) {
+                ammoText += " [Kho: " + weapon.getReserveAmmo() + "/" + weapon.getAmmoType().getMaxCapacity() + "]";
+            }
+            g.drawString(ammoText, x + 15, y + 134);
 
             // Các cột sao hiển thị màu vàng kim
             g.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -354,8 +388,9 @@ public class BackpackUI {
             if (weapon.isMelee()) {
                 g.drawString("• Sát thương: " + weapon.getDamage() + " HP | Cận chiến (Vô hạn)", x + 12, y + 62);
             } else {
+                String subAmmo = weapon.hasInfiniteAmmo() ? " (∞)" : "";
                 g.drawString("• Sát thương: " + weapon.getDamage() + " HP  " + Weapon.formatStars(weapon.getDamageStars()) +
-                        " | Đạn: " + weapon.getCurrentAmmo() + "/" + weapon.getMagazineSize(), x + 12, y + 62);
+                        " | Đạn: " + weapon.getCurrentAmmo() + "/" + weapon.getMagazineSize() + subAmmo, x + 12, y + 62);
             }
 
             if (isEquipped) {

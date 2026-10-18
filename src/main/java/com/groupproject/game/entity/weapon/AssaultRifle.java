@@ -29,6 +29,7 @@ public class AssaultRifle extends Weapon {
 
     public AssaultRifle() {
         super("Assault Rifle (AR)", 1, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
+        this.ammoType = com.groupproject.game.entity.item.AmmoType.AR;
     }
 
     @Override

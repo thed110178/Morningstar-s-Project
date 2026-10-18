@@ -49,6 +49,7 @@ public class SMG extends Weapon {
      */
     public SMG() {
         super("Submachine Gun (SMG)", 1, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
+        this.ammoType = com.groupproject.game.entity.item.AmmoType.SMG;
     }
 
     /**
@@ -58,6 +59,7 @@ public class SMG extends Weapon {
      */
     public SMG(int slotIndex) {
         super("Submachine Gun (SMG)", slotIndex, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
+        this.ammoType = com.groupproject.game.entity.item.AmmoType.SMG;
     }
 
     @Override

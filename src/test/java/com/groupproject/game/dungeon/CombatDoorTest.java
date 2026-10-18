@@ -318,4 +318,91 @@ public class CombatDoorTest {
             }
         }
     }
+
+    @Test
+    @DisplayName("Verify Shop Room has dedicated DOOR_SHOP gateway that is always open and passable")
+    void testShopGatewayDoorAlwaysOpen() {
+        Room shop = map.getShopRoom();
+        assertNotNull(shop, "Dungeon must have a shop room");
+        assertFalse(shop.getDoorTiles().isEmpty(), "Shop room must have registered gateway door tiles");
+
+        for (Tile door : shop.getDoorTiles()) {
+            assertEquals(TileType.DOOR_SHOP, door.getType(), "Shop door must be DOOR_SHOP");
+            assertFalse(door.isSolid(), "Shop door must never be solid");
+            assertTrue(map.isAreaWalkable(door.getWorldX() + 2, door.getWorldY() + 2, 20, 20),
+                    "Shop door must allow traversal");
+        }
+
+        // Lockdown all combat rooms and verify shop door remains open
+        for (Room cr : map.getCombatRooms()) {
+            cr.lockdown();
+        }
+        shop.lockdown(); // Even if lockdown is invoked on shop directly
+
+        for (Tile door : shop.getDoorTiles()) {
+            assertEquals(TileType.DOOR_SHOP, door.getType(), "Shop door must remain DOOR_SHOP during combat lockdown");
+            assertFalse(door.isSolid(), "Shop door must remain passable during combat lockdown");
+        }
+    }
+
+    @Test
+    @DisplayName("Verify Stage 3 spawns Titan Mecha Boss Dummy with 1000 HP and large size 64px")
+    void testStage3BossDummyPropertiesAndLifecycle() {
+        com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+        com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+        state.setCurrentStage(3);
+        state.getDungeonMap().generateStage(3);
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+
+        Room bossRoom = state.getDungeonMap().getCombatRooms().get(0);
+        assertNotNull(bossRoom);
+        assertEquals("Grand Boss Arena", bossRoom.getName());
+
+        // Di chuyển người chơi vào phòng Grand Boss Arena để kích hoạt lockdown
+        state.setPlayerPosition(bossRoom.getCenterWorldX() - 14, bossRoom.getCenterWorldY() - 14);
+        state.update(0.016, keyH, mouseH);
+
+        // Kiểm tra bossDummy được sinh ra
+        TargetDummy boss = state.getBossDummy();
+        assertNotNull(boss, "Stage 3 Grand Boss Arena must spawn a designated Boss Dummy");
+        assertTrue(boss.isBoss(), "Boss Dummy must have isBoss == true");
+        assertEquals(1000, boss.getMaxHealth(), "Titan Boss Dummy must have 1000 Max HP");
+        assertEquals(1000, boss.getCurrentHealth(), "Titan Boss Dummy must start with full 1000 HP");
+        assertEquals(64.0, boss.getSize(), "Titan Boss Dummy must be 64px large");
+        assertTrue(boss.getName().contains("TITAN MECHA DUMMY"), "Boss name should be Titan Mecha Dummy");
+        assertTrue(boss.isAlive(), "Boss must start alive");
+
+        // Gây sát thương một phần cho Boss
+        boss.takeDamage(250);
+        assertEquals(750, boss.getCurrentHealth());
+        assertTrue(boss.isAlive());
+
+        // Kiểm tra hạ gục Boss bằng sát thương chí mạng
+        boss.takeDamage(750);
+        assertEquals(0, boss.getCurrentHealth());
+        assertFalse(boss.isAlive());
+    }
+
+    @Test
+    @DisplayName("Verify TargetDummy Boss constructor and damage handling")
+    void testTargetDummyBossConstructor() {
+        TargetDummy boss = new TargetDummy(500, 500, 1000, 64.0, true, "TITAN MECHA DUMMY [BOSS]");
+        assertTrue(boss.isBoss());
+        assertEquals(64.0, boss.getSize());
+        assertEquals(1000, boss.getMaxHealth());
+        assertEquals(1000, boss.getCurrentHealth());
+        assertEquals("TITAN MECHA DUMMY [BOSS]", boss.getName());
+        assertEquals(64, boss.getBounds().width);
+        assertEquals(64, boss.getBounds().height);
+
+        boss.takeDamage(300);
+        assertEquals(700, boss.getCurrentHealth());
+        assertTrue(boss.isAlive());
+
+        boss.takeDamage(800);
+        assertEquals(0, boss.getCurrentHealth());
+        assertFalse(boss.isAlive());
+    }
 }

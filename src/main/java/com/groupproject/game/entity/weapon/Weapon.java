@@ -36,6 +36,10 @@ public abstract class Weapon {
     protected double baseSpreadAngle = 0.0;  // Góc tản đạn cơ sở (+- radian, 1 sao)
     protected double currentSpreadAngle = 0.0; // Góc tản đạn thực tế sau khi tính sao
 
+    // --- Hệ thống phân loại đạn dược dự trữ ---
+    protected com.groupproject.game.entity.item.AmmoType ammoType = null;
+    protected com.groupproject.game.entity.item.AmmoInventory boundAmmoInventory = null;
+
     protected int currentAmmo;
     protected double cooldownTimer = 0.0;
     protected double reloadTimer = 0.0;
@@ -103,8 +107,14 @@ public abstract class Weapon {
         if (reloading) {
             reloadTimer -= deltaTime;
             if (reloadTimer <= 0) {
-                // Reload finished: restore full magazine
-                currentAmmo = magazineSize;
+                // Reload finished: nếu có liên kết kho đạn và dùng đạn dự trữ, trừ đúng lượng đạn cần
+                if (ammoType != null && boundAmmoInventory != null) {
+                    int needed = magazineSize - currentAmmo;
+                    int loaded = boundAmmoInventory.consumeAmmo(ammoType, needed);
+                    currentAmmo += loaded;
+                } else {
+                    currentAmmo = magazineSize;
+                }
                 reloading = false;
             }
         }
@@ -115,6 +125,11 @@ public abstract class Weapon {
      */
     public void reload() {
         if (magazineSize > 0 && currentAmmo < magazineSize && !reloading) {
+            // Nếu là súng dùng đạn dự trữ (AR, SMG, Shotgun) và đã liên kết kho đạn,
+            // bắt buộc kho đạn phải còn ít nhất 1 viên mới cho phép kích hoạt nạp đạn
+            if (ammoType != null && boundAmmoInventory != null && boundAmmoInventory.getAmmo(ammoType) <= 0) {
+                return;
+            }
             reloading = true;
             reloadTimer = reloadDuration;
         }
@@ -139,6 +154,40 @@ public abstract class Weapon {
             this.reloading = false;
             this.reloadTimer = 0.0;
         }
+    }
+
+    public com.groupproject.game.entity.item.AmmoType getAmmoType() {
+        return ammoType;
+    }
+
+    public void setAmmoType(com.groupproject.game.entity.item.AmmoType ammoType) {
+        this.ammoType = ammoType;
+    }
+
+    public void bindAmmoInventory(com.groupproject.game.entity.item.AmmoInventory inventory) {
+        this.boundAmmoInventory = inventory;
+    }
+
+    public com.groupproject.game.entity.item.AmmoInventory getBoundAmmoInventory() {
+        return boundAmmoInventory;
+    }
+
+    /**
+     * Lấy số lượng đạn dự trữ của loại đạn mà vũ khí này sử dụng.
+     * @return Số lượng đạn dự trữ; hoặc -1 nếu súng có đạn vô hạn (Pistol) hoặc cận chiến.
+     */
+    public int getReserveAmmo() {
+        if (ammoType == null) {
+            return -1; // Vô hạn hoặc cận chiến
+        }
+        if (boundAmmoInventory != null) {
+            return boundAmmoInventory.getAmmo(ammoType);
+        }
+        return -1;
+    }
+
+    public boolean hasInfiniteAmmo() {
+        return ammoType == null && !isMelee();
     }
 
     /**
