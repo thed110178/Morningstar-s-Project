@@ -1,7 +1,7 @@
 package com.groupproject.game.ui;
 
-import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.entity.weapon.AssaultRifle;
+import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
@@ -103,10 +103,8 @@ public class BackpackUI {
             }
         }
 
-        // Đóng balo khi bấm ESC, TAB hoặc B
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)
-                || keyH.isKeyPressedOnce(KeyEvent.VK_TAB)
-                || keyH.isKeyPressedOnce(KeyEvent.VK_B)) {
+        // Đóng balo khi bấm phím ESC (phím TAB / B được toggle trực tiếp từ PlayingState)
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
             return true;
         }
 
@@ -258,10 +256,14 @@ public class BackpackUI {
         g.drawString(String.format("[%d] %s", slot, slotTitle), x + 15, y + 25);
 
         if (weapon != null) {
-            // Tên vũ khí
-            g.setFont(new Font("SansSerif", Font.BOLD, 16));
-            g.setColor(Color.WHITE);
-            g.drawString(weapon.getName().toUpperCase(), x + 15, y + 50);
+            // Tên vũ khí và cấp độ hiển thị (VD: AR I [0/3], SHOTGUN II [1/3])
+            g.setFont(new Font("SansSerif", Font.BOLD, 14));
+            g.setColor(new Color(255, 220, 75));
+            String titleText = weapon.getShortDisplayName().toUpperCase();
+            if (!weapon.isMelee()) {
+                titleText += " [" + weapon.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "]";
+            }
+            g.drawString(titleText, x + 15, y + 48);
 
             // Minh họa hình dạng vũ khí thu nhỏ
             int iconCenterX = x + w - 45;
@@ -278,22 +280,30 @@ public class BackpackUI {
                 g.fillRect(iconCenterX - 16, iconCenterY - 4, 12, 8);
                 g.setColor(new Color(60, 65, 75));
                 g.fillRect(iconCenterX - 4, iconCenterY - 5, 24, 9);
+            } else if (weapon instanceof SMG) {
+                g.setColor(new Color(40, 50, 62));
+                g.fillRect(iconCenterX - 14, iconCenterY - 4, 24, 7);
+                g.setColor(new Color(20, 26, 32));
+                g.fillRect(iconCenterX - 4, iconCenterY + 3, 5, 10);
+                g.setColor(new Color(0, 230, 255));
+                g.fillRect(iconCenterX + 10, iconCenterY - 3, 3, 5);
             }
 
-            // Thông số chi tiết
-            g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            // Thông số chi tiết đo lường bằng sao
+            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
             g.setColor(new Color(185, 205, 230));
-            if (weapon instanceof AssaultRifle) {
-                g.drawString("• Sát thương: 16 HP / viên", x + 15, y + 78);
-                g.drawString("• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize(), x + 15, y + 98);
-                g.drawString("• Tốc độ bắn: ~700 RPM", x + 15, y + 118);
-                g.drawString("• Chế độ: Tự động (Full-Auto)", x + 15, y + 138);
-            } else if (weapon instanceof Shotgun) {
-                g.drawString("• Sát thương: 14 HP x 6 chì", x + 15, y + 78);
-                g.drawString("• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize(), x + 15, y + 98);
-                g.drawString("• Tốc độ bắn: 0.75s / phát", x + 15, y + 118);
-                g.drawString("• Chế độ: Bán tự động (Semi)", x + 15, y + 138);
-            }
+            g.drawString("• Sát thương:", x + 15, y + 74);
+            g.drawString("• Tốc ra đạn:", x + 15, y + 94);
+            g.drawString("• Chính xác:", x + 15, y + 114);
+            g.drawString("• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize() +
+                    (weapon.isAutomatic() ? " (Auto)" : " (Semi)"), x + 15, y + 134);
+
+            // Các cột sao hiển thị màu vàng kim
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            g.setColor(new Color(255, 225, 75));
+            g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", x + 90, y + 74);
+            g.drawString(Weapon.formatStars(weapon.getFireRateStars()), x + 90, y + 94);
+            g.drawString(Weapon.formatStars(weapon.getAccuracyStars()), x + 90, y + 114);
 
             // Nhãn trạng thái trang bị
             if (isEquipped) {
@@ -336,15 +346,16 @@ public class BackpackUI {
 
         if (weapon != null) {
             g.setFont(new Font("SansSerif", Font.BOLD, 14));
-            g.setColor(Color.WHITE);
-            g.drawString(weapon.getName().toUpperCase(), x + 12, y + 42);
+            g.setColor(weapon.isMelee() ? Color.WHITE : new Color(255, 220, 75));
+            g.drawString(weapon.getShortDisplayName().toUpperCase(), x + 12, y + 42);
 
             g.setFont(new Font("SansSerif", Font.PLAIN, 11));
             g.setColor(new Color(180, 205, 230));
             if (weapon.isMelee()) {
                 g.drawString("• Sát thương: " + weapon.getDamage() + " HP | Cận chiến (Vô hạn)", x + 12, y + 62);
             } else {
-                g.drawString("• Sát thương: " + weapon.getDamage() + " HP | Đạn: " + weapon.getCurrentAmmo() + "/" + weapon.getMagazineSize() + " | Bán tự động", x + 12, y + 62);
+                g.drawString("• Sát thương: " + weapon.getDamage() + " HP  " + Weapon.formatStars(weapon.getDamageStars()) +
+                        " | Đạn: " + weapon.getCurrentAmmo() + "/" + weapon.getMagazineSize(), x + 12, y + 62);
             }
 
             if (isEquipped) {

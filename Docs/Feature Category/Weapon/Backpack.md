@@ -66,3 +66,10 @@ Mở giao diện Balo (Tạm dừng di chuyển & bắn súng)
 * **`PlayingState`**: Quản lý cờ `isBackpackOpen`. Khi `isBackpackOpen = true`, tạm dừng vòng lặp chiến đấu của người chơi và chuyển quyền xử lý nhập liệu cho `BackpackUI`.
 * **`WeaponManager`**: Nơi lưu trữ thực tế dữ liệu của các slot và thực hiện hoán đổi cấu trúc bộ nhớ.
 * **`Weapon`**: Cung cấp `setSlotIndex(int)` để đồng bộ chỉ số phím nóng khi bị di chuyển giữa slot 1 và slot 2.
+
+---
+
+## 6. Sửa đổi / Cập nhật
+* **16/10/2026**:
+  - **Sửa lỗi không mở được Balo bằng phím [Tab]**: Loại bỏ việc kiểm tra phím TAB trùng lặp bên trong `BackpackUI.update()`, trao quyền kiểm soát toggle mở/đóng duy nhất cho `PlayingState`. Ngăn ngừa triệt để hiện tượng phím TAB vừa kích hoạt mở vừa bị hiểu là lệnh đóng ngay trong cùng một frame logic.
+  - Bổ sung hiển thị thông tin cấp độ súng (Level) và số lần nâng cấp `[NÂNG: X/3]` cùng 3 hàng sao chỉ số trực quan ngay trên từng thẻ súng trong Balo.

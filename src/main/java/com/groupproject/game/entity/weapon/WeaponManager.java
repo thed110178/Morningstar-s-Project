@@ -2,7 +2,6 @@ package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.entity.projectile.ProjectileManager;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -60,21 +59,35 @@ public class WeaponManager {
     /**
      * Registers and immediately equips a newly collected primary weapon.
      * Tự động ưu tiên xếp vào Slot 1 nếu Slot 1 đang trống, hoặc Slot 2 nếu Slot 1 đã có súng.
+     * Nếu cả 2 slot chính đều đã đầy, thay thế súng đang cầm (hoặc slot 1) và trả về súng cũ để rơi ra đất.
+     *
+     * @param weapon Vũ khí mới cần trang bị.
+     * @return Khẩu súng cũ bị thay thế nếu cả 2 slot đều đã có súng; {@code null} nếu lấp vào slot trống.
      */
-    public void equipWeapon(Weapon weapon) {
-        if (weapon != null) {
-            // Nếu là vũ khí chính (slot 1 hoặc 2), ưu tiên lấp vào slot trống
-            if (!weapon.isMelee() && weapon.getSlotIndex() != 3 && weapon.getSlotIndex() != 4) {
-                if (!weaponSlots.containsKey(1)) {
-                    weapon.setSlotIndex(1);
-                } else if (!weaponSlots.containsKey(2)) {
-                    weapon.setSlotIndex(2);
-                }
-            }
-            addWeapon(weapon);
-            previousWeapon = activeWeapon;
-            activeWeapon = weapon;
+    public Weapon equipWeapon(Weapon weapon) {
+        if (weapon == null) {
+            return null;
         }
+
+        Weapon replacedWeapon = null;
+        // Nếu là vũ khí chính (không phải súng lục slot 3 hay dao slot 4)
+        if (!weapon.isMelee() && weapon.getSlotIndex() != 3 && weapon.getSlotIndex() != 4) {
+            if (!weaponSlots.containsKey(1)) {
+                weapon.setSlotIndex(1);
+            } else if (!weaponSlots.containsKey(2)) {
+                weapon.setSlotIndex(2);
+            } else {
+                // Cả Slot 1 và Slot 2 đều đã có vũ khí chính:
+                // Thay thế vào slot đang cầm (nếu đang cầm slot 1 hoặc slot 2), ngược lại ưu tiên slot 1
+                int targetSlot = (activeWeapon != null && activeWeapon.getSlotIndex() == 2) ? 2 : 1;
+                replacedWeapon = weaponSlots.get(targetSlot);
+                weapon.setSlotIndex(targetSlot);
+            }
+        }
+        addWeapon(weapon);
+        previousWeapon = activeWeapon;
+        activeWeapon = weapon;
+        return replacedWeapon;
     }
 
     /**
@@ -264,5 +277,16 @@ public class WeaponManager {
 
     public Map<Integer, Weapon> getWeaponSlots() {
         return java.util.Collections.unmodifiableMap(weaponSlots);
+    }
+
+    /**
+     * Nạp đầy toàn bộ đạn cho tất cả vũ khí súng hiện có trong kho đồ.
+     */
+    public void resupplyAllWeapons() {
+        for (Weapon w : weaponSlots.values()) {
+            if (w != null && !w.isMelee()) {
+                w.resupplyAmmo();
+            }
+        }
     }
 }

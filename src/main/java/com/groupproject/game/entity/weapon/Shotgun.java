@@ -50,7 +50,7 @@ public class Shotgun extends Weapon {
 
     public Shotgun() {
         // reloadDuration ở lớp cha đại diện cho thời gian nạp 1 viên shell (0.45s)
-        super("Shotgun", 2, 14, 0.75, 8, TIME_PER_SHELL);
+        super("Shotgun", 2, 14, 0.75, 8, TIME_PER_SHELL, SPREAD_CONE_ANGLE);
     }
 
     /**
@@ -131,11 +131,12 @@ public class Shotgun extends Weapon {
         double muzzleX = originX + Math.cos(aimAngle) * barrelLength;
         double muzzleY = originY + Math.sin(aimAngle) * barrelLength;
 
-        // Bắn chùm 6 viên đạn chì tỏa đều theo hình nón
-        double angleStep = (SPREAD_CONE_ANGLE * 2.0) / (PELLETS_PER_SHOT - 1);
+        // Bắn chùm 6 viên đạn chì tỏa đều theo hình nón (gom chặt hơn khi accuracyStars tăng)
+        double currentCone = currentSpreadAngle > 0.0001 ? currentSpreadAngle : SPREAD_CONE_ANGLE;
+        double angleStep = (currentCone * 2.0) / (PELLETS_PER_SHOT - 1);
 
         for (int i = 0; i < PELLETS_PER_SHOT; i++) {
-            double angleOffset = -SPREAD_CONE_ANGLE + (i * angleStep);
+            double angleOffset = -currentCone + (i * angleStep);
             // Thêm rung lắc ngẫu nhiên nhẹ giữa các viên
             double jitter = ThreadLocalRandom.current().nextDouble(-0.02, 0.02);
             double pelletAngle = aimAngle + angleOffset + jitter;

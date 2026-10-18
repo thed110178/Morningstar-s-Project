@@ -32,7 +32,7 @@ public class DungeonMapTest {
     }
 
     @Test
-    @DisplayName("Verify procedural generation instantiates 3-5 combat chambers plus spawn and extract")
+    @DisplayName("Verify procedural generation instantiates 3-5 combat chambers plus spawn, extract and shop")
     void testProceduralRoomsExist() {
         assertNotNull(map.getSpawnRoom(), "Spawn Room must be instantiated");
         assertEquals(Room.RoomType.SPAWN, map.getSpawnRoom().getRoomType());
@@ -43,11 +43,14 @@ public class DungeonMapTest {
         assertNotNull(map.getExtractRoom(), "Extract Room must be instantiated");
         assertEquals(Room.RoomType.EXTRACT, map.getExtractRoom().getRoomType());
 
+        assertNotNull(map.getShopRoom(), "Shop Room must be instantiated");
+        assertEquals(Room.RoomType.SHOP, map.getShopRoom().getRoomType());
+
         int combatCount = map.getCombatRooms().size();
         assertTrue(combatCount >= 3 && combatCount <= 5,
                 "Procedural dungeon must generate between 3 and 5 combat rooms, got: " + combatCount);
-        assertEquals(combatCount + 2, map.getRooms().size(),
-                "Total rooms must match combat rooms plus spawn and extract");
+        assertEquals(combatCount + 3, map.getRooms().size(),
+                "Total rooms must match combat rooms plus spawn, extract, and shop");
     }
 
     @Test
@@ -171,8 +174,9 @@ public class DungeonMapTest {
             assertTrue(combatCount >= 3 && combatCount <= 5,
                     "Run " + run + " must generate 3 to 5 combat chambers, got: " + combatCount);
 
-            assertEquals(combatCount + 2, map.getRooms().size(),
-                    "Total room count must equal combat rooms + 2");
+            assertEquals(combatCount + 3, map.getRooms().size(),
+                    "Total room count must equal combat rooms + 3 (Spawn, Extract, and Shop)");
+            assertNotNull(map.getShopRoom(), "Shop room must be present in every run");
 
             for (Room r : map.getRooms()) {
                 assertTrue(r.getGridX() >= 0 && r.getGridX() + r.getWidthInTiles() <= DungeonMap.COLS,
@@ -234,7 +238,6 @@ public class DungeonMapTest {
 
                     if (horizontallyAdjacent) {
                         Room left = r1.getGridX() < r2.getGridX() ? r1 : r2;
-                        Room right = r1.getGridX() < r2.getGridX() ? r2 : r1;
                         int midCol = left.getGridX() + DungeonMap.ROOM_WIDTH + 1;
                         int corridorRow = left.getGridY() + 4;
                         Tile midCorridorTile = map.getTile(midCol, corridorRow);
@@ -245,7 +248,6 @@ public class DungeonMapTest {
 
                     if (verticallyAdjacent) {
                         Room top = r1.getGridY() < r2.getGridY() ? r1 : r2;
-                        Room bottom = r1.getGridY() < r2.getGridY() ? r2 : r1;
                         int midRow = top.getGridY() + DungeonMap.ROOM_HEIGHT + 1;
                         int corridorCol = top.getGridX() + 6;
                         Tile midCorridorTile = map.getTile(corridorCol, midRow);
@@ -277,6 +279,7 @@ public class DungeonMapTest {
         map.generateStage(3);
         assertEquals(3, map.getCurrentStage());
         assertNotNull(map.getSpawnRoom(), "Stage 3 must have a Spawn Room");
+        assertNotNull(map.getShopRoom(), "Stage 3 must have a Tactical Shop Room");
         assertEquals(1, map.getCombatRooms().size(), "Stage 3 must have exactly 1 big combat room (Grand Arena)");
 
         Room bossRoom = map.getCombatRoom();
@@ -365,5 +368,32 @@ public class DungeonMapTest {
                 }
             }
         }
+    }
+
+    @Test
+    @DisplayName("Verify Shop Room can spawn across diverse locations in the stage and not exclusively adjacent to spawn")
+    void testShopRoomDiversePlacementAcrossRuns() {
+        boolean sawNonSpawnAdjacent = false;
+
+        for (int i = 0; i < 30; i++) {
+            map.generateProceduralDungeon();
+            Room shop = map.getShopRoom();
+            Room spawn = map.getSpawnRoom();
+            assertNotNull(shop, "Shop Room must be present");
+            assertNotNull(spawn, "Spawn Room must be present");
+
+            // Khoảng cách Manhattan giữa Shop Room và Spawn Room theo ô phòng
+            int dx = Math.abs(shop.getGridX() - spawn.getGridX());
+            int dy = Math.abs(shop.getGridY() - spawn.getGridY());
+
+            // Nếu khoảng cách lớn hơn 1 ô phòng (ROOM_WIDTH + CORRIDOR_LEN_X = 20),
+            // tức Shop Room kết nối với Combat Room hoặc Extract Room ở xa
+            if (dx > DungeonMap.ROOM_WIDTH + DungeonMap.CORRIDOR_LEN_X + 2
+                    || dy > DungeonMap.ROOM_HEIGHT + DungeonMap.CORRIDOR_LEN_Y + 2) {
+                sawNonSpawnAdjacent = true;
+            }
+        }
+
+        assertTrue(sawNonSpawnAdjacent, "Shop Room must appear across diverse locations, not only next to spawn room");
     }
 }

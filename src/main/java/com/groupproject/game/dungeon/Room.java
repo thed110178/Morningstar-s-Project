@@ -21,7 +21,8 @@ public class Room {
     public enum RoomType {
         SPAWN,
         COMBAT,
-        EXTRACT
+        EXTRACT,
+        SHOP
     }
 
     /**
@@ -222,5 +223,9 @@ public class Room {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isShopRoom() {
+        return roomType == RoomType.SHOP;
     }
 }

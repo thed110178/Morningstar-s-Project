@@ -51,6 +51,12 @@ public class GamePanel extends JPanel {
         // Register all input adapters on this canvas
         addKeyListener(keyHandler);
         addMouseListener(mouseHandler);
+        addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                requestFocusInWindow();
+            }
+        });
         addMouseMotionListener(mouseHandler);
         addMouseWheelListener(mouseHandler);
 

@@ -8,7 +8,11 @@ import com.groupproject.game.entity.enemy.TargetDummy;
 import com.groupproject.game.entity.item.WeaponChest;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
+import com.groupproject.game.entity.shop.ShopItem;
+import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.MeleeSlash;
+import com.groupproject.game.entity.weapon.SMG;
+import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
 import com.groupproject.game.input.KeyboardHandler;
@@ -25,6 +29,7 @@ import com.groupproject.game.dungeon.TileType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Main Gameplay State managing real-time combat, weapons, projectiles, map collision, camera,
@@ -68,6 +73,7 @@ public class PlayingState extends GameState {
     // Hòm tiếp tế vũ khí xuất hiện tại các phòng chiến đấu đã dọn sạch
     private final List<WeaponChest> weaponChests = new CopyOnWriteArrayList<>();
     private Room activeCombatRoom = null;
+    private boolean stage1FreeWeaponGranted = false; // Đảm bảo ở Stage 1 luôn có 1 cây súng free
 
     // Tiến trình Stage trong Biome (1 -> 2 -> 3 Boss Arena)
     private int currentStage = 1;
@@ -76,6 +82,10 @@ public class PlayingState extends GameState {
     // Giao diện Balo chiến thuật (Tab)
     private final BackpackUI backpackUI = new BackpackUI();
     private boolean isBackpackOpen = false;
+
+    // Hệ thống tiền tệ chiến thuật (Credits) và quầy giao dịch Shop
+    private int playerCredits = 0;
+    private final List<ShopItem> shopItems = new CopyOnWriteArrayList<>();
 
     /**
      * Constructs the playing state, builds the dungeon facility, camera, and combat managers.
@@ -96,6 +106,7 @@ public class PlayingState extends GameState {
     @Override
     public void init() {
         this.currentStage = 1;
+        this.playerCredits = 0;
         // Reset dungeon rooms and doors so new mission starts with procedural layout
         dungeonMap.reset();
 
@@ -117,7 +128,10 @@ public class PlayingState extends GameState {
         this.isExtracting = false;
         this.extractTransitionTimer = 0.0;
         this.isBackpackOpen = false;
+        this.stage1FreeWeaponGranted = false;
         this.weaponManager.reset();
+
+        populateShopItems();
 
         int numCombat = dungeonMap.getCombatRooms().size();
         showBanner(String.format("BIOME 1 - STAGE 1/%d: TIÊU DIỆT %d PHÒNG CHIẾN ĐẤU ĐỂ SƠ TÁN", MAX_STAGES, numCombat),
@@ -149,6 +163,8 @@ public class PlayingState extends GameState {
         activeCombatRoom = null;
         isStandingOnExtract = false;
 
+        populateShopItems();
+
         camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
 
         if (currentStage == 3) {
@@ -160,6 +176,58 @@ public class PlayingState extends GameState {
                     currentStage, MAX_STAGES, numCombat),
                     new Color(60, 220, 160), 4.0);
         }
+    }
+
+    /**
+     * Khởi tạo các quầy hàng buôn bán trong Room Shop nếu có.
+     * Cân bằng kinh tế theo đúng quy luật thiết kế:
+     * - Bàn nâng cấp súng 1 cấp: 80 Credits (nâng từ I -> II hoặc II -> III).
+     * - Quầy mua súng Level III ngẫu nhiên: 135 Credits (80C < 135C < 160C).
+     * - Quầy nạp đầy toàn bộ đạn dược: 70 Credits.
+     * - Quầy hồi phục HP: Ẩn hoàn toàn (chưa show).
+     */
+    private void populateShopItems() {
+        shopItems.clear();
+        Room shop = dungeonMap.getShopRoom();
+        if (shop == null) return;
+
+        double cx = shop.getCenterWorldX();
+        double cy = shop.getCenterWorldY();
+
+        // 1. Quầy bán súng chính ngẫu nhiên: Level = currentStage + 2, tỉ lệ nhỏ (20%) là currentStage + 3
+        int randChoice = ThreadLocalRandom.current().nextInt(3);
+        Weapon randomWeapon;
+        switch (randChoice) {
+            case 0:
+                randomWeapon = new AssaultRifle();
+                break;
+            case 1:
+                randomWeapon = new Shotgun();
+                break;
+            case 2:
+            default:
+                randomWeapon = new SMG();
+                break;
+        }
+        // Quy tắc: Súng bán ở shop = stage + 2 (tỉ lệ nhỏ 20% là stage + 3)
+        int shopWeaponLevel = currentStage + 2;
+        if (ThreadLocalRandom.current().nextInt(100) < 20) {
+            shopWeaponLevel = currentStage + 3;
+        }
+        randomWeapon.configureLevel(shopWeaponLevel);
+        // Định giá súng shop: Chênh 2 cấp so với stage rơi có giá 135 Credits; chênh 3 cấp có giá 170 Credits
+        int weaponPrice = 65 + (shopWeaponLevel - currentStage) * 35;
+        shopItems.add(ShopItem.createWeaponItem(cx - 100, cy, randomWeapon, weaponPrice));
+
+        // 2. Bàn nâng cấp vũ khí (ngay giữa trung tâm phòng shop): Phí 80 Credits/cấp
+        shopItems.add(ShopItem.createUpgradeStation(cx, cy, 80));
+
+        // 3. Quầy tiếp tế đạn dược (bên phải tâm phòng 100px)
+        shopItems.add(ShopItem.createAmmoItem(cx + 100, cy, 70));
+
+        // 4. Quầy hồi máu HP (theo yêu cầu người dùng: "và HP (chưa phát triển nên chưa show)")
+        // Lớp ShopItem tạo với available = false, hoàn toàn không render và không tương tác
+        shopItems.add(ShopItem.createHealthItem(cx, cy - 70, 90));
     }
 
     /**
@@ -335,6 +403,7 @@ public class PlayingState extends GameState {
         // WHY: Cho phép xem kho trang bị và hoán đổi vị trí vũ khí 1 và 2 trong không gian an toàn
         if (keyH.isKeyPressedOnce(KeyEvent.VK_TAB) || keyH.isKeyPressedOnce(KeyEvent.VK_B)) {
             isBackpackOpen = !isBackpackOpen;
+            return;
         }
 
         if (isBackpackOpen) {
@@ -474,30 +543,38 @@ public class PlayingState extends GameState {
         // --- 10. Check Room Clear Condition and Unlock Doors ---
         if (activeCombatRoom != null && activeCombatRoom.isLocked() && combatTargets.isEmpty()) {
             activeCombatRoom.unlock();
+            int clearReward = (currentStage == 3) ? 25 : 15; // Giảm tiền thưởng khi dọn sạch phòng chiến đấu
+            addCredits(clearReward);
 
             long clearedCount = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
             int totalCount = dungeonMap.getCombatRooms().size();
 
-            // Rơi ra hòm tiếp tế chứa ngẫu nhiên vũ khí chính tại phòng chiến đấu vừa dọn sạch.
-            // Ở Stage 3 (Boss Arena): Đặt hòm ở phía Bắc của tâm phòng (cách bệ extract 180px)
-            // để hoàn toàn tách bạch, tránh chồng đè vị trí và xung đột tương tác phím [F] với bệ sơ tán.
+            // Rơi ra hòm tiếp tế chiến lợi phẩm tại phòng chiến đấu vừa dọn sạch:
+            // QUY TẮC PHẦN THƯỞNG:
+            // 1. Ở Stage 1: Đảm bảo phòng combat đầu tiên dọn sạch luôn cho 1 cây súng chính Level 1 free.
+            // 2. Sau khi đã nhận cây súng free (và ở các stage khác): Hòm trao thưởng theo tỉ lệ (Tiền ra nhiều hơn súng ~75%).
+            boolean giveGuaranteedWeapon = (currentStage == 1 && !stage1FreeWeaponGranted);
+            if (giveGuaranteedWeapon) {
+                stage1FreeWeaponGranted = true;
+            }
+
             double chestX = activeCombatRoom.getCenterWorldX() - 19;
             double chestY = (currentStage == 3)
                     ? activeCombatRoom.getCenterWorldY() - 180
                     : activeCombatRoom.getCenterWorldY() - 19;
-            weaponChests.add(new WeaponChest(chestX, chestY));
+            weaponChests.add(new WeaponChest(chestX, chestY, giveGuaranteedWeapon, currentStage));
 
             if (currentStage == 3) {
                 // Stage 3 Boss Arena: Kích hoạt bệ sơ tán ngay tại tâm phòng combat!
                 dungeonMap.spawnExtractZoneInRoom(activeCombatRoom);
-                showBanner("★ ĐÃ DỌN SẠCH BOSS ARENA - BỆ SƠ TÁN ĐÃ MỞ TẠI TÂM PHÒNG ★",
+                showBanner("★ ĐÃ DỌN SẠCH BOSS ARENA - BỆ SƠ TÁN ĐÃ MỞ TẠI TÂM PHÒNG (+" + clearReward + " CREDITS) ★",
                         new Color(60, 240, 140), 5.0);
             } else {
                 if (clearedCount >= totalCount) {
-                    showBanner("★ TOÀN BỘ PHÒNG ĐÃ DỌN SẠCH - CỬA SƠ TÁN ĐÃ MỞ ★",
+                    showBanner("★ TOÀN BỘ PHÒNG ĐÃ DỌN SẠCH - CỬA SƠ TÁN ĐÃ MỞ (+" + clearReward + " CREDITS) ★",
                             new Color(60, 240, 140), 4.0);
                 } else {
-                    showBanner(String.format("★ PHÒNG %d/%d DỌN SẠCH: CỬA TIẾP TỤC ĐÃ MỞ ★", clearedCount, totalCount),
+                    showBanner(String.format("★ PHÒNG %d/%d DỌN SẠCH: CỬA TIẾP TỤC ĐÃ MỞ (+%d CREDITS) ★", clearedCount, totalCount, clearReward),
                             new Color(60, 220, 120), 3.5);
                 }
             }
@@ -508,18 +585,30 @@ public class PlayingState extends GameState {
         // --- 11. Handle Weapon Chests Auto-Open & Pickup Interaction [F] ---
         boolean chestInteracted = false;
         for (WeaponChest chest : weaponChests) {
-            // Hòm tự động mở khi người chơi đi lại gần (bán kính ~58px) và lộ diện khẩu súng
+            // Hòm tự động mở khi người chơi đi lại gần (bán kính ~58px) và lộ diện chiến lợi phẩm (Tiền hoặc Súng)
             chest.update(deltaTime, playerX, playerY, playerSize);
 
-            // Khi hòm đã mở và súng chưa được nhặt, bấm phím tương tác chính [F] để nhặt súng vào trang bị
+            // Khi hòm đã mở và chưa thu thập, bấm phím tương tác chính [F] để nhận thưởng
             if (chest.isPlayerInRange(playerX, playerY, playerSize) && chest.isOpened() && !chest.isCollected()) {
                 if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
-                    Weapon dropped = chest.collect();
-                    if (dropped != null) {
-                        weaponManager.equipWeapon(dropped);
-                        showBanner("★ ĐÃ TRANG BỊ: " + dropped.getName().toUpperCase() + " (SLOT " + dropped.getSlotIndex() + ") ★",
-                                new Color(255, 215, 60), 3.5);
+                    boolean collected = chest.collectReward(this);
+                    if (collected) {
                         chestInteracted = true;
+                    }
+                }
+            }
+        }
+
+        // --- 11.5. Handle Shop Items & Purchase Interaction [F] ---
+        boolean shopInteracted = false;
+        for (ShopItem item : shopItems) {
+            item.update(deltaTime);
+            if (item.isPlayerInRange(playerX, playerY, playerSize) && !item.isPurchased()) {
+                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+                    boolean bought = item.purchase(this);
+                    if (bought) {
+                        shopInteracted = true;
+                        break;
                     }
                 }
             }
@@ -528,13 +617,24 @@ public class PlayingState extends GameState {
         // --- 12. Check Extraction Zone Interaction [F] ---
         // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract or advance stage
         isStandingOnExtract = dungeonMap.isIntersectsExtractZone(playerX, playerY, playerSize, playerSize);
-        if (!chestInteracted && isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+        if (!chestInteracted && !shopInteracted && isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
             if (currentStage < MAX_STAGES) {
                 advanceToNextStage();
             } else {
                 isExtracting = true;
                 extractTransitionTimer = 0.0;
             }
+        }
+    }
+
+    /**
+     * Tỉ lệ nhỏ rơi tiền tệ Credits khi tiêu diệt một mục tiêu (quái).
+     * Chỉ có ~20% cơ hội rơi tiền, mỗi lần rơi từ 3 đến 8 Credits.
+     */
+    private void tryDropEnemyCredits() {
+        if (ThreadLocalRandom.current().nextInt(100) < 20) {
+            int dropped = ThreadLocalRandom.current().nextInt(3, 9);
+            addCredits(dropped);
         }
     }
 
@@ -550,6 +650,9 @@ public class PlayingState extends GameState {
                 if (dummy.isAlive() && p.getBounds().intersects(dummy.getBounds())) {
                     dummy.takeDamage(p.getDamage());
                     p.deactivate(); // Bullet spent
+                    if (!dummy.isAlive()) {
+                        tryDropEnemyCredits(); // Tỉ lệ nhỏ rơi tiền khi tiêu diệt mục tiêu
+                    }
                     break;
                 }
             }
@@ -562,6 +665,9 @@ public class PlayingState extends GameState {
             for (TargetDummy dummy : combatTargets) {
                 if (dummy.isAlive() && slash.getBounds().intersects(dummy.getBounds())) {
                     dummy.takeDamage(slash.getDamage());
+                    if (!dummy.isAlive()) {
+                        tryDropEnemyCredits(); // Tỉ lệ nhỏ rơi tiền khi tiêu diệt mục tiêu bằng cận chiến
+                    }
                 }
             }
 
@@ -602,6 +708,12 @@ public class PlayingState extends GameState {
             chest.render(g, camera, inRange);
         }
 
+        // 3.6 Render Danh sách Quầy hàng Shop (Tactical Field Shop)
+        for (ShopItem item : shopItems) {
+            boolean inRange = item.isPlayerInRange(playerX, playerY, playerSize);
+            item.render(g, camera, inRange);
+        }
+
         // 4. Render Player Operative (Screen Space)
         double playerCenterX = playerX + (playerSize / 2.0);
         double playerCenterY = playerY + (playerSize / 2.0);
@@ -627,8 +739,9 @@ public class PlayingState extends GameState {
         // 5. Render Equipped Weapon & Melee Slash VFX
         weaponManager.render(g, camera, playerCenterX, playerCenterY, aimAngle);
 
-        // 6. Render Top Sector Information HUD
+        // 6. Render Top Sector Information HUD & Credits HUD
         renderSectorHUD(g, playerCenterX, playerCenterY);
+        renderCreditsHUD(g);
 
         // 7. Render Bottom Weapon & Ammunition HUD
         weaponManager.renderHUD(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
@@ -889,5 +1002,81 @@ public class PlayingState extends GameState {
 
     public void setCurrentStage(int stage) {
         this.currentStage = stage;
+    }
+
+    /**
+     * Hiển thị bảng HUD số dư tiền tệ Credits ở góc trên bên phải màn hình.
+     */
+    private void renderCreditsHUD(Graphics2D g) {
+        int boxW = 160;
+        int boxH = 36;
+        int boxX = GameConfig.SCREEN_WIDTH - boxW - 20;
+        int boxY = 20;
+
+        g.setColor(new Color(15, 20, 30, 210));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setColor(new Color(255, 215, 60, 200));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+
+        // Icon đồng tiền vàng
+        g.setColor(new Color(255, 215, 60));
+        g.fillOval(boxX + 10, boxY + 8, 20, 20);
+        g.setColor(new Color(180, 140, 20));
+        g.drawOval(boxX + 10, boxY + 8, 20, 20);
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(new Color(30, 20, 5));
+        g.drawString("C", boxX + 16, boxY + 23);
+
+        // Chữ số Credits
+        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        g.setColor(new Color(255, 230, 90));
+        g.drawString(playerCredits + " CREDITS", boxX + 38, boxY + 24);
+    }
+
+    public int getPlayerCredits() {
+        return playerCredits;
+    }
+
+    public void setPlayerCredits(int credits) {
+        this.playerCredits = Math.max(0, credits);
+    }
+
+    public void addCredits(int amount) {
+        this.playerCredits += Math.max(0, amount);
+    }
+
+    public boolean deductCredits(int amount) {
+        if (amount <= 0) return true;
+        if (playerCredits >= amount) {
+            playerCredits -= amount;
+            return true;
+        }
+        return false;
+    }
+
+    public List<ShopItem> getShopItems() {
+        return shopItems;
+    }
+
+    /**
+     * Thả vũ khí xuống mặt đất dưới dạng hòm tiếp tế đã mở sẵn (phục vụ việc thay thế vũ khí phòng bấm nhầm).
+     */
+    public void dropWeaponOnGround(Weapon weapon, double x, double y) {
+        if (weapon == null) return;
+        WeaponChest chest = WeaponChest.createWeaponChest(x, y, weapon);
+        chest.open();
+        weaponChests.add(chest);
+    }
+
+    public double getPlayerX() {
+        return playerX;
+    }
+
+    public double getPlayerY() {
+        return playerY;
+    }
+
+    public void showTacticalBanner(String message, Color color, double duration) {
+        showBanner(message, color, duration);
     }
 }

@@ -28,6 +28,7 @@ public class DungeonMap {
     private Room spawnRoom;
     private Room combatRoom; // First combat room for backward compatibility
     private Room extractRoom;
+    private Room shopRoom;
 
     /**
      * Constructs the dungeon matrix and builds the procedural multi-room layout.
@@ -257,6 +258,42 @@ public class DungeonMap {
             grid[extGx][extGy] = extNode;
             rooms.add(extractRoom);
             connections.add(new RoomConnection(extractSource, extNode, extractDir));
+
+            // 4.5. Đặt Shop Room ở ô lân cận theo 12h, 3h, 6h, 9h
+            // WHY: Cho phép Shop Room xuất hiện ở bất kỳ đâu trong stage (nhánh từ bất kỳ phòng Combat, Extract, hoặc Spawn)
+            RoomNode shopSource = null;
+            Direction shopDir = null;
+
+            List<RoomNode> shopCandidates = new ArrayList<>();
+            shopCandidates.addAll(combatNodes);
+            shopCandidates.add(extNode);
+            shopCandidates.add(spawnNode);
+            // Xáo trộn ngẫu nhiên để vị trí phòng Shop phân tán đa dạng khắp màn chơi, không bị cố định dính liền vào Spawn
+            java.util.Collections.shuffle(shopCandidates);
+
+            for (RoomNode cand : shopCandidates) {
+                List<Direction> validDirs = getValidAdjacentDirections(cand, grid);
+                if (!validDirs.isEmpty()) {
+                    shopSource = cand;
+                    shopDir = validDirs.get(ThreadLocalRandom.current().nextInt(validDirs.size()));
+                    break;
+                }
+            }
+
+            if (shopSource == null || shopDir == null) {
+                continue;
+            }
+
+            int shopGx = shopSource.gx + shopDir.dx;
+            int shopGy = shopSource.gy + shopDir.dy;
+            int shopCol = gridOriginX(shopGx);
+            int shopRow = gridOriginY(shopGy);
+
+            shopRoom = new Room(shopCol, shopRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.SHOP, "Tactical Field Shop");
+            RoomNode shopNode = new RoomNode(shopGx, shopGy, shopRoom);
+            grid[shopGx][shopGy] = shopNode;
+            rooms.add(shopRoom);
+            connections.add(new RoomConnection(shopSource, shopNode, shopDir));
 
             // 5. Chạm trổ tất cả các phòng và bệ / cột bên trong
             for (Room r : rooms) {
@@ -610,6 +647,9 @@ public class DungeonMap {
                         g.setColor(new Color(255, 140, 60, 200));
                         g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                     }
+                } else if (room.getRoomType() == Room.RoomType.SHOP) {
+                    g.setColor(new Color(255, 215, 60, 220));
+                    g.drawString("[ TACTICAL FIELD SHOP ]", screenX, screenY);
                 } else {
                     g.setColor(new Color(190, 100, 255, 200));
                     g.drawString("[ " + room.getName() + " ]", screenX, screenY);
@@ -639,6 +679,10 @@ public class DungeonMap {
         return extractRoom;
     }
 
+    public Room getShopRoom() {
+        return shopRoom;
+    }
+
     public List<Room> getRooms() {
         return rooms;
     }
@@ -646,6 +690,7 @@ public class DungeonMap {
     /**
      * Sinh bản đồ cho Stage 3 (Bossfight Stage / Grand Arena):
      * - 1 Spawn Room chuẩn ở phía Tây (cột 4, hàng 17, 12x10 tiles)
+     * - 1 Tactical Shop Room ở phía Bắc Spawn Room (cột 4, hàng 4, 12x10 tiles)
      * - 1 Phòng Combat to (Grand Boss Arena, 28x18 tiles) ở trung tâm bản đồ
      * - Hành lang rộng kết nối thẳng từ Spawn Room sang Boss Arena có lắp blast door
      * - 4 cột trụ che chắn bố trí tại 4 góc phòng Boss
@@ -668,7 +713,36 @@ public class DungeonMap {
         // Bệ Spawn 4x4 tại tâm Spawn Room
         carvePad(spawnCol + 4, spawnRow + 3, 4, 4, TileType.SPAWN_ZONE);
 
-        // 2. Đặt Boss Arena to ở giữa bản đồ
+        // 2. Đặt Shop Room ở phía Bắc Spawn Room để người chơi mua đạn/súng trước khi đối đầu Boss
+        int shopCol = 4;
+        int shopRow = 4;
+        int shopW = 12;
+        int shopH = 10;
+        shopRoom = new Room(shopCol, shopRow, shopW, shopH, Room.RoomType.SHOP, "Tactical Field Shop");
+        rooms.add(shopRoom);
+        carveRoom(shopRoom);
+
+        // Nối hành lang thẳng từ Spawn Room lên Shop Room (hướng NORTH / SOUTH)
+        int shopCorridorStartCol = spawnCol + 4;
+        int shopCorridorEndCol = spawnCol + 7;
+        int shopExitRow = shopRow + shopH - 1;
+        int spawnEntryRow = spawnRow;
+
+        for (int r = shopExitRow; r <= spawnEntryRow; r++) {
+            for (int c = shopCorridorStartCol; c <= shopCorridorEndCol; c++) {
+                tiles[c][r].setType(TileType.FLOOR);
+            }
+        }
+        for (int r = shopExitRow; r <= spawnEntryRow; r++) {
+            if (tiles[shopCorridorStartCol - 1][r].getType() == TileType.VOID) {
+                tiles[shopCorridorStartCol - 1][r].setType(TileType.WALL);
+            }
+            if (tiles[shopCorridorEndCol + 1][r].getType() == TileType.VOID) {
+                tiles[shopCorridorEndCol + 1][r].setType(TileType.WALL);
+            }
+        }
+
+        // 3. Đặt Boss Arena to ở giữa bản đồ
         int bossCol = 24;
         int bossRow = 13;
         int bossW = BOSS_ROOM_WIDTH;
@@ -687,7 +761,7 @@ public class DungeonMap {
         // Sinh ngẫu nhiên 8 ô cover tạm thời (thùng gỗ che chắn) trong Grand Boss Arena
         spawnRandomDestructibleCovers(bossRoom, 8);
 
-        // 3. Nối hành lang thẳng từ Spawn Room sang Boss Arena (hướng EAST)
+        // 4. Nối hành lang thẳng từ Spawn Room sang Boss Arena (hướng EAST)
         int exitCol = spawnCol + spawnW - 1;
         int entryCol = bossCol;
         int corridorStartRow = spawnRow + 3;

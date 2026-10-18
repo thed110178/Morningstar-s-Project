@@ -28,7 +28,7 @@ public class AssaultRifle extends Weapon {
     private static final double SPREAD_ANGLE = 0.04;      // Độ giật rung ngẫu nhiên (+- 2.3 độ)
 
     public AssaultRifle() {
-        super("Assault Rifle (AR)", 1, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME);
+        super("Assault Rifle (AR)", 1, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
     }
 
     @Override
@@ -47,8 +47,10 @@ public class AssaultRifle extends Weapon {
             return false;
         }
 
-        // Tạo độ tản xạ góc nhỏ ngẫu nhiên cho cơ chế sấy đạn chân thực
-        double jitter = ThreadLocalRandom.current().nextDouble(-SPREAD_ANGLE, SPREAD_ANGLE);
+        // Tạo độ tản xạ góc nhỏ ngẫu nhiên cho cơ chế sấy đạn chân thực (giảm dần khi accuracyStars tăng)
+        double jitter = currentSpreadAngle > 0.0001
+                ? ThreadLocalRandom.current().nextDouble(-currentSpreadAngle, currentSpreadAngle)
+                : 0.0;
         double firedAngle = aimAngle + jitter;
 
         // Tính tọa độ đầu nòng súng (cách tâm operative 26px)
