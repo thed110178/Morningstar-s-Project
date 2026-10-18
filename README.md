@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 18/10/2026
+Cập nhật mới nhất vào ngày: 19/10/2026
 
 # Project DontKnow – Final Project Report & Documentation
 
@@ -17,10 +17,10 @@ Cập nhật mới nhất vào ngày: 18/10/2026
 
 | Student ID | Name | Main Responsibility |
 | ---------- | ---- | ------------------- |
-| *(Your ID)* | *(Your Name)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Dungeon Generation, Combat Locking Mechanics, State Pattern. |
-| *(Member 2)* | *(Member Name)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Ballistics Simulation, Recoil & Spread System, Ammo Reserve Management. |
-| *(Member 3)* | *(Member Name)* | **Player & Economy Systems**: Health & Healing System, Shop Pedestal Randomization, Floating Pickups, High-Tech Sci-Fi HUD. |
-| *(Member 4)* | *(Member Name)* | **Testing & QA Engineer**: Automated JUnit 5 Test Suite (79 unit tests), Benchmark Performance Profiling, Memory Optimization. |
+| *(Your ID)* | *(Your Name)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Multi-Stage Dungeon, Multi-Phase Combat Lockdown, State Pattern. |
+| *(Member 2)* | *(Member Name)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Star-Level AR Accuracy Recoil, Melee Slashes, Spare Ammo Reserves. |
+| *(Member 3)* | *(Member Name)* | **Enemy AI & Encounter Systems**: BFS Tile Pathfinding, Obstacle Steering Feelers, Tactical Strafing, Spawn Telegraph Portals. |
+| *(Member 4)* | *(Member Name)* | **UI, Telemetry & QA Engineer**: Automated JUnit 5 Test Suite (**99/99 unit tests**), Sci-Fi HUD & Quick-Slots, Portable JRE Packaging. |
 
 ---
 
@@ -37,10 +37,10 @@ This project bridges the gap between theoretical software engineering principles
 
 ## 2.3. Objectives
 * Build a **decoupled multi-threaded game engine** maintaining a solid 60 UPS (Updates Per Second) and 60 FPS (Frames Per Second) with minimal jitter.
-* Implement a **procedural room-based dungeon generator** that dynamically lays out Spawn, Combat, Shop, and Boss sectors connected via corridors with combat door lockout mechanics.
-* Design a comprehensive **tactical weapon and ballistics framework** supporting varied weapon classes (Pistol, AR, SMG, Shotgun), magazine reloads, spare ammo reserves, and physical projectile simulation.
-* Implement an intuitive **Player Health, Economy, and Inventory System** featuring a high-tech on-screen HUD, manual pickup interactions, shop supply pedestal rotation, and an in-game inventory backpack.
-* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**79/79 tests passing**).
+* Implement a **procedural room-based dungeon generator** that dynamically lays out Spawn, Combat, Shop, and Boss sectors across 4 Stages (3 standard stages + 1 Titan Boss Arena) with multi-phase combat door lockout mechanics.
+* Design a comprehensive **tactical weapon and ballistics framework** supporting varied weapon classes (Pistol, AR, SMG, Shotgun, Combat Knife), star-tier recoil dispersion, magazine reloads, spare ammo reserves, and physical projectile simulation.
+* Implement an intuitive **Player Health, Economy, and HUD System** featuring a high-tech on-screen HUD, equipment quick-slots, under-operative reload progress bar, manual pickup interactions, shop supply pedestal rotation, and an in-game inventory backpack.
+* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**99/99 tests passing**).
 
 ## 2.4. Scope
 
@@ -64,31 +64,52 @@ This project bridges the gap between theoretical software engineering principles
 # 3. Main Features
 
 * **Decoupled 60 UPS / 60 FPS Game Loop**: Employs fixed-timestep physics updates on a dedicated worker thread while rendering smoothly on Swing's paint cycle without lock contention.
-* **Procedural Multi-Room Dungeon**: Generates balanced layouts per stage, featuring guaranteed Spawn points, multiple Combat challenge rooms, a dedicated Shop room with permanently opened access doors, and an ominous Boss chamber.
-* **Combat Lockout Mechanism**: Dynamically detects when the operative enters an uncleared room, seals all entrance/exit doors with glowing energy barriers, and unseals them upon clearing all enemies.
-* **360° Omnidirectional Aiming & Tactical Ballistics**:
-  * Angle calculations via $\theta = \text{atan2}(\Delta y, \Delta x)$.
-  * Math-based dispersion cones and weapon-specific recoil kicks.
-  * Bullet life-cycle simulation with wall and obstacle hit detection.
-* **Weapon & Spare Ammo Reserve System**:
-  * **Pistol (P-9 Tactical)**: Semi-automatic, unlimited reserve ammo.
-  * **Assault Rifle (Viper AR)**: Full-automatic, high muzzle velocity, max 150 reserve.
+* **Biome & Stage Progression Architecture**:
+  * Structured as **3 Standard Sector Stages** (Stage 1, 2, 3) followed by **1 Climax Boss Stage** (Stage 4 - Grand Boss Arena).
+  * Smooth stage transitions via extraction pad interaction (`[F]`) preserving player HP, inventory, credits, and reserve ammo.
+* **Multi-Phase Room Combat Lockout**:
+  * Procedural combat chambers dynamically support **1 to 2 escalating combat phases**.
+  * Entering an unvisited arena seals blast doors (`DOOR_CLOSED`) and initiates Phase 1.
+  * Clearing Phase 1 triggers screen shake telemetry and summons Phase 2 reinforcements from room flanks while doors remain sealed.
+  * Doors only unlock (`DOOR_OPEN`) and drop loot chests when all phases are fully eradicated.
+* **Spawn Telegraph Warning & Safe Separation Protocol**:
+  * **Visual Summoning Portal**: When entering a phase, enemies materialize through glowing red-orange ground portals with contracting focus rings ($0.40\text{s}$ for regular hostiles, $0.50\text{s}$ for Boss).
+  * **Portal Invulnerability**: Hostiles are immune to damage and knockback while in the portal (bullets and melee slashes pass through safely until full physical materialization).
+  * **Safe Separation Distance**: Algorithm guarantees enemy spawn points are at least $\ge 130\text{px}$ away from the operative, completely eliminating point-blank spawn surprises.
+  * **Initial Melee Buffer**: Melee units receive a $0.30\text{s}$ post-spawn attack cooldown, preventing zero-frame instant damage.
+* **Autonomous Tactical Enemy AI**:
+  * **Melee Cyber Swarmers**:
+    * **Tile-based BFS Pathfinding**: When direct line-of-sight is obstructed by cover or walls, enemies dynamically compute the shortest path on the tile grid and navigate around obstacles.
+    * **Multi-Angle Steering Feelers**: Scans 10 offset angles ($\pm 25^\circ, \pm 50^\circ, \pm 75^\circ, \pm 90^\circ, \pm 115^\circ$) to glide smoothly around cover edges without getting stuck.
+    * **Persistent Hunter Stalking**: Actively tracks and flanks player positions, delivering kinetic strikes ($12\text{ HP}$) with visual slash claw arcs.
+  * **Rogue Pistol Scouts**:
+    * **Tactical Kiting**: Backpedals when player $< 190\text{px}$, advances when $> 360\text{px}$.
+    * **Active Lateral Strafing & Cover Flanking**: Actively circles horizontally in safe range to establish open firing angles and flush hiding players out of cover.
+    * **Wall Bounce Reflexes**: Automatically inverts strafe direction upon hitting dungeon barriers.
+    * **Controlled Burst Fire**: Discharges 1 to 3 round pistol volleys with dodgeable projectile tracers.
+  * **Directional Knockback Simulation**:
+    * Hostiles receive physical knockback impulses upon bullet impacts ($130\text{ px/s}$) and knife slashes ($160\text{ px/s}$), dissipated rapidly via high-friction damping.
+* **360° Omnidirectional Aiming & Star-Level Ballistics**:
+  * Mouse crosshair aiming via $\theta = \text{atan2}(\Delta y, \Delta x)$.
+  * **Star-Level AR Accuracy Curve**: Pinpoint initial burst accuracy with dynamic recoil dispersion blooming during sustained automatic fire. Higher star ratings (Level 1 to 5) grant tighter initial cones and reduced maximum spread.
+* **Weapon Arsenal & Spare Ammo Reserves**:
+  * **Pistol (P-9 Tactical)**: Semi-automatic sidearm with unlimited spare reserves.
+  * **Assault Rifle (Viper AR)**: Full-automatic primary rifle, max 150 reserve.
   * **Submachine Gun (Spectre SMG)**: Ultra-rapid fire rate, close-range spread, max 180 reserve.
   * **Combat Shotgun (Bulldog SG)**: 6-pellet kinetic spread, high knockback, max 50 reserve.
-  * **Weapon Dropping**: Swapping or purchasing weapons safely drops the discarded firearm onto the ground as an interactive item, preventing accidental weapon loss.
-* **Player Health & Survival Mechanics**:
-  * Max 100 HP tracked in a top-left Sci-Fi HUD bar (Dynamic Emerald $\rightarrow$ Amber $\rightarrow$ Crimson).
-  * 0.8s temporary invulnerability (i-frames) with operative flashing.
-  * 0.2s camera screen shake on impact and peripheral red pulse vignette when $HP \le 30\%$.
-  * Ground Medkits (Small +25 HP, Large +50 HP) requiring manual `[F]` interaction.
+  * **Tactical Knife**: Instant close-quarters emergency slash.
+  * **Ground Ammo Pickups**: Destroyed hostiles have a 35% chance to drop matching ammo stacks.
+* **High-Tech Sci-Fi HUD & Tactile UI**:
+  * **Stage Indicator**: Clear top-left designation formatted as `Stage [Biome]|[Stage]` (e.g. `Stage 1|1`, `Stage 1|2`, `Stage 1|3`, `Stage 1|4 [BOSS]`).
+  * **Weapon Cards**: Displays equipped weapon name with Star Level indicator (`⭐ Lvl X`).
+  * **Equipment Quick-Slot Belt**: Bottom-center hotkey bar showing `[1] AR`, `[2] SG`, `[3] Pistol`, `[4] Knife` with active weapon illumination.
+  * **Reserve Ammo Display**: Displays live counts with distinct color identities (Yellow for AR, Cyan for SMG, Crimson for Shotgun).
+  * **Under-Operative Reload Bar**: Circular countdown ring floating directly below the operative during magazine reload.
 * **Interactive Shop & Dynamic Economy**:
   * Credit drops from cleared challenges.
-  * Shop supply pedestal dynamically randomizing between Ammo Resupply (+2 Stacks) and Nanite Medkit (+50 HP) per stage.
+  * Supply pedestal dynamically rotating between Ammo Crates and Nanite Medkits per stage.
 * **Tactical Backpack / Inventory UI (`TAB`)**:
-  * Semi-transparent dark glassmorphism modal showing active weapons, magazine status, reserve ammo caps, and current stage credits.
-* **Autonomous Tactical Enemy AI**:
-  * **Melee Cyber Swarmers**: Relentlessly pursue the operative using axis-sliding terrain collision, executing kinetic contact strikes (12 HP) with a 0.9s cooldown and visual claw slash feedback.
-  * **Rogue Pistol Scouts**: Practice tactical kiting (backpedaling when player $< 190\text{px}$, closing in when $> 360\text{px}$), checking optical line-of-sight and discharging 1 to 3 round pistol bursts at deliberate slow intervals (2.0s - 2.6s rest) with dodgeable red projectile tracers.
+  * Glassmorphism modal displaying active weapons, spare ammo caps, and collected credits.
 
 ---
 
@@ -311,18 +332,32 @@ mvn clean package
 java -jar release/DontKnow.jar
 ```
 
+## Run Portable All-in-One Distribution (No Java Pre-installed Required)
+For computers without Java 21 installed, extract either:
+* **`release/DontKnow-Standalone-Portable.zip`** or
+* **`DontKnow-Portable-AllInOne.zip`**
+
+and run:
+```cmd
+RunGame.bat
+```
+*(The bundled lightweight OpenJDK 21 runtime will execute the game autonomously without any system environment changes).*
+
 ## Controls & Keybindings
 
 | Input | Action |
 |---|---|
-| **W, A, S, D** | 8-Directional Operative Movement |
+| **W, A, S, D** | 8-Directional Operative Movement & Wall Sliding |
 | **Mouse Cursor** | 360° Omnidirectional Crosshair Aiming |
 | **Left Mouse Button** | Fire Equipped Weapon (Single tap or Auto hold) |
-| **R** | Reload Current Weapon Magazine |
-| **1, 2 / Q** | Select Primary Slot, Secondary Slot, or Cycle Weapons |
-| **F** | Manual Interaction (Use Medkit, Pick up Weapon, Shop Purchase) |
-| **Tab** | Toggle Tactical Backpack / Inventory Modal |
-| **Spacebar** | Tactical Dash / Dodge Roll (Invulnerability window) |
+| **R** | Reload Weapon Magazine (with live under-operative circular countdown bar) |
+| **1** | Equip Primary Slot: Assault Rifle (Viper AR) |
+| **2** | Equip Secondary Slot: Combat Shotgun (Bulldog SG) |
+| **3** | Equip Sidearm Slot: Tactical Pistol (P-9 Tactical) |
+| **4** | Equip Melee Slot: Combat Knife (Fast Kinetic Slash) |
+| **Q** | Quick-Swap between last 2 equipped weapons |
+| **F** | Manual Tactical Interaction (Use Medkit, Pick up Weapon, Shop Purchase, Advance Stage) |
+| **Tab** / **B** | Toggle Tactical Backpack / Inventory Modal |
 | **Esc** | Pause Game / Return to Menu |
 | **Enter / R** | Restart Game upon Game Over |
 
@@ -341,17 +376,17 @@ Run the complete automated test suite via:
 mvn test
 ```
 
-## 11.3. Test Cases Summary (79 Tests – 100% Passing)
+## 11.3. Test Cases Summary (99 Tests – 100% Passing)
 
 | Test Suite Class | Tests Run | Failures | Errors | Coverage Focus |
 |---|---|---|---|---|
-| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 26 | 0 | 0 | Weapon creation, magazine capacities, fire rates, cycling, slot constraints, reload math, shop purchases. |
-| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 13 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), locking mechanics during combat, unlock on clear, bounding hitboxes. |
-| [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 15 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed room types. |
-| [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 10 | 0 | 0 | AR/SMG/Shotgun reserve caps, reload ammo deduction from reserve, pickup stacking, infinite pistol ammo. |
+| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 31 | 0 | 0 | Weapon creation, star-level AR accuracy curve, continuous auto-fire recoil bloom, magazine reloads, fire rates, cycling, slot constraints. |
+| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 15 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss dummy lifecycle, door unlock on room clear. |
+| [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 15 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed room types across 3 stages + Boss stage. |
+| [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 11 | 0 | 0 | AR/SMG/Shotgun reserve caps, reload ammo deduction from reserve, pickup stacking, distinct color identities, infinite pistol ammo. |
 | [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | 7 | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap at 100, death trigger, manual `[F]` interaction, shop medkit purchase. |
-| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 8 | 0 | 0 | Melee pursuit locomotion, contact strike cooldowns, tactical kiting backpedal, 1-3 round pistol burst fire, raycast line-of-sight. |
-| **Total** | **79** | **0** | **0** | **100% BUILD SUCCESS** |
+| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 20 | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, minimum 130px safe spawn distance, tactical kiting, active lateral strafing, cover flanking, direction-inverting wall reflexes, 1-3 round pistol burst fire. |
+| **Total** | **99** | **0** | **0** | **100% BUILD SUCCESS** |
 
 ---
 
@@ -377,8 +412,8 @@ mvn test
 # 13. Results
 
 * **Simulation & Graphics**: Smooth rendering without flickering or frame tearing via `Graphics2D` double-buffering.
-* **Audio-Visual Feedback**: Dynamic camera screenshake, danger vignette pulse, weapon recoil kick, and real-time floating damage/interaction tags.
-* **Test Reliability**: The entire test suite of 71 unit tests executes in under 2.0 seconds (`Total time: ~1.9s`), proving high modularity and zero flaky tests.
+* **Audio-Visual Feedback**: Dynamic camera screenshake, danger vignette pulse, weapon recoil kick, under-operative reload bar, and real-time floating damage/interaction tags.
+* **Test Reliability**: The entire test suite of **99 unit tests** executes in under 2.5 seconds (`Total time: ~2.4s`), proving high modularity and zero flaky tests.
 
 ---
 
@@ -389,9 +424,10 @@ Traditional student 2D game projects often rely on a single `javax.swing.Timer` 
 
 ## 14.2. Our Technical Contributions
 1. **Decoupled Concurrency Model**: Separated physics simulation from graphics rendering using a dedicated worker thread with sub-millisecond nanosecond delta timing.
-2. **Procedural Dungeon Generator with Combat Lockout**: Built a dynamic dungeon generator that classifies rooms and automatically seals doors when an active combat encounter starts, opening only when all hostiles are eliminated.
-3. **Full 360° Ballistics & Ammo Reserve Architecture**: Engineered realistic bullet trajectory math, weapon-specific dispersion angles, recoil simulation, and reserve ammunition caps mimicking tactical shooters.
-4. **Resilient Drop-on-Swap & Shop Rotation System**: Overcame inventory loss issues by implementing an interactive item dropping system and dynamically randomized shop supply pedestals per stage.
+2. **Procedural Multi-Stage Dungeon with Multi-Phase Lockout**: Built a dynamic dungeon generator that classifies rooms and automatically seals doors when an active combat encounter starts, supporting multi-phase reinforcement waves before unlocking upon clearance.
+3. **Full 360° Ballistics, Accuracy Bloom & Ammo Reserve Architecture**: Engineered realistic bullet trajectory math, star-tier accuracy curves, sustained-fire recoil dispersion, and reserve ammunition caps mimicking tactical shooters.
+4. **Intelligent Obstacle Navigation & Flanking AI**: Melee swarmers utilize tile-based BFS pathfinding and multi-angle feelers to navigate around cover barriers, while ranged scouts execute active lateral strafing and flanking maneuvers.
+5. **Portable Distribution Framework**: Packaged standalone portable bundles with embedded JRE, enabling one-click execution without requiring users to manually install Java 21.
 
 ## 14.3. Technical Impact
 * **Maintainability**: New weapons, enemies, or room types can be integrated without modifying core engine loops.
@@ -451,7 +487,7 @@ Report/GroupXX_DontKnow_Report.docx
 * [x] Project runs successfully (`mvn exec:java` and executable JAR).
 * [x] Complete source code included in `src/main/java`.
 * [x] README is completed and formatted according to the course rubric.
-* [x] Automated test suite completed (79/79 tests passing in `mvn test`).
+* [x] Automated test suite completed (99/99 tests passing in `mvn test`).
 * [x] Experimental evaluation and telemetry results included.
 * [x] Novelty and technical contributions clearly identified.
 * [x] All group members understand the architecture and codebase.

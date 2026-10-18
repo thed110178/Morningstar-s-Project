@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 18/10/2026
+Cập nhật mới nhất vào ngày: 19/10/2026
 
 # TỔNG QUAN DỰ ÁN: PROJECT DONTKNOW
 *An unplanned top-down roguelite shooter*
