@@ -4,6 +4,8 @@ import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.dungeon.Room;
+import com.groupproject.game.entity.enemy.MeleeEnemy;
+import com.groupproject.game.entity.enemy.RangedPistolEnemy;
 import com.groupproject.game.entity.enemy.TargetDummy;
 import com.groupproject.game.entity.item.AmmoPickup;
 import com.groupproject.game.entity.item.AmmoType;
@@ -28,6 +30,7 @@ import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Paint;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
 import com.groupproject.game.dungeon.Tile;
@@ -83,9 +86,10 @@ public class PlayingState extends GameState {
     private Room activeCombatRoom = null;
     private boolean stage1FreeWeaponGranted = false; // Đảm bảo ở Stage 1 luôn có 1 cây súng free
 
-    // Tiến trình Stage trong Biome (1 -> 2 -> 3 Boss Arena)
+    // Tiến trình Stage trong Biome (3 Stage thường: 1, 2, 3 và 1 Stage Boss: 4)
     private int currentStage = 1;
-    public static final int MAX_STAGES = 3;
+    public static final int MAX_STAGES = 4;
+    public static final int BOSS_STAGE = 4;
 
     // Hệ thống Sinh Lực (HP) của Chiến binh Operative
     private int playerMaxHealth = 100;
@@ -197,13 +201,14 @@ public class PlayingState extends GameState {
 
         camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
 
-        if (currentStage == 3) {
-            showBanner("★ TIẾN VÀO STAGE 3/3: GRAND BOSS ARENA - CHIẾN ĐẤU ĐỈNH ĐIỂM! ★",
+        if (currentStage == BOSS_STAGE) {
+            showBanner(String.format("★ TIẾN VÀO STAGE %d/%d: GRAND BOSS ARENA - CHIẾN ĐẤU ĐỈNH ĐIỂM! (KẺ ĐỊCH CƯỜNG HÓA MK-%d) ★",
+                    currentStage, MAX_STAGES, currentStage),
                     new Color(255, 70, 70), 5.0);
         } else {
             int numCombat = dungeonMap.getCombatRooms().size();
-            showBanner(String.format("★ TIẾN VÀO STAGE %d/%d: TIÊU DIỆT %d PHÒNG CHIẾN ĐẤU ★",
-                    currentStage, MAX_STAGES, numCombat),
+            showBanner(String.format("★ TIẾN VÀO STAGE %d/%d: TIÊU DIỆT %d PHÒNG CHIẾN ĐẤU (KẺ ĐỊCH CƯỜNG HÓA MK-%d) ★",
+                    currentStage, MAX_STAGES, numCombat, currentStage),
                     new Color(60, 220, 160), 4.0);
         }
     }
@@ -292,9 +297,10 @@ public class PlayingState extends GameState {
             return false;
         }
 
-        // 3. Không sinh đè lên người chơi (khoảng cách an toàn ít nhất half + 55px)
+        // 3. Không sinh quá sát người chơi (bảo đảm khoảng cách an toàn ít nhất 130px để người chơi không bị quái spawn đè sát người)
+        double minPlayerDist = Math.max(half + 115.0, 130.0);
         double distToPlayer = Math.hypot(x - playerX, y - playerY);
-        if (distToPlayer < (half + 55.0)) {
+        if (distToPlayer < minPlayerDist) {
             return false;
         }
 
@@ -331,7 +337,7 @@ public class PlayingState extends GameState {
         }
 
         // Quét bán kính xung quanh vị trí mong muốn theo các vòng tròn bán kính tăng dần (spiral search)
-        double[] radiuses = {24, 48, 72, 96, 120, 150, 180, 220};
+        double[] radiuses = {32, 64, 96, 128, 160, 200, 240, 280};
         for (double r : radiuses) {
             for (int deg = 0; deg < 360; deg += 30) {
                 double rad = Math.toRadians(deg);
@@ -362,16 +368,84 @@ public class PlayingState extends GameState {
             }
         }
 
-        // Fallback an toàn: Tâm phòng
+        // Fallback an toàn: Quét tìm ô sàn xa người chơi nhất trong phòng thay vì chọn tâm phòng một cách mù quáng
+        Point2D.Double bestFallback = null;
+        double maxDist = -1;
+        for (int c = rx + 1; c < rx + rw - 1; c++) {
+            for (int r = ry + 1; r < ry + rh - 1; r++) {
+                Tile tile = dungeonMap.getTile(c, r);
+                if (tile != null && tile.getType() == TileType.FLOOR) {
+                    double testX = tile.getWorldX() + GameConfig.TILE_SIZE / 2.0;
+                    double testY = tile.getWorldY() + GameConfig.TILE_SIZE / 2.0;
+                    double dist = Math.hypot(testX - playerX, testY - playerY);
+                    if (dist > maxDist) {
+                        maxDist = dist;
+                        bestFallback = new Point2D.Double(testX, testY);
+                    }
+                }
+            }
+        }
+        if (bestFallback != null) {
+            return bestFallback;
+        }
+
         return new Point2D.Double(arena.getCenterWorldX(), arena.getCenterWorldY());
     }
 
     /**
-     * Sinh một kẻ địch tiêu chuẩn (kích thước 30px) một cách an toàn vào danh sách.
+     * Sinh một kẻ địch cận chiến (Melee Swarmer) an toàn với chỉ số được cường hóa nhẹ theo từng Stage:
+     * - Máu (HP): +15 HP mỗi Stage sau Stage 1 (ví dụ Stage 1: 50 HP, Stage 2: 65 HP, Stage 3: 80 HP).
+     * - Tốc độ di chuyển: +8 px/s mỗi Stage (125 -> 133 -> 141 px/s).
+     * - Sát thương va chạm cận chiến: +2 DMG mỗi Stage (12 -> 14 -> 16 DMG).
+     * - Thời gian hồi đòn đánh: Giảm 0.05s mỗi Stage (0.90s -> 0.85s -> 0.80s).
+     * - Tên hiển thị: Tự động gắn nhãn phân hạng MK-2, MK-3...
+     * - Cảnh báo hiển thị điểm spawn (Spawn Telegraph): 1.25s vòng ma trận cảnh báo trước khi xuất hiện.
+     */
+    private void spawnMeleeEnemySafely(Room arena, double preferredX, double preferredY, int baseHealth) {
+        Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, 30.0, combatTargets);
+        int stageBonus = Math.max(0, currentStage - 1);
+        int scaledHealth = baseHealth + stageBonus * 15;
+        double scaledSpeed = 125.0 + stageBonus * 8.0;
+        int scaledDamage = 12 + stageBonus * 2;
+        double scaledCooldown = Math.max(0.60, 0.90 - stageBonus * 0.05);
+        String name = stageBonus == 0 ? "Cyber Swarmer [Melee]" : String.format("Cyber Swarmer MK-%d [Melee]", currentStage);
+
+        MeleeEnemy enemy = new MeleeEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, scaledDamage, scaledCooldown, name);
+        enemy.setSpawnTelegraph(0.40); // 0.40s vòng tròn cảnh báo trước khi kích hoạt
+        enemy.setAttackTimer(0.30);    // 0.30s đệm hồi chiêu ban đầu tránh đòn chém sát thương frame 0
+        combatTargets.add(enemy);
+    }
+
+    /**
+     * Sinh một kẻ địch tầm xa dùng súng lục (Ranged Pistol Scout) an toàn với chỉ số được cường hóa nhẹ theo từng Stage:
+     * - Máu (HP): +12 HP mỗi Stage sau Stage 1 (ví dụ Stage 1: 45 HP, Stage 2: 57 HP, Stage 3: 69 HP).
+     * - Tốc độ di chuyển (giữ khoảng cách/thả diều): +6 px/s mỗi Stage (105 -> 111 -> 117 px/s).
+     * - Sát thương đạn súng lục: +1 DMG mỗi Stage (10 -> 11 -> 12 DMG).
+     * - Tên hiển thị: Tự động gắn nhãn phân hạng MK-2, MK-3...
+     * - Cảnh báo hiển thị điểm spawn (Spawn Telegraph): 0.40s vòng ma trận cảnh báo trước khi xuất hiện.
+     */
+    private void spawnRangedPistolEnemySafely(Room arena, double preferredX, double preferredY, int baseHealth) {
+        Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, 30.0, combatTargets);
+        int stageBonus = Math.max(0, currentStage - 1);
+        int scaledHealth = baseHealth + stageBonus * 12;
+        double scaledSpeed = 105.0 + stageBonus * 6.0;
+        int scaledDamage = 10 + stageBonus * 1;
+        String name = stageBonus == 0 ? "Rogue Scout [Pistol]" : String.format("Rogue Scout MK-%d [Pistol]", currentStage);
+
+        RangedPistolEnemy enemy = new RangedPistolEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, scaledDamage, 190.0, 360.0, name);
+        enemy.setSpawnTelegraph(0.40); // 0.40s vòng tròn cảnh báo trước khi kích hoạt
+        combatTargets.add(enemy);
+    }
+
+    /**
+     * Sinh một kẻ địch tiêu chuẩn một cách an toàn vào danh sách (xen kẽ Cận chiến và Tầm xa).
      */
     private void spawnEnemySafely(Room arena, double preferredX, double preferredY, int health) {
-        Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, 30.0, combatTargets);
-        combatTargets.add(new TargetDummy(safePos.x, safePos.y, health));
+        if (combatTargets.size() % 2 == 0) {
+            spawnMeleeEnemySafely(arena, preferredX, preferredY, health);
+        } else {
+            spawnRangedPistolEnemySafely(arena, preferredX, preferredY, health);
+        }
     }
 
     /**
@@ -380,41 +454,72 @@ public class PlayingState extends GameState {
     private void spawnBossSafely(Room arena, double preferredX, double preferredY, int health, double size, String name) {
         Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, size, combatTargets);
         TargetDummy boss = new TargetDummy(safePos.x, safePos.y, health, size, true, name);
+        boss.setSpawnTelegraph(0.50); // 0.50s xuất hiện nhanh của Boss
         this.bossDummy = boss;
         combatTargets.add(boss);
     }
 
     /**
-     * Sinh các mục tiêu chiến đấu an toàn cho từng phòng combat khi bị phong tỏa.
+     * Sinh các mục tiêu chiến đấu an toàn cho từng phòng combat theo Phase chỉ định.
+     * @param arena Phòng chiến đấu.
+     * @param phase Số thứ tự phase (1 hoặc 2).
      */
-    private void spawnTargetsForRoom(Room arena) {
+    private void spawnTargetsForRoomPhase(Room arena, int phase) {
         combatTargets.clear();
         this.bossDummy = null;
-        if (arena != null) {
-            double cx = arena.getCenterWorldX();
-            double cy = arena.getCenterWorldY();
+        if (arena == null) return;
 
-            if (currentStage == 3) {
-                // Stage 3 Grand Boss Arena: Titan Mecha Dummy khổng lồ (size 64px, 1000 HP) và 8 minion hộ tống
-                spawnBossSafely(arena, cx, cy, 1000, 64.0, "TITAN MECHA DUMMY [BOSS]");
-                spawnEnemySafely(arena, cx + 220, cy, 100);
-                spawnEnemySafely(arena, cx - 220, cy, 100);
-                spawnEnemySafely(arena, cx, cy + 180, 100);
-                spawnEnemySafely(arena, cx, cy - 180, 100);
-                spawnEnemySafely(arena, cx + 160, cy + 130, 80);
-                spawnEnemySafely(arena, cx - 160, cy + 130, 80);
-                spawnEnemySafely(arena, cx + 160, cy - 130, 80);
-                spawnEnemySafely(arena, cx - 160, cy - 130, 80);
-            } else {
-                // Regular Combat Room: 3 đến 4 mục tiêu phân bố an toàn
-                spawnEnemySafely(arena, cx, cy, 75);
-                spawnEnemySafely(arena, cx + 140, cy - 80, 75);
-                spawnEnemySafely(arena, cx + 140, cy + 80, 75);
+        double cx = arena.getCenterWorldX();
+        double cy = arena.getCenterWorldY();
+
+        if (currentStage == BOSS_STAGE) {
+            // Stage Boss (Stage 4) Grand Boss Arena: Titan Mecha Dummy khổng lồ (size 64px, 1000 HP) và 8 AI hộ tống
+            spawnBossSafely(arena, cx, cy, 1000, 64.0, "TITAN MECHA DUMMY [BOSS]");
+            spawnMeleeEnemySafely(arena, cx + 220, cy, 80);
+            spawnMeleeEnemySafely(arena, cx - 220, cy, 80);
+            spawnRangedPistolEnemySafely(arena, cx, cy + 180, 60);
+            spawnRangedPistolEnemySafely(arena, cx, cy - 180, 60);
+            spawnMeleeEnemySafely(arena, cx + 160, cy + 130, 70);
+            spawnRangedPistolEnemySafely(arena, cx - 160, cy + 130, 60);
+            spawnMeleeEnemySafely(arena, cx + 160, cy - 130, 70);
+            spawnRangedPistolEnemySafely(arena, cx - 160, cy - 130, 60);
+        } else {
+            if (arena.getTotalPhases() <= 1) {
+                // Phòng 1 Phase: Số lượng quái tiêu chuẩn kết hợp cận chiến và súng lục
+                spawnMeleeEnemySafely(arena, cx - 120, cy - 60, 50);
+                spawnRangedPistolEnemySafely(arena, cx + 120, cy + 60, 45);
+                spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
                 if (arena.getWidthInTiles() >= 13) {
-                    spawnEnemySafely(arena, cx - 140, cy, 75);
+                    spawnRangedPistolEnemySafely(arena, cx - 140, cy + 70, 45);
+                }
+            } else {
+                // Phòng 2 Phase:
+                if (phase == 1) {
+                    // Phase 1: Đợt quái tiền trạm mở màn
+                    spawnMeleeEnemySafely(arena, cx - 120, cy - 60, 50);
+                    spawnRangedPistolEnemySafely(arena, cx + 120, cy + 60, 45);
+                    if (arena.getWidthInTiles() >= 13) {
+                        spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
+                    }
+                } else {
+                    // Phase 2: Đợt quái tiếp viện bất ngờ từ các góc phòng
+                    spawnMeleeEnemySafely(arena, cx - 140, cy + 70, 55);
+                    spawnRangedPistolEnemySafely(arena, cx + 140, cy - 70, 45);
+                    spawnMeleeEnemySafely(arena, cx, cy - 90, 55);
+                    if (arena.getWidthInTiles() >= 13) {
+                        spawnRangedPistolEnemySafely(arena, cx, cy + 90, 45);
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Sinh các mục tiêu chiến đấu an toàn cho từng phòng combat (mặc định lấy phase hiện tại của phòng).
+     */
+    private void spawnTargetsForRoom(Room arena) {
+        int phase = (arena != null) ? arena.getCurrentPhase() : 1;
+        spawnTargetsForRoomPhase(arena, phase);
     }
 
     /**
@@ -566,17 +671,24 @@ public class PlayingState extends GameState {
                     if (playerY < minInteriorY) playerY = minInteriorY;
                     if (playerY + playerSize > maxInteriorY) playerY = maxInteriorY - playerSize;
 
+                    cr.setCurrentPhase(1);
                     cr.lockdown();
-                    spawnTargetsForRoom(cr);
+                    spawnTargetsForRoomPhase(cr, 1);
 
                     int idx = dungeonMap.getCombatRooms().indexOf(cr) + 1;
                     int total = dungeonMap.getCombatRooms().size();
-                    if (currentStage == 3) {
+                    if (currentStage == BOSS_STAGE) {
                         showBanner("☠ CẢNH BÁO: TITAN MECHA DUMMY [BOSS] XUẤT HIỆN! ☠",
                                 new Color(255, 60, 60), 4.0);
                     } else {
-                        showBanner(String.format("! PHÒNG CHIẾN ĐẤU %d/%d PHONG TỎA - TIÊU DIỆT KẺ ĐỊCH !", idx, total),
-                                new Color(255, 60, 60), 3.5);
+                        if (cr.getTotalPhases() > 1) {
+                            showBanner(String.format("! PHÒNG CHIẾN ĐẤU %d/%d PHONG TỎA [PHASE 1/%d] - TIÊU DIỆT KẺ ĐỊCH !",
+                                    idx, total, cr.getTotalPhases()),
+                                    new Color(255, 60, 60), 3.5);
+                        } else {
+                            showBanner(String.format("! PHÒNG CHIẾN ĐẤU %d/%d PHONG TỎA - TIÊU DIỆT KẺ ĐỊCH !", idx, total),
+                                    new Color(255, 60, 60), 3.5);
+                        }
                     }
                     break;
                 }
@@ -618,59 +730,71 @@ public class PlayingState extends GameState {
         projectileManager.update(deltaTime, dungeonMap);
 
         // --- 9. Check Projectile and Melee Hits on Hostile Targets ---
-        updateCombatDamageResolution();
+        updateCombatDamageResolution(deltaTime);
 
         // --- 10. Check Room Clear Condition and Unlock Doors ---
         if (activeCombatRoom != null && activeCombatRoom.isLocked() && combatTargets.isEmpty()) {
-            activeCombatRoom.unlock();
-            int clearReward = (currentStage == 3) ? 25 : 15; // Giảm tiền thưởng khi dọn sạch phòng chiến đấu
-            addCredits(clearReward);
+            if (activeCombatRoom.hasNextPhase()) {
+                // Đợt quái tiếp viện (Phase 2): Cửa vẫn phong tỏa, spawn thêm quái và rung màn hình cảnh báo
+                activeCombatRoom.advancePhase();
+                int nextPhase = activeCombatRoom.getCurrentPhase();
+                spawnTargetsForRoomPhase(activeCombatRoom, nextPhase);
 
-            long clearedCount = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
-            int totalCount = dungeonMap.getCombatRooms().size();
-
-            // Rơi ra hòm tiếp tế chiến lợi phẩm tại phòng chiến đấu vừa dọn sạch:
-            // QUY TẮC PHẦN THƯỞNG:
-            // 1. Ở Stage 1: Đảm bảo phòng combat đầu tiên dọn sạch luôn cho 1 cây súng chính Level 1 free.
-            // 2. Sau khi đã nhận cây súng free (và ở các stage khác): Hòm trao thưởng theo tỉ lệ (Tiền ra nhiều hơn súng ~75%).
-            boolean giveGuaranteedWeapon = (currentStage == 1 && !stage1FreeWeaponGranted);
-            if (giveGuaranteedWeapon) {
-                stage1FreeWeaponGranted = true;
-            }
-
-            double chestCenterX = activeCombatRoom.getCenterWorldX();
-            double chestCenterY = (currentStage == 3)
-                    ? activeCombatRoom.getCenterWorldY() - 161
-                    : activeCombatRoom.getCenterWorldY();
-
-            double chestX = chestCenterX - 19;
-            double chestY = chestCenterY - 19;
-            weaponChests.add(new WeaponChest(chestX, chestY, giveGuaranteedWeapon, currentStage));
-
-            // Rơi 2 đơn vị stack của 2 loại đạn ngẫu nhiên đối xứng 2 bên (hòm thưởng ở chính giữa)
-            spawnClearRoomAmmoStacks(chestCenterX, chestCenterY);
-
-            // Tỉ lệ rất nhỏ (~15%) mở ra thêm vật phẩm hồi phục khi clear phòng
-            if (ThreadLocalRandom.current().nextInt(100) < 15) {
-                healthPickups.add(new HealthPickup(chestCenterX, chestCenterY + 58.0, HealthPickup.HealthSize.SMALL));
-            }
-
-            if (currentStage == 3) {
-                // Stage 3 Boss Arena: Kích hoạt bệ sơ tán ngay tại tâm phòng combat!
-                dungeonMap.spawnExtractZoneInRoom(activeCombatRoom);
-                showBanner("★ ĐÃ DỌN SẠCH BOSS ARENA - BỆ SƠ TÁN ĐÃ MỞ TẠI TÂM PHÒNG (+" + clearReward + " CREDITS) ★",
-                        new Color(60, 240, 140), 5.0);
+                screenShakeTimer = 0.35;
+                showBanner(String.format("⚠ TIẾP VIỆN XUẤT HIỆN [PHASE %d/%d] - TIẾP TỤC CHIẾN ĐẤU! ⚠",
+                        nextPhase, activeCombatRoom.getTotalPhases()),
+                        new Color(255, 120, 40), 3.0);
             } else {
-                if (clearedCount >= totalCount) {
-                    showBanner("★ TOÀN BỘ PHÒNG ĐÃ DỌN SẠCH - CỬA SƠ TÁN ĐÃ MỞ (+" + clearReward + " CREDITS) ★",
-                            new Color(60, 240, 140), 4.0);
-                } else {
-                    showBanner(String.format("★ PHÒNG %d/%d DỌN SẠCH: CỬA TIẾP TỤC ĐÃ MỞ (+%d CREDITS) ★", clearedCount, totalCount, clearReward),
-                            new Color(60, 220, 120), 3.5);
-                }
-            }
+                activeCombatRoom.unlock();
+                int clearReward = (currentStage == BOSS_STAGE) ? 25 : 15; // Giảm tiền thưởng khi dọn sạch phòng chiến đấu
+                addCredits(clearReward);
 
-            activeCombatRoom = null;
+                long clearedCount = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
+                int totalCount = dungeonMap.getCombatRooms().size();
+
+                // Rơi ra hòm tiếp tế chiến lợi phẩm tại phòng chiến đấu vừa dọn sạch:
+                // QUY TẮC PHẦN THƯỞNG:
+                // 1. Ở Stage 1: Đảm bảo phòng combat đầu tiên dọn sạch luôn cho 1 cây súng chính Level 1 free.
+                // 2. Sau khi đã nhận cây súng free (và ở các stage khác): Hòm trao thưởng theo tỉ lệ (Tiền ra nhiều hơn súng ~75%).
+                boolean giveGuaranteedWeapon = (currentStage == 1 && !stage1FreeWeaponGranted);
+                if (giveGuaranteedWeapon) {
+                    stage1FreeWeaponGranted = true;
+                }
+
+                double chestCenterX = activeCombatRoom.getCenterWorldX();
+                double chestCenterY = (currentStage == BOSS_STAGE)
+                        ? activeCombatRoom.getCenterWorldY() - 161
+                        : activeCombatRoom.getCenterWorldY();
+
+                double chestX = chestCenterX - 19;
+                double chestY = chestCenterY - 19;
+                weaponChests.add(new WeaponChest(chestX, chestY, giveGuaranteedWeapon, currentStage));
+
+                // Rơi 2 đơn vị stack của 2 loại đạn ngẫu nhiên đối xứng 2 bên (hòm thưởng ở chính giữa)
+                spawnClearRoomAmmoStacks(chestCenterX, chestCenterY);
+
+                // Tỉ lệ rất nhỏ (~15%) mở ra thêm vật phẩm hồi phục khi clear phòng
+                if (ThreadLocalRandom.current().nextInt(100) < 15) {
+                    healthPickups.add(new HealthPickup(chestCenterX, chestCenterY + 58.0, HealthPickup.HealthSize.SMALL));
+                }
+
+                if (currentStage == BOSS_STAGE) {
+                    // Stage Boss (Stage 4) Grand Boss Arena: Kích hoạt bệ sơ tán ngay tại tâm phòng combat!
+                    dungeonMap.spawnExtractZoneInRoom(activeCombatRoom);
+                    showBanner("★ ĐÃ DỌN SẠCH BOSS ARENA - BỆ SƠ TÁN ĐÃ MỞ TẠI TÂM PHÒNG (+" + clearReward + " CREDITS) ★",
+                            new Color(60, 240, 140), 5.0);
+                } else {
+                    if (clearedCount >= totalCount) {
+                        showBanner("★ TOÀN BỘ PHÒNG ĐÃ DỌN SẠCH - CỬA SƠ TÁN ĐÃ MỞ (+" + clearReward + " CREDITS) ★",
+                                new Color(60, 240, 140), 4.0);
+                    } else {
+                        showBanner(String.format("★ PHÒNG %d/%d DỌN SẠCH: CỬA TIẾP TỤC ĐÃ MỞ (+%d CREDITS) ★", clearedCount, totalCount, clearReward),
+                                new Color(60, 220, 120), 3.5);
+                    }
+                }
+
+                activeCombatRoom = null;
+            }
         }
 
         // --- 11. Handle Weapon Chests Auto-Open & Pickup Interaction [F] ---
@@ -791,21 +915,32 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Resolves collision detection between active bullets / knife slashes and hostile targets.
+     * Resolves collision detection between active bullets / knife slashes, hostile targets, and operative.
      */
-    private void updateCombatDamageResolution() {
+    private void updateCombatDamageResolution(double deltaTime) {
         // 1. Projectile hits
         for (Projectile p : projectileManager.getActiveProjectiles()) {
-            if (!p.isActive() || !p.isPlayerBullet()) continue;
+            if (!p.isActive()) continue;
 
-            for (TargetDummy dummy : combatTargets) {
-                if (dummy.isAlive() && p.getBounds().intersects(dummy.getBounds())) {
-                    dummy.takeDamage(p.getDamage());
-                    p.deactivate(); // Bullet spent
-                    if (!dummy.isAlive()) {
-                        onEnemyEliminated(dummy);
+            if (p.isPlayerBullet()) {
+                // Đạn của Operative trúng mục tiêu thù địch (bỏ qua kẻ địch đang chuẩn bị spawn trong portal)
+                for (TargetDummy dummy : combatTargets) {
+                    if (dummy.isAlive() && !dummy.isSpawning() && p.getBounds().intersects(dummy.getBounds())) {
+                        dummy.takeDamage(p.getDamage(), p.getAngle(), 130.0);
+                        p.deactivate(); // Bullet spent
+                        if (!dummy.isAlive()) {
+                            onEnemyEliminated(dummy);
+                        }
+                        break;
                     }
-                    break;
+                }
+            } else {
+                // Đạn của Kẻ Địch trúng Operative
+                Rectangle playerBox = new Rectangle(
+                        (int) playerX, (int) playerY, (int) playerSize, (int) playerSize);
+                if (p.getBounds().intersects(playerBox)) {
+                    damagePlayer(p.getDamage());
+                    p.deactivate();
                 }
             }
         }
@@ -815,8 +950,9 @@ public class PlayingState extends GameState {
             if (!slash.isActive()) continue;
 
             for (TargetDummy dummy : combatTargets) {
-                if (dummy.isAlive() && slash.getBounds().intersects(dummy.getBounds())) {
-                    dummy.takeDamage(slash.getDamage());
+                if (dummy.isAlive() && !dummy.isSpawning() && slash.getBounds().intersects(dummy.getBounds())) {
+                    // Nhát chém dao cận chiến gây sát thương và đẩy lùi theo hướng vung dao
+                    dummy.takeDamage(slash.getDamage(), slash.getAngle(), 160.0);
                     if (!dummy.isAlive()) {
                         onEnemyEliminated(dummy);
                     }
@@ -831,9 +967,11 @@ public class PlayingState extends GameState {
                     slash.getDamage());
         }
 
-        // 3. Update targets and remove eliminated hostiles
+        // 3. Update targets AI (locomotion, kiting, melee attacks, pistol bursts)
+        double playerCenterX = playerX + (playerSize / 2.0);
+        double playerCenterY = playerY + (playerSize / 2.0);
         for (TargetDummy dummy : combatTargets) {
-            dummy.update(0.016);
+            dummy.updateAI(deltaTime, playerCenterX, playerCenterY, playerSize, dungeonMap, projectileManager, this);
         }
         combatTargets.removeIf(d -> !d.isAlive());
     }
@@ -923,6 +1061,9 @@ public class PlayingState extends GameState {
         g.setColor(new Color(255, 230, 80));
         g.fillOval(visorX - 4, visorY - 4, 8, 8);
 
+        // 4.5. Thanh đếm ngược tiến trình nạp đạn dưới chân người chơi khi đang reload
+        renderPlayerReloadIndicator(g, screenPX, screenPY);
+
         // 5. Render Equipped Weapon & Melee Slash VFX
         weaponManager.render(g, camera, playerCenterX, playerCenterY, aimAngle);
 
@@ -967,58 +1108,34 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Displays current operative location, active chamber title, remaining targets, and key tips.
-     * Thu gọn kích thước chiều ngang khi bước vào trận chiến Boss để nhường không gian cho thanh máu Boss.
+     * Hiển thị nhãn Stage tinh gọn ở góc trên bên trái: "Stage [số biome]|[số stage của biome đó]".
+     * Toàn bộ thông số toạ độ/hướng dẫn cồng kềnh cũ được loại bỏ để giữ màn hình thông thoáng.
      */
     private void renderSectorHUD(Graphics2D g, double pcx, double pcy) {
-        boolean isBossFight = (bossDummy != null && bossDummy.isAlive());
-        int hudW = isBossFight ? 330 : 480;
+        int boxX = 20;
+        int boxY = 20;
+        int boxW = 125;
+        int boxH = 34;
 
-        g.setColor(new Color(15, 20, 30, 200));
-        g.fillRoundRect(20, 20, hudW, 88, 12, 12);
-        g.setColor(new Color(60, 80, 110));
-        g.drawRoundRect(20, 20, hudW, 88, 12, 12);
+        boolean isLockedCombat = (activeCombatRoom != null && activeCombatRoom.isLocked());
 
-        String currentRoomName = "Connecting Corridor";
-        for (Room r : dungeonMap.getRooms()) {
-            if (r.containsWorldPoint(pcx, pcy)) {
-                currentRoomName = r.getName();
-                break;
-            }
-        }
+        // Khung nền xám đen viền công nghệ cao
+        g.setColor(new Color(15, 20, 30, 225));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setColor(isLockedCombat ? new Color(255, 75, 75, 180) : new Color(60, 80, 110));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setStroke(new BasicStroke(1.0f));
 
-        long clearedRooms = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
-        int totalRooms = dungeonMap.getCombatRooms().size();
+        // Text Stage: "Stage 1|1", "Stage 1|2", "Stage 1|3"
+        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        String stageText = String.format("Stage 1|%d", currentStage);
+        FontMetrics fm = g.getFontMetrics();
+        int textX = boxX + (boxW - fm.stringWidth(stageText)) / 2;
+        int textY = boxY + ((boxH - fm.getHeight()) / 2) + fm.getAscent();
 
-        String stageLabel = currentStage == 3 ? "STAGE 3/3 [BOSS ARENA]" : String.format("STAGE %d/%d", currentStage, MAX_STAGES);
-        g.setFont(new Font("SansSerif", Font.BOLD, isBossFight ? 13 : 15));
-        if (activeCombatRoom != null && activeCombatRoom.isLocked()) {
-            g.setColor(new Color(255, 60, 60));
-            if (isBossFight) {
-                g.drawString(String.format("BIOME 1 | %s [PHONG TỎA]", stageLabel), 35, 45);
-            } else {
-                g.drawString(String.format("BIOME 1 | %s | %s [PHONG TỎA: %d MỤC TIÊU]",
-                        stageLabel, activeCombatRoom.getName().toUpperCase(), combatTargets.size()), 35, 45);
-            }
-        } else {
-            g.setColor(new Color(255, 200, 50));
-            g.drawString(String.format("BIOME 1 | %s | %s [%d/%d PHÒNG]",
-                    stageLabel, currentRoomName.toUpperCase(), clearedRooms, totalRooms), 35, 45);
-        }
-
-        g.setFont(new Font("SansSerif", Font.PLAIN, isBossFight ? 12 : 13));
-        g.setColor(new Color(200, 215, 235));
-        if (isBossFight) {
-            g.drawString(String.format("Operative: (%.0f, %.0f) | Hostiles: %d",
-                    pcx, pcy, combatTargets.size()), 35, 68);
-            g.setColor(new Color(140, 160, 185));
-            g.drawString("WASD: Đi | TAB: Balo | F: Tương tác", 35, 88);
-        } else {
-            g.drawString(String.format("Operative: (%.0f, %.0f) | Bullets: %d | Hostiles: %d",
-                    pcx, pcy, projectileManager.getCount(), combatTargets.size()), 35, 68);
-            g.setColor(new Color(140, 160, 185));
-            g.drawString("Di chuyển: [WASD] | [TAB] Balo | [F] Tương tác | Slots: [1] [2] [3] [4] [Q]", 35, 88);
-        }
+        g.setColor(isLockedCombat ? new Color(255, 90, 90) : new Color(255, 205, 55));
+        g.drawString(stageText, textX, textY);
     }
 
     /**
@@ -1412,7 +1529,7 @@ public class PlayingState extends GameState {
      */
     private void renderPlayerHealthHUD(Graphics2D g) {
         int barX = 20;
-        int barY = 114;
+        int barY = 60;
         int barW = 210;
         int barH = 22;
 
@@ -1459,6 +1576,52 @@ public class PlayingState extends GameState {
         g.drawString(hpText, textX + 1, textY + 1);
         g.setColor(Color.WHITE);
         g.drawString(hpText, textX, textY);
+    }
+
+    /**
+     * Hiển thị thanh đếm ngược tiến trình nạp đạn (Reload Progress Bar & Countdown) ngay dưới chân người chơi.
+     * Tự động xuất hiện khi súng đang nạp đạn và biến mất khi hoàn tất nạp đạn.
+     */
+    private void renderPlayerReloadIndicator(Graphics2D g, int screenPX, int screenPY) {
+        com.groupproject.game.entity.weapon.Weapon active = weaponManager.getActiveWeapon();
+        if (active == null || !active.isReloading()) return;
+
+        int barW = 38;
+        int barH = 5;
+        int barX = screenPX - (barW / 2);
+        int barY = screenPY + 20;
+
+        // Khung nền tối sci-fi bo góc
+        g.setColor(new Color(15, 20, 30, 220));
+        g.fillRoundRect(barX - 1, barY - 1, barW + 2, barH + 2, 4, 4);
+        g.setColor(new Color(65, 85, 115));
+        g.setStroke(new BasicStroke(1.0f));
+        g.drawRoundRect(barX - 1, barY - 1, barW + 2, barH + 2, 4, 4);
+
+        // Dải tiến trình nạp đạn
+        double progress = Math.max(0.0, Math.min(1.0, active.getReloadProgress()));
+        int fillW = (int) Math.round(barW * progress);
+        if (fillW > 0) {
+            g.setColor(new Color(255, 150, 40)); // Vàng cam ấm áp rực rỡ
+            g.fillRoundRect(barX, barY, fillW, barH, 2, 2);
+            // Highlight mép trên
+            g.setColor(new Color(255, 255, 255, 120));
+            g.fillRect(barX, barY, fillW, 1);
+        }
+
+        // Chữ số đếm ngược thời gian nạp đạn còn lại (ví dụ "1.2s", "0.6s")
+        double remainingSec = Math.max(0.0, active.getReloadTimer());
+        String timeText = String.format("%.1fs", remainingSec);
+        g.setFont(new Font("SansSerif", Font.BOLD, 9));
+        FontMetrics fm = g.getFontMetrics();
+        int textW = fm.stringWidth(timeText);
+        int textX = screenPX - (textW / 2);
+        int textY = barY + barH + 9;
+
+        g.setColor(new Color(10, 15, 22, 190));
+        g.fillRoundRect(textX - 3, textY - 8, textW + 6, 10, 3, 3);
+        g.setColor(new Color(255, 210, 75));
+        g.drawString(timeText, textX, textY);
     }
 
     /**

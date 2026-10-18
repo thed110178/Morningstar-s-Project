@@ -1,5 +1,7 @@
 package com.groupproject.game.entity.item;
 
+import java.awt.Color;
+
 /**
  * Phân loại các chủng loại đạn dược dự trữ và thông số dung lượng chuẩn trong trò chơi.
  *
@@ -32,5 +34,19 @@ public enum AmmoType {
 
     public int getStackAmount() {
         return stackAmount;
+    }
+
+    /**
+     * Màu sắc nhận diện chuẩn của chủng loại đạn:
+     * - AR: Xanh lục quân sự (#50DC64)
+     * - SMG: Xanh lơ cyan (#00D2FF)
+     * - SHOTGUN: Đỏ cam rực lửa (#FF5A46)
+     */
+    public Color getColor() {
+        return switch (this) {
+            case AR -> new Color(80, 220, 100);
+            case SMG -> new Color(0, 210, 255);
+            case SHOTGUN -> new Color(255, 90, 70);
+        };
     }
 }

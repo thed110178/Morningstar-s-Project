@@ -144,11 +144,7 @@ public class AmmoPickup {
      * Lấy màu sắc hào quang đặc trưng cho từng loại đạn.
      */
     public Color getGlowColor() {
-        return switch (type) {
-            case AR -> new Color(80, 220, 100);      // Xanh lục quân sự cho đạn súng trường
-            case SMG -> new Color(0, 210, 255);      // Xanh lơ cyan cho đạn tiểu liên
-            case SHOTGUN -> new Color(255, 90, 70);  // Đỏ cam rực lửa cho đạn súng săn
-        };
+        return type.getColor();
     }
 
     public double getX() {

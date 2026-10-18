@@ -115,6 +115,7 @@ public abstract class Weapon {
                 } else {
                     currentAmmo = magazineSize;
                 }
+                reloadTimer = 0.0;
                 reloading = false;
             }
         }
@@ -233,6 +234,10 @@ public abstract class Weapon {
     public double getReloadProgress() {
         if (!reloading || reloadDuration <= 0) return 0.0;
         return 1.0 - (reloadTimer / reloadDuration);
+    }
+
+    public double getReloadTimer() {
+        return Math.max(0.0, reloadTimer);
     }
 
     public boolean isMelee() {

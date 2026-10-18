@@ -1,6 +1,9 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.dungeon.DungeonMap;
+import com.groupproject.game.entity.projectile.ProjectileManager;
+import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.GradientPaint;
@@ -20,19 +23,30 @@ import java.awt.Rectangle;
  */
 public class TargetDummy {
 
-    private final double x;
-    private final double y;
-    private final double size;
-    private final int maxHealth;
-    private int currentHealth;
-    private boolean alive = true;
-    private final boolean isBoss;
-    private final String name;
+    protected double x;
+    protected double y;
+    protected double size;
+    protected int maxHealth;
+    protected int currentHealth;
+    protected boolean alive = true;
+    protected boolean isBoss;
+    protected String name;
 
     // Flash white when hit
-    private double hitFlashTimer = 0.0;
+    protected double hitFlashTimer = 0.0;
     // Animation timer for boss pulsing core
-    private double animTimer = 0.0;
+    protected double animTimer = 0.0;
+    // Directional knockback impulse velocity
+    protected double knockbackVx = 0.0;
+    protected double knockbackVy = 0.0;
+
+    // Spawn Telegraph (Warning Indicator) mechanics
+    // WHY: When an enemy spawns at the start of a combat encounter or reinforcement wave,
+    // it materializes over a short window (e.g. 1.25s). During this window, an animated holographic summoning ring,
+    // contracting radar focus circle, and hazard badge display at the spawn point so the operative can anticipate
+    // incoming threats and reposition safely rather than being instantly ambushed or overrun.
+    protected double spawnTelegraphTimer = 0.0;
+    protected double spawnTelegraphTotal = 0.0;
 
     /**
      * Constructs a standard combat target at the designated world position.
@@ -71,7 +85,7 @@ public class TargetDummy {
      * @param damage Amount of hit points to deduct.
      */
     public void takeDamage(int damage) {
-        if (!alive) return;
+        if (!alive || isSpawning()) return;
 
         currentHealth -= damage;
         hitFlashTimer = 0.1; // Flash white for 100ms
@@ -82,11 +96,162 @@ public class TargetDummy {
         }
     }
 
+    /**
+     * Applies damage to this target, flashes visual feedback, and imparts directional knockback.
+     *
+     * @param damage         Amount of hit points to deduct.
+     * @param knockbackAngle Angle of impact in radians.
+     * @param knockbackForce Impulse magnitude in pixels per second.
+     */
+    public void takeDamage(int damage, double knockbackAngle, double knockbackForce) {
+        if (!alive || isSpawning()) return;
+        takeDamage(damage);
+        applyKnockback(knockbackAngle, knockbackForce);
+    }
+
+    /**
+     * Imparts directional knockback velocity onto this enemy entity.
+     * Boss units have high poise armor, absorbing 85% of knockback impulse.
+     *
+     * @param angle   Direction of impact in radians.
+     * @param impulse Velocity impulse in pixels per second.
+     */
+    public void applyKnockback(double angle, double impulse) {
+        if (!alive || isSpawning()) return;
+        if (isBoss) {
+            impulse *= 0.15; // Titan Boss absorbs 85% of knockback impulse
+        }
+        this.knockbackVx += Math.cos(angle) * impulse;
+        this.knockbackVy += Math.sin(angle) * impulse;
+    }
+
+    /**
+     * Updates knockback displacement and rapidly dampens impulse velocity with wall collision checking.
+     *
+     * @param deltaTime  Frame delta time in seconds.
+     * @param dungeonMap Collision map for terrain walkability.
+     */
+    public void updateKnockback(double deltaTime, DungeonMap dungeonMap) {
+        if (Math.abs(knockbackVx) > 0.01 || Math.abs(knockbackVy) > 0.01) {
+            double stepX = knockbackVx * deltaTime;
+            double stepY = knockbackVy * deltaTime;
+            double half = size / 2.0;
+
+            if (dungeonMap == null || dungeonMap.isAreaWalkable(x + stepX - half, y - half, size, size)) {
+                x += stepX;
+            } else {
+                knockbackVx = 0.0;
+            }
+
+            if (dungeonMap == null || dungeonMap.isAreaWalkable(x - half, y + stepY - half, size, size)) {
+                y += stepY;
+            } else {
+                knockbackVy = 0.0;
+            }
+
+            // High friction damping: knockback dissipates within ~0.10 - 0.15 seconds
+            double friction = Math.max(0.0, 1.0 - 14.0 * deltaTime);
+            knockbackVx *= friction;
+            knockbackVy *= friction;
+
+            if (Math.hypot(knockbackVx, knockbackVy) < 5.0) {
+                knockbackVx = 0.0;
+                knockbackVy = 0.0;
+            }
+        }
+    }
+
     public void update(double deltaTime) {
         animTimer += deltaTime;
         if (hitFlashTimer > 0) {
             hitFlashTimer -= deltaTime;
         }
+        if (spawnTelegraphTimer > 0) {
+            spawnTelegraphTimer -= deltaTime;
+            if (spawnTelegraphTimer < 0) {
+                spawnTelegraphTimer = 0.0;
+            }
+        }
+    }
+
+    /**
+     * Updates AI behaviors (movement, aiming, attacking).
+     *
+     * <p>Subclasses (e.g. {@code MeleeEnemy}, {@code RangedPistolEnemy}) override this method
+     * to implement autonomous pursuit, tactical kiting, and weapon discharge.
+     *
+     * @param deltaTime          Frame delta time in seconds.
+     * @param playerCenterX      Target player operative X coordinate.
+     * @param playerCenterY      Target player operative Y coordinate.
+     * @param playerSize         Player hitbox dimension.
+     * @param dungeonMap         Active dungeon collision grid.
+     * @param projectileManager  Manager for spawning hostile bullets.
+     * @param playingState       Active playing state callback (e.g. for dealing damage).
+     */
+    public void updateAI(double deltaTime, double playerCenterX, double playerCenterY, double playerSize,
+                         DungeonMap dungeonMap, ProjectileManager projectileManager, PlayingState playingState) {
+        update(deltaTime);
+        updateKnockback(deltaTime, dungeonMap);
+    }
+
+    /**
+     * Renders a tactical holographic summoning circle, pulsating warning ring, contracting focus circle,
+     * and entity badge label on the floor while this enemy is materializing into the combat arena.
+     *
+     * @param g      Graphics context.
+     * @param camera Active world camera for coordinate translation.
+     */
+    public void renderSpawnTelegraph(Graphics2D g, Camera camera) {
+        int screenX = camera.worldToScreenX(x);
+        int screenY = camera.worldToScreenY(y);
+
+        double progress = (spawnTelegraphTotal > 0.0)
+                ? Math.min(1.0, Math.max(0.0, 1.0 - (spawnTelegraphTimer / spawnTelegraphTotal)))
+                : 1.0;
+
+        // Visual telegraph styling: Clean, minimalist warning portal mark
+        Color themeColor = isBoss ? new Color(255, 185, 35) : new Color(255, 60, 55);
+
+        // 1. Pulsing ground summoning portal
+        double pulse = Math.sin(animTimer * 16.0) * 2.5;
+        int baseRadius = (int) (size / 2.0 + 10.0);
+        int ringRadius = (int) (baseRadius + pulse);
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Translucent filled ground portal glow
+        g2.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 50));
+        g2.fillOval(screenX - ringRadius, screenY - ringRadius / 2, ringRadius * 2, ringRadius);
+
+        // Outer warning portal ring
+        g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 210));
+        g2.drawOval(screenX - ringRadius, screenY - ringRadius / 2, ringRadius * 2, ringRadius);
+
+        // Contracting focus ring (shrinks towards entity size as progress -> 1.0)
+        int focusRadius = (int) (ringRadius * (1.0 - progress * 0.70));
+        g2.setColor(new Color(255, 255, 255, 220));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(screenX - focusRadius, screenY - focusRadius / 2, focusRadius * 2, focusRadius);
+
+        // 4 Cardinal tick crosshairs marking exact spawn epicenter
+        int tickLen = 5;
+        g2.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 230));
+        g2.drawLine(screenX - ringRadius - tickLen, screenY, screenX - ringRadius + tickLen, screenY);
+        g2.drawLine(screenX + ringRadius - tickLen, screenY, screenX + ringRadius + tickLen, screenY);
+        g2.drawLine(screenX, screenY - ringRadius / 2 - tickLen, screenX, screenY - ringRadius / 2 + tickLen);
+        g2.drawLine(screenX, screenY + ringRadius / 2 - tickLen, screenX, screenY + ringRadius / 2 + tickLen);
+
+        // 2. Faint holographic silhouette fading in gradually
+        int half = (int) (size / 2.0);
+        int alpha = (int) (progress * 110 + 25);
+        g2.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), alpha));
+        g2.fillRoundRect(screenX - half, screenY - half, (int) size, (int) size, 6, 6);
+        g2.setColor(new Color(255, 255, 255, (int) (progress * 140 + 30)));
+        g2.drawRoundRect(screenX - half, screenY - half, (int) size, (int) size, 6, 6);
+
+        g2.dispose();
     }
 
     /**
@@ -96,6 +261,10 @@ public class TargetDummy {
      */
     public void render(Graphics2D g, Camera camera) {
         if (!alive) return;
+        if (isSpawning()) {
+            renderSpawnTelegraph(g, camera);
+            return;
+        }
 
         int screenCX = camera.worldToScreenX(x);
         int screenCY = camera.worldToScreenY(y);
@@ -268,5 +437,30 @@ public class TargetDummy {
 
     public int getCurrentHealth() {
         return currentHealth;
+    }
+
+    public double getKnockbackVx() {
+        return knockbackVx;
+    }
+
+    public double getKnockbackVy() {
+        return knockbackVy;
+    }
+
+    public boolean isSpawning() {
+        return spawnTelegraphTimer > 0;
+    }
+
+    public double getSpawnTelegraphTimer() {
+        return spawnTelegraphTimer;
+    }
+
+    public double getSpawnTelegraphTotal() {
+        return spawnTelegraphTotal;
+    }
+
+    public void setSpawnTelegraph(double duration) {
+        this.spawnTelegraphTimer = Math.max(0.0, duration);
+        this.spawnTelegraphTotal = this.spawnTelegraphTimer;
     }
 }

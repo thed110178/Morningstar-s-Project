@@ -44,6 +44,10 @@ public class Room {
     private RoomStatus status = RoomStatus.UNVISITED;
     private final List<Tile> doorTiles = new ArrayList<>();
 
+    // Hệ thống phân chia đợt quái (Phase 1, Phase 2) cho phòng chiến đấu
+    private int totalPhases = 1;
+    private int currentPhase = 1;
+
     /**
      * Constructs a chamber with discrete grid dimensions and a functional role.
      *
@@ -61,6 +65,14 @@ public class Room {
         this.heightInTiles = heightInTiles;
         this.roomType = roomType;
         this.name = name;
+
+        // Phòng chiến đấu thông thường có ngẫu nhiên 1 đến 2 phase
+        if (roomType == RoomType.COMBAT) {
+            this.totalPhases = java.util.concurrent.ThreadLocalRandom.current().nextBoolean() ? 2 : 1;
+        } else {
+            this.totalPhases = 1;
+        }
+        this.currentPhase = 1;
     }
 
     /**
@@ -107,11 +119,41 @@ public class Room {
      */
     public void reset() {
         this.status = RoomStatus.UNVISITED;
+        this.currentPhase = 1;
+        if (roomType == RoomType.COMBAT) {
+            this.totalPhases = java.util.concurrent.ThreadLocalRandom.current().nextBoolean() ? 2 : 1;
+        } else {
+            this.totalPhases = 1;
+        }
         for (Tile door : doorTiles) {
             if (door.getType() != TileType.DOOR_SHOP) {
                 door.setType(TileType.DOOR_OPEN);
             }
         }
+    }
+
+    public int getTotalPhases() {
+        return totalPhases;
+    }
+
+    public void setTotalPhases(int totalPhases) {
+        this.totalPhases = Math.max(1, totalPhases);
+    }
+
+    public int getCurrentPhase() {
+        return currentPhase;
+    }
+
+    public void setCurrentPhase(int currentPhase) {
+        this.currentPhase = currentPhase;
+    }
+
+    public boolean hasNextPhase() {
+        return currentPhase < totalPhases;
+    }
+
+    public void advancePhase() {
+        this.currentPhase++;
     }
 
     public boolean isLocked() {

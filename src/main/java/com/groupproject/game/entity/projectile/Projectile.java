@@ -114,4 +114,8 @@ public class Projectile {
     public boolean isPlayerBullet() {
         return playerBullet;
     }
+
+    public double getAngle() {
+        return Math.atan2(vy, vx);
+    }
 }

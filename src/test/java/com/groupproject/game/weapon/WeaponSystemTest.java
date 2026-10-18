@@ -794,4 +794,182 @@ public class WeaponSystemTest {
         boolean closeOnEsc = backpackUI.update(keyH, mouseH, wm, 0.016);
         assertTrue(closeOnEsc, "BackpackUI must request close when user hits ESC");
     }
+
+    @Test
+    @DisplayName("Verify AR first-shot accuracy, bloom accumulation during continuous fire, and recoil recovery")
+    void testAssaultRifleFirstShotAccuracyAndSprayBloom() {
+        AssaultRifle ar = new AssaultRifle();
+        ProjectileManager pm = new ProjectileManager();
+
+        // 1. Initial State: Continuous shots = 0, spread is initialSpreadAngle
+        assertEquals(0, ar.getContinuousShots());
+        assertEquals(ar.getInitialSpreadAngle(), ar.getCurrentDynamicSpreadAngle(), 0.0001);
+
+        // 2. Shot 1 and Shot 2: First-shot accuracy (cực kỳ chuẩn xác)
+        assertTrue(ar.attack(100, 100, 0, pm, null));
+        assertEquals(1, ar.getContinuousShots());
+        assertEquals(ar.getInitialSpreadAngle(), ar.getCurrentDynamicSpreadAngle(), 0.0001);
+
+        ar.update(0.09); // Cooldown passes
+        assertTrue(ar.attack(100, 100, 0, pm, null));
+        assertEquals(2, ar.getContinuousShots());
+        assertEquals(ar.getInitialSpreadAngle(), ar.getCurrentDynamicSpreadAngle(), 0.0001);
+
+        // 3. Shots 3 to 10: Spread angle increases progressively
+        double previousSpread = ar.getCurrentDynamicSpreadAngle();
+        for (int i = 3; i <= 10; i++) {
+            ar.update(0.09);
+            assertTrue(ar.attack(100, 100, 0, pm, null));
+            double currentSpread = ar.getCurrentDynamicSpreadAngle();
+            assertTrue(currentSpread > previousSpread,
+                    String.format("Shot %d spread (%.4f) must be wider than previous (%.4f)", i, currentSpread, previousSpread));
+            previousSpread = currentSpread;
+        }
+
+        // 4. Shot 11+: Reaches max continuous spread
+        ar.update(0.09);
+        assertTrue(ar.attack(100, 100, 0, pm, null));
+        assertEquals(ar.getMaxContinuousSpreadAngle(), ar.getCurrentDynamicSpreadAngle(), 0.0001);
+
+        // 5. Cease firing (pause for 0.3s): Recoil recovers back to first-shot accuracy
+        ar.update(0.30);
+        assertEquals(0, ar.getContinuousShots(), "Continuous shots should reset after pausing fire");
+        assertEquals(ar.getInitialSpreadAngle(), ar.getCurrentDynamicSpreadAngle(), 0.0001,
+                "Accuracy should recover back to initial first-shot precision");
+    }
+
+    @Test
+    @DisplayName("Verify higher accuracy stars reduce both initial spread and max spray spread, and vice versa")
+    void testAssaultRifleStarAccuracyScaling() {
+        AssaultRifle ar = new AssaultRifle();
+
+        // Level 1 (1 Star Accuracy)
+        ar.setStars(1, 1, 1);
+        double init1Star = ar.getInitialSpreadAngle();
+        double max1Star = ar.getMaxContinuousSpreadAngle();
+        assertEquals(0.04 * 0.25, init1Star, 0.0001);
+        assertEquals(0.04 * 3.5, max1Star, 0.0001);
+
+        // 2 Stars Accuracy
+        ar.setStars(1, 1, 2);
+        double init2Star = ar.getInitialSpreadAngle();
+        double max2Star = ar.getMaxContinuousSpreadAngle();
+        assertTrue(init2Star < init1Star, "2-star initial spread must be lower than 1-star");
+        assertTrue(max2Star < max1Star, "2-star max spray spread must be lower than 1-star");
+
+        // 3 Stars Accuracy
+        ar.setStars(1, 1, 3);
+        double init3Star = ar.getInitialSpreadAngle();
+        double max3Star = ar.getMaxContinuousSpreadAngle();
+        assertTrue(init3Star < init2Star, "3-star initial spread must be lower than 2-star");
+        assertTrue(max3Star < max2Star, "3-star max spray spread must be lower than 2-star");
+
+        // 4 Stars Accuracy
+        ar.setStars(1, 1, 4);
+        double init4Star = ar.getInitialSpreadAngle();
+        double max4Star = ar.getMaxContinuousSpreadAngle();
+        assertTrue(init4Star < init3Star, "4-star initial spread must be lower than 3-star");
+        assertTrue(max4Star < max3Star, "4-star max spray spread must be lower than 3-star");
+
+        // Vice versa: Decreasing stars from 4 to 1 increases both initial and max spread
+        assertTrue(init1Star > init4Star, "1-star initial spread must be higher than 4-star");
+        assertTrue(max1Star > max4Star, "1-star max spray spread must be higher than 4-star");
+    }
+
+    @Test
+    @DisplayName("Verify weapon level display, short display names, and hotbar mappings for HUD")
+    void testWeaponHUDLevelDisplay() {
+        AssaultRifle ar = new AssaultRifle();
+        ar.configureLevel(1);
+        assertEquals(1, ar.getLevel());
+        assertEquals("I", ar.getLevelDisplay());
+        assertEquals("AR I", ar.getShortDisplayName());
+
+        ar.configureLevel(2);
+        assertEquals(2, ar.getLevel());
+        assertEquals("II", ar.getLevelDisplay());
+        assertEquals("AR II", ar.getShortDisplayName());
+
+        SMG smg = new SMG();
+        smg.configureLevel(3);
+        assertEquals(3, smg.getLevel());
+        assertEquals("III", smg.getLevelDisplay());
+        assertEquals("SMG III", smg.getShortDisplayName());
+
+        Shotgun sg = new Shotgun();
+        sg.configureLevel(4);
+        assertEquals(4, sg.getLevel());
+        assertEquals("IV", sg.getLevelDisplay());
+        assertEquals("Shotgun IV", sg.getShortDisplayName());
+
+        Pistol pistol = new Pistol();
+        assertEquals(1, pistol.getLevel());
+        assertEquals("Pistol I", pistol.getShortDisplayName());
+
+        CombatKnife knife = new CombatKnife();
+        assertEquals(1, knife.getLevel());
+        assertEquals("Combat Knife I", knife.getShortDisplayName());
+    }
+
+    @Test
+    @DisplayName("Verify WeaponManager renderHUD executes safely without exception across various weapon slots and ammo states")
+    void testWeaponHUDHotbarAndAmmoReserveRendering() {
+        WeaponManager wm = new WeaponManager();
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g2d = img.createGraphics();
+
+        assertDoesNotThrow(() -> {
+            wm.renderHUD(g2d, 1280, 720);
+        }, "renderHUD must execute cleanly with initial weapon setup");
+
+        // Equip primary AR
+        wm.equipWeapon(new AssaultRifle());
+        wm.selectSlot(1);
+        assertDoesNotThrow(() -> {
+            wm.renderHUD(g2d, 1280, 720);
+        }, "renderHUD must execute cleanly with equipped AR");
+
+        // Equip secondary Shotgun in Slot 2
+        wm.equipWeapon(new Shotgun());
+        assertDoesNotThrow(() -> {
+            wm.renderHUD(g2d, 1280, 720);
+        }, "renderHUD must execute cleanly with weapons in all slots");
+
+        g2d.dispose();
+    }
+
+    @Test
+    @DisplayName("Verify weapon reload countdown timer and reload progress calculation")
+    void testWeaponReloadCountdownTimerAndProgress() {
+        AssaultRifle ar = new AssaultRifle();
+        com.groupproject.game.entity.item.AmmoInventory inv = new com.groupproject.game.entity.item.AmmoInventory();
+        inv.addAmmo(com.groupproject.game.entity.item.AmmoType.AR, 100);
+        ar.bindAmmoInventory(inv);
+
+        // Bắn 1 viên để có thể reload
+        ar.attack(0, 0, 0, projectileManager, null);
+        assertEquals(29, ar.getCurrentAmmo());
+        assertFalse(ar.isReloading());
+        assertEquals(0.0, ar.getReloadProgress());
+        assertEquals(0.0, ar.getReloadTimer());
+
+        // Bắt đầu reload
+        ar.reload();
+        assertTrue(ar.isReloading());
+        assertTrue(ar.getReloadTimer() > 0.0, "Reload timer must be initialized to positive duration");
+        assertEquals(0.0, ar.getReloadProgress(), 0.01, "Progress at start is ~0%");
+
+        // Advance 50% thời gian reload
+        double halfTime = ar.getReloadTimer() / 2.0;
+        ar.update(halfTime);
+        assertTrue(ar.isReloading());
+        assertEquals(0.5, ar.getReloadProgress(), 0.05, "Progress at midpoint is ~50%");
+        assertTrue(ar.getReloadTimer() > 0.0);
+
+        // Advance tiếp hết thời gian reload
+        ar.update(halfTime + 0.05);
+        assertFalse(ar.isReloading(), "Reload must complete");
+        assertEquals(30, ar.getCurrentAmmo(), "Magazine must be full");
+        assertEquals(0.0, ar.getReloadTimer(), "Reload timer resets to 0 after completion");
+    }
 }

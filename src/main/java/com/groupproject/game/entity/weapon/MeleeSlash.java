@@ -121,4 +121,8 @@ public class MeleeSlash {
     public double getCenterY() {
         return centerY;
     }
+
+    public double getAngle() {
+        return angle;
+    }
 }

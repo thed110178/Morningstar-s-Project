@@ -22,7 +22,7 @@ public final class GameConfig {
     /**
      * Window title displayed on the operating system frame.
      */
-    public static final String GAME_TITLE = "Project DontKnown- An unplanned top-down roguelite shooter";
+    public static final String GAME_TITLE = "DontKnow - An unplanned top-down roguelite shooter";
 
     /**
      * Default horizontal resolution matching standard 16:9 HD viewport.

@@ -7,7 +7,7 @@
     <groupId>com.groupproject</groupId>
     <artifactId>soul-knight-pobg-shooter</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>Soul Knight &amp; POBG Top-Down Roguelite Shooter</name>
+    <name>DontKnow - Top-Down Roguelite Shooter</name>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

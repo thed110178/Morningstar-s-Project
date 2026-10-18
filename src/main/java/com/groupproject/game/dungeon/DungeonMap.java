@@ -125,18 +125,19 @@ public class DungeonMap {
 
     private int currentStage = 1;
 
-    // Kích thước phòng Bossfight cho Stage 3
+    // Kích thước phòng Bossfight cho Stage Boss (Stage 4)
+    public static final int BOSS_STAGE = 4;
     public static final int BOSS_ROOM_WIDTH = 28;
     public static final int BOSS_ROOM_HEIGHT = 18;
 
     /**
-     * Sinh bản đồ hầm ngục theo stage được chỉ định (1, 2: Standard Procedural Grid, 3: Grand Boss Arena).
+     * Sinh bản đồ hầm ngục theo stage được chỉ định (1, 2, 3: Standard Procedural Grid, 4: Grand Boss Arena).
      *
-     * @param stage Chỉ số stage trong Biome (1, 2, hoặc 3).
+     * @param stage Chỉ số stage trong Biome (1, 2, 3, hoặc 4).
      */
     public void generateStage(int stage) {
         this.currentStage = stage;
-        if (stage == 3) {
+        if (stage == BOSS_STAGE) {
             generateBossStage();
         } else {
             generateProceduralDungeon();
@@ -612,6 +613,38 @@ public class DungeonMap {
     }
 
     /**
+     * Determines whether a direct, unobstructed line-of-sight exists between two world points.
+     *
+     * <p>WHY: Enables tactical ranged AI entities to determine whether they can fire at the player
+     * without having bullets immediately absorbed by solid walls, doors, or destructible cover.
+     *
+     * @param x1 Origin world X coordinate.
+     * @param y1 Origin world Y coordinate.
+     * @param x2 Target world X coordinate.
+     * @param y2 Target world Y coordinate.
+     * @return True if no projectile-blocking tiles obstruct the ray; false otherwise.
+     */
+    public boolean hasLineOfSight(double x1, double y1, double x2, double y2) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double dist = Math.hypot(dx, dy);
+        if (dist <= 0.001) return true;
+
+        // Sample along ray with step size half a tile (16px) for fast, robust raymarching
+        double stepSize = GameConfig.TILE_SIZE / 2.0;
+        int steps = (int) Math.ceil(dist / stepSize);
+        for (int i = 1; i < steps; i++) {
+            double t = (double) i / steps;
+            double cx = x1 + dx * t;
+            double cy = y1 + dy * t;
+            if (isAreaBlockingProjectiles(cx - 2, cy - 2, 4, 4)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Renders visible tiles using Viewport Culling.
      */
     public void render(Graphics2D g, Camera camera) {
@@ -803,6 +836,7 @@ public class DungeonMap {
         int bossW = BOSS_ROOM_WIDTH;
         int bossH = BOSS_ROOM_HEIGHT;
         Room bossRoom = new Room(bossCol, bossRow, bossW, bossH, Room.RoomType.COMBAT, "Grand Boss Arena");
+        bossRoom.setTotalPhases(1);
         combatRooms.add(bossRoom);
         rooms.add(bossRoom);
         carveRoom(bossRoom);

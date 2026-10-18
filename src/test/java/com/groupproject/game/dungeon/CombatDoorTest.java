@@ -276,7 +276,7 @@ public class CombatDoorTest {
     @Test
     @DisplayName("Verify hostile combat targets never spawn inside solid cover, destructible crates, or walls")
     void testEnemySpawnNeverOverlapsCoverOrSolidTiles() {
-        for (int stage = 1; stage <= 3; stage++) {
+        for (int stage = 1; stage <= com.groupproject.game.state.PlayingState.MAX_STAGES; stage++) {
             com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
             com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
             state.setCurrentStage(stage);
@@ -346,12 +346,12 @@ public class CombatDoorTest {
     }
 
     @Test
-    @DisplayName("Verify Stage 3 spawns Titan Mecha Boss Dummy with 1000 HP and large size 64px")
-    void testStage3BossDummyPropertiesAndLifecycle() {
+    @DisplayName("Verify Boss Stage (Stage 4) spawns Titan Mecha Boss Dummy with 1000 HP and large size 64px")
+    void testBossStageBossDummyPropertiesAndLifecycle() {
         com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
         com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
-        state.setCurrentStage(3);
-        state.getDungeonMap().generateStage(3);
+        state.setCurrentStage(com.groupproject.game.state.PlayingState.BOSS_STAGE);
+        state.getDungeonMap().generateStage(com.groupproject.game.state.PlayingState.BOSS_STAGE);
 
         com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
         com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
@@ -366,13 +366,16 @@ public class CombatDoorTest {
 
         // Kiểm tra bossDummy được sinh ra
         TargetDummy boss = state.getBossDummy();
-        assertNotNull(boss, "Stage 3 Grand Boss Arena must spawn a designated Boss Dummy");
+        assertNotNull(boss, "Boss Stage Grand Boss Arena must spawn a designated Boss Dummy");
         assertTrue(boss.isBoss(), "Boss Dummy must have isBoss == true");
         assertEquals(1000, boss.getMaxHealth(), "Titan Boss Dummy must have 1000 Max HP");
         assertEquals(1000, boss.getCurrentHealth(), "Titan Boss Dummy must start with full 1000 HP");
         assertEquals(64.0, boss.getSize(), "Titan Boss Dummy must be 64px large");
         assertTrue(boss.getName().contains("TITAN MECHA DUMMY"), "Boss name should be Titan Mecha Dummy");
         assertTrue(boss.isAlive(), "Boss must start alive");
+
+        // Đợi Boss hoàn tất thời gian spawn telegraph (0.50s) để vật thể hóa hoàn toàn
+        state.update(0.60, keyH, mouseH);
 
         // Gây sát thương một phần cho Boss
         boss.takeDamage(250);
@@ -404,5 +407,97 @@ public class CombatDoorTest {
         boss.takeDamage(800);
         assertEquals(0, boss.getCurrentHealth());
         assertFalse(boss.isAlive());
+    }
+
+    @Test
+    @DisplayName("Verify multi-phase room progression: Phase 1 clear advances to Phase 2 while keeping lockdown, and final clear unlocks room")
+    void testMultiPhaseCombatRoomProgression() {
+        Room room = new Room(10, 10, 14, 10, Room.RoomType.COMBAT, "Multi-Phase Combat Test");
+        room.setTotalPhases(2);
+        room.setCurrentPhase(1);
+
+        assertEquals(2, room.getTotalPhases());
+        assertEquals(1, room.getCurrentPhase());
+        assertTrue(room.hasNextPhase(), "Room with 2 phases must have next phase at phase 1");
+
+        // Bắt đầu lockdown phòng khi người chơi bước vào
+        room.lockdown();
+        assertTrue(room.isLocked());
+        assertFalse(room.isCleared());
+
+        // Tiêu diệt hết quái phase 1 -> Chuyển sang phase 2 nhưng cửa VẪN KHÓA
+        room.advancePhase();
+        assertEquals(2, room.getCurrentPhase());
+        assertFalse(room.hasNextPhase(), "Room with 2 phases has no next phase at phase 2");
+        assertTrue(room.isLocked(), "Blast doors must remain sealed during transition to phase 2");
+        assertFalse(room.isCleared());
+
+        // Tiêu diệt hết quái phase 2 -> Mở khóa phòng thành công
+        room.unlock();
+        assertFalse(room.isLocked());
+        assertTrue(room.isCleared());
+
+        // Reset phòng -> Khôi phục về phase 1
+        room.reset();
+        assertEquals(1, room.getCurrentPhase());
+        assertFalse(room.isLocked());
+    }
+
+    @Test
+    @DisplayName("Verify end-to-end multi-phase room lifecycle in PlayingState: Phase 1 clear -> spawns Phase 2 with doors locked -> Phase 2 clear -> unlocks doors and drops chest")
+    void testPlayingStateMultiPhaseEncounterFullLifecycle() {
+        com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+        com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+        state.setCurrentStage(1);
+        state.getDungeonMap().generateStage(1);
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+
+        Room combat = state.getDungeonMap().getCombatRooms().get(0);
+        assertNotNull(combat);
+        // Cấu hình phòng 2 Phase để kiểm tra logic chuyển đợt
+        combat.setTotalPhases(2);
+        combat.setCurrentPhase(1);
+
+        // 1. Bước vào phòng: Kích hoạt lockdown và spawn quái Phase 1
+        state.setPlayerPosition(combat.getCenterWorldX() - 14, combat.getCenterWorldY() - 14);
+        state.update(0.016, keyH, mouseH);
+
+        assertTrue(combat.isLocked(), "Entering combat room must lock blast doors");
+        assertEquals(1, combat.getCurrentPhase(), "Initial combat phase must be 1");
+        assertFalse(state.getCombatTargets().isEmpty(), "Phase 1 enemies must spawn");
+
+        // Đợi quái Phase 1 hoàn tất thời gian spawn telegraph (0.40s) để vật thể hóa
+        state.update(0.45, keyH, mouseH);
+
+        // 2. Tiêu diệt toàn bộ quái Phase 1
+        for (TargetDummy enemy : state.getCombatTargets()) {
+            enemy.takeDamage(9999);
+        }
+
+        // Cập nhật frame để PlayingState phát hiện hết quái Phase 1 và kích hoạt Phase 2
+        state.update(0.016, keyH, mouseH);
+
+        assertEquals(2, combat.getCurrentPhase(), "Room must automatically advance to Phase 2");
+        assertTrue(combat.isLocked(), "Blast doors must remain locked during Phase 2 transition");
+        assertFalse(combat.isCleared(), "Room must NOT be marked cleared before Phase 2 is finished");
+        assertFalse(state.getCombatTargets().isEmpty(), "Phase 2 reinforcement enemies must spawn");
+
+        // Đợi quái viện binh Phase 2 hoàn tất thời gian spawn telegraph (0.40s) để vật thể hóa
+        state.update(0.45, keyH, mouseH);
+
+        // 3. Tiêu diệt toàn bộ quái Phase 2
+        for (TargetDummy enemy : state.getCombatTargets()) {
+            enemy.takeDamage(9999);
+        }
+
+        // Cập nhật frame để PlayingState phát hiện hết quái Phase 2 và mở khóa hoàn toàn
+        state.update(0.016, keyH, mouseH);
+
+        assertFalse(combat.isLocked(), "All phases cleared: Blast doors must unlock");
+        assertTrue(combat.isCleared(), "All phases cleared: Room must be marked cleared");
+        assertTrue(state.getCombatTargets().isEmpty(), "No combat targets remaining");
+        assertFalse(state.getWeaponChests().isEmpty(), "Weapon chest must spawn upon completing all phases");
     }
 }

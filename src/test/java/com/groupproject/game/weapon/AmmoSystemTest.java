@@ -282,4 +282,20 @@ public class AmmoSystemTest {
         assertEquals(ar.getMagazineSize(), ar.getCurrentAmmo());
         assertEquals(smg.getMagazineSize(), smg.getCurrentAmmo());
     }
+
+    @Test
+    @DisplayName("Verify AmmoType standard colors match AmmoPickup glow colors across all calibers")
+    void testAmmoTypeColorsAndGlowAlignment() {
+        assertEquals(new java.awt.Color(80, 220, 100), AmmoType.AR.getColor(), "AR ammo must be military green");
+        assertEquals(new java.awt.Color(0, 210, 255), AmmoType.SMG.getColor(), "SMG ammo must be cyan");
+        assertEquals(new java.awt.Color(255, 90, 70), AmmoType.SHOTGUN.getColor(), "Shotgun ammo must be fiery red-orange");
+
+        AmmoPickup pAR = new AmmoPickup(0, 0, AmmoType.AR, 30);
+        AmmoPickup pSMG = new AmmoPickup(0, 0, AmmoType.SMG, 35);
+        AmmoPickup pSG = new AmmoPickup(0, 0, AmmoType.SHOTGUN, 10);
+
+        assertEquals(AmmoType.AR.getColor(), pAR.getGlowColor());
+        assertEquals(AmmoType.SMG.getColor(), pSMG.getGlowColor());
+        assertEquals(AmmoType.SHOTGUN.getColor(), pSG.getGlowColor());
+    }
 }

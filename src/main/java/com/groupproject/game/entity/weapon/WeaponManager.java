@@ -4,6 +4,7 @@ import com.groupproject.game.core.Camera;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -208,78 +209,178 @@ public class WeaponManager {
     /**
      * Renders a dedicated tactical Weapon HUD at the bottom right corner of the screen.
      */
+    /**
+     * Renders a dedicated tactical Weapon & Equipment HUD at the bottom right corner of the screen.
+     * Cung cấp thông tin trực quan, gọn gàng và dễ hiểu:
+     * 1. Tên súng đang cầm kèm Cấp độ (Level).
+     * 2. Trạng thái đạn của vũ khí (băng / nạp đạn).
+     * 3. Hiển thị rõ số đạn của tất cả các loại trong người (AR, SMG, Shotgun).
+     * 4. Các vị trí nút trang bị [1] [2] [3] [4] làm nổi bật vũ khí đang cầm trên tay.
+     */
     public void renderHUD(Graphics2D g, int screenWidth, int screenHeight) {
         if (activeWeapon == null) return;
 
-        int hudW = 260;
-        int hudH = 80;
-        int hudX = screenWidth - hudW - 25;
-        int hudY = screenHeight - hudH - 25;
+        int hudW = 340;
+        int hudH = 132;
+        int hudX = screenWidth - hudW - 20;
+        int hudY = screenHeight - hudH - 20;
 
-        // Backdrop panel
-        g.setColor(new Color(15, 20, 30, 220));
-        g.fillRoundRect(hudX, hudY, hudW, hudH, 12, 12);
-        g.setColor(new Color(60, 80, 110));
-        g.drawRoundRect(hudX, hudY, hudW, hudH, 12, 12);
+        // 1. Container panel nền tối sci-fi bo góc
+        g.setColor(new Color(12, 16, 24, 230));
+        g.fillRoundRect(hudX, hudY, hudW, hudH, 10, 10);
+        g.setColor(new Color(50, 70, 95));
+        g.drawRoundRect(hudX, hudY, hudW, hudH, 10, 10);
 
-        // Weapon name & slot indicator
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
-        g.setColor(new Color(255, 200, 50));
-        g.drawString(String.format("[%d] %s", activeWeapon.getSlotIndex(), activeWeapon.getName().toUpperCase()),
-                hudX + 15, hudY + 28);
+        // 2. Dòng 1: Tên vũ khí đang cầm kèm CẤP ĐỘ (Level) (Yêu cầu 1)
+        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setColor(new Color(255, 205, 50)); // Màu vàng kim
+        String weaponTitle = String.format("[%d] %s   Lv.%d",
+                activeWeapon.getSlotIndex(),
+                activeWeapon.getName().toUpperCase(),
+                activeWeapon.getLevel());
+        g.drawString(weaponTitle, hudX + 14, hudY + 22);
 
-        // Ammunition display
-        g.setFont(new Font("SansSerif", Font.BOLD, 22));
+        // 3. Dòng 2: Hiển thị đạn băng / nạp đạn của vũ khí đang cầm
+        g.setFont(new Font("SansSerif", Font.BOLD, 20));
         if (activeWeapon.isMelee()) {
-            g.setColor(new Color(180, 220, 255));
-            g.drawString("∞ MELEE", hudX + 15, hudY + 60);
+            g.setColor(new Color(180, 225, 255));
+            g.drawString("∞ CẬN CHIẾN", hudX + 14, hudY + 48);
         } else if (activeWeapon.isReloading()) {
-            g.setColor(new Color(255, 120, 50));
-            g.drawString("RELOADING...", hudX + 15, hudY + 60);
+            g.setColor(new Color(255, 130, 40));
+            g.drawString("RELOADING...", hudX + 14, hudY + 48);
 
-            // Reload progress bar
-            int barW = 100;
-            int barH = 8;
-            int barX = hudX + 145;
-            int barY = hudY + 48;
-            g.setColor(new Color(40, 50, 65));
+            // Thanh tiến trình nạp đạn
+            int barW = 120;
+            int barH = 7;
+            int barX = hudX + 175;
+            int barY = hudY + 39;
+            g.setColor(new Color(35, 45, 60));
             g.fillRect(barX, barY, barW, barH);
             g.setColor(new Color(255, 140, 30));
             g.fillRect(barX, barY, (int) (barW * activeWeapon.getReloadProgress()), barH);
-            g.setColor(Color.WHITE);
+            g.setColor(new Color(200, 220, 240));
             g.drawRect(barX, barY, barW, barH);
         } else {
-            // Súng lục (Slot 3): Vô hạn đạn dự trữ -> Hiển thị "7 / ∞"
-            // Súng chính (AR, SMG, Shotgun): Hiển thị "Current / Reserve" (VD: "30 / 120  [AR]")
             if (activeWeapon.hasInfiniteAmmo()) {
                 g.setColor(activeWeapon.getCurrentAmmo() <= 2 ? new Color(255, 80, 80) : Color.WHITE);
-                g.drawString(String.format("%d / ∞", activeWeapon.getCurrentAmmo()), hudX + 15, hudY + 60);
+                g.drawString(String.format("%d / ∞", activeWeapon.getCurrentAmmo()), hudX + 14, hudY + 48);
             } else if (activeWeapon.getAmmoType() != null) {
-                int reserve = ammoInventory.getAmmo(activeWeapon.getAmmoType());
+                int reserve = ammoInventory != null ? ammoInventory.getAmmo(activeWeapon.getAmmoType()) : 0;
                 boolean isOutOfAmmo = (activeWeapon.getCurrentAmmo() <= 0 && reserve <= 0);
                 boolean isLowAmmo = (activeWeapon.getCurrentAmmo() <= 2 || reserve <= 5);
 
                 g.setColor(isOutOfAmmo ? new Color(255, 60, 60) : (isLowAmmo ? new Color(255, 150, 50) : Color.WHITE));
                 String ammoDisplay = isOutOfAmmo
                         ? "HẾT ĐẠN! [0 / 0]"
-                        : String.format("%d / %d  [%s]", activeWeapon.getCurrentAmmo(), reserve, activeWeapon.getAmmoType().name());
-                g.drawString(ammoDisplay, hudX + 15, hudY + 60);
+                        : String.format("%d / %d", activeWeapon.getCurrentAmmo(), reserve);
+                g.drawString(ammoDisplay, hudX + 14, hudY + 48);
+
+                // Loại đạn badge đồng bộ màu chuẩn với hộp đạn rơi bên ngoài
+                FontMetrics fm = g.getFontMetrics();
+                int ammoTextW = fm.stringWidth(ammoDisplay);
+                g.setFont(new Font("SansSerif", Font.BOLD, 12));
+                g.setColor(activeWeapon.getAmmoType().getColor());
+                g.drawString("[" + activeWeapon.getAmmoType().name() + "]", hudX + 14 + ammoTextW + 8, hudY + 47);
             } else {
                 g.setColor(activeWeapon.getCurrentAmmo() <= 2 ? new Color(255, 80, 80) : Color.WHITE);
                 g.drawString(String.format("%d / %d", activeWeapon.getCurrentAmmo(), activeWeapon.getMagazineSize()),
-                        hudX + 15, hudY + 60);
+                        hudX + 14, hudY + 48);
             }
         }
 
-        // Quick tip dynamically showing owned weapons
-        StringBuilder tip = new StringBuilder();
-        if (weaponSlots.containsKey(1)) tip.append(String.format("[1] %s | ", weaponSlots.get(1).getName()));
-        if (weaponSlots.containsKey(2)) tip.append(String.format("[2] %s | ", weaponSlots.get(2).getName()));
-        tip.append("[3] Pistol | [4] Knife | [Q] Swap | [R] Reload");
+        // 4. Dòng 3: Hiển thị kho đạn của tất cả các loại trong người đồng bộ màu với hộp đạn bên ngoài
+        int arReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) : 0;
+        int smgReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.SMG) : 0;
+        int sgReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) : 0;
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        g.setColor(new Color(140, 160, 185));
-        g.drawString(tip.toString(), hudX + 15, hudY + 75);
+        int arMax = com.groupproject.game.entity.item.AmmoType.AR.getMaxCapacity();
+        int smgMax = com.groupproject.game.entity.item.AmmoType.SMG.getMaxCapacity();
+        int sgMax = com.groupproject.game.entity.item.AmmoType.SHOTGUN.getMaxCapacity();
+
+        int ammoBarY = hudY + 62;
+        int ammoBadgeW = 100;
+        int ammoBadgeH = 18;
+        int ammoGap = 7;
+        int ammoStartX = hudX + 14;
+
+        renderAmmoPill(g, ammoStartX, ammoBarY, ammoBadgeW, ammoBadgeH, "AR", arReserve, arMax, com.groupproject.game.entity.item.AmmoType.AR.getColor());
+        renderAmmoPill(g, ammoStartX + ammoBadgeW + ammoGap, ammoBarY, ammoBadgeW, ammoBadgeH, "SMG", smgReserve, smgMax, com.groupproject.game.entity.item.AmmoType.SMG.getColor());
+        renderAmmoPill(g, ammoStartX + (ammoBadgeW + ammoGap) * 2, ammoBarY, ammoBadgeW, ammoBadgeH, "SG", sgReserve, sgMax, com.groupproject.game.entity.item.AmmoType.SHOTGUN.getColor());
+
+        // 5. Dòng 4: Các vị trí nút trang bị (Equipment Slots) [1] [2] [3] [4] (Yêu cầu 2)
+        int slotY = hudY + 92;
+        int chipW = 73;
+        int chipH = 28;
+        int chipGap = 7;
+        int chipStartX = hudX + 14;
+
+        for (int i = 1; i <= 4; i++) {
+            int cx = chipStartX + (i - 1) * (chipW + chipGap);
+            Weapon w = weaponSlots.get(i);
+            boolean isCur = (activeWeapon.getSlotIndex() == i);
+
+            // Nền chip
+            if (isCur) {
+                g.setColor(new Color(35, 75, 120, 240));
+                g.fillRoundRect(cx, slotY, chipW, chipH, 6, 6);
+                g.setColor(new Color(255, 215, 60)); // Viền vàng sáng cho slot đang chọn
+                g.drawRoundRect(cx, slotY, chipW, chipH, 6, 6);
+            } else {
+                g.setColor(new Color(20, 26, 36, 180));
+                g.fillRoundRect(cx, slotY, chipW, chipH, 6, 6);
+                g.setColor(new Color(45, 60, 80));
+                g.drawRoundRect(cx, slotY, chipW, chipH, 6, 6);
+            }
+
+            // Tên ngắn gọn trang bị
+            String keycap = "[" + i + "]";
+            String label;
+            if (w == null) {
+                label = "Trống";
+            } else if (w instanceof AssaultRifle) {
+                label = "AR " + w.getLevelDisplay();
+            } else if (w instanceof SMG) {
+                label = "SMG " + w.getLevelDisplay();
+            } else if (w instanceof Shotgun) {
+                label = "SG " + w.getLevelDisplay();
+            } else if (w instanceof Pistol) {
+                label = "Pistol";
+            } else if (w instanceof CombatKnife) {
+                label = "Dao";
+            } else {
+                label = w.getShortDisplayName();
+            }
+
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setColor(isCur ? new Color(255, 220, 80) : new Color(130, 150, 175));
+            g.drawString(keycap, cx + 5, slotY + 12);
+
+            g.setFont(new Font("SansSerif", isCur ? Font.BOLD : Font.PLAIN, 10));
+            g.setColor(isCur ? Color.WHITE : (w == null ? new Color(90, 105, 125) : new Color(185, 205, 230)));
+            g.drawString(label, cx + 5, slotY + 24);
+        }
+    }
+
+    /**
+     * Helper vẽ nhãn hiển thị số lượng đạn dự trữ cho từng loại đạn.
+     */
+    private void renderAmmoPill(Graphics2D g, int x, int y, int w, int h, String name, int current, int max, Color accentColor) {
+        g.setColor(new Color(18, 24, 34, 200));
+        g.fillRoundRect(x, y, w, h, 4, 4);
+        g.setColor(new Color(40, 55, 75));
+        g.drawRoundRect(x, y, w, h, 4, 4);
+
+        g.setColor(accentColor);
+        g.fillOval(x + 5, y + 5, 6, 6);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setColor(new Color(190, 205, 225));
+        g.drawString(name + ":", x + 15, y + 13);
+
+        boolean isZero = (current <= 0);
+        g.setColor(isZero ? new Color(255, 75, 75) : Color.WHITE);
+        String amountText = current + "/" + max;
+        g.drawString(amountText, x + 42, y + 13);
     }
 
     public Weapon getActiveWeapon() {

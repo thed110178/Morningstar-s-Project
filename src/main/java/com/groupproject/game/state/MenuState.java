@@ -126,7 +126,7 @@ public class MenuState extends GameState {
         // --- 2. Title & Glowing Subtitle ---
         g.setFont(titleFont);
         FontMetrics fmTitle = g.getFontMetrics();
-        String title = "Project DontKnow";
+        String title = "DontKnow";
         int titleX = (GameConfig.SCREEN_WIDTH - fmTitle.stringWidth(title)) / 2;
         int titleY = 180;
 

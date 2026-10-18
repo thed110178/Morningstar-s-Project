@@ -261,7 +261,7 @@ public class DungeonMapTest {
     }
 
     @Test
-    @DisplayName("Verify Stage 3 generates Grand Boss Arena layout and allows dynamic extract pad spawn")
+    @DisplayName("Verify Stages 1-3 generate procedural layout and Stage 4 generates Grand Boss Arena layout")
     void testStageProgressionAndBossStageLayout() {
         // Stage 1
         map.generateStage(1);
@@ -275,18 +275,24 @@ public class DungeonMapTest {
         assertTrue(map.getCombatRooms().size() >= 3 && map.getCombatRooms().size() <= 5);
         assertNotNull(map.getExtractRoom());
 
-        // Stage 3 - Bossfight Stage
+        // Stage 3 - Normal Stage
         map.generateStage(3);
         assertEquals(3, map.getCurrentStage());
-        assertNotNull(map.getSpawnRoom(), "Stage 3 must have a Spawn Room");
-        assertNotNull(map.getShopRoom(), "Stage 3 must have a Tactical Shop Room");
-        assertEquals(1, map.getCombatRooms().size(), "Stage 3 must have exactly 1 big combat room (Grand Arena)");
+        assertTrue(map.getCombatRooms().size() >= 3 && map.getCombatRooms().size() <= 5);
+        assertNotNull(map.getExtractRoom());
+
+        // Stage 4 - Bossfight Stage (BOSS_STAGE)
+        map.generateStage(DungeonMap.BOSS_STAGE);
+        assertEquals(DungeonMap.BOSS_STAGE, map.getCurrentStage());
+        assertNotNull(map.getSpawnRoom(), "Stage 4 must have a Spawn Room");
+        assertNotNull(map.getShopRoom(), "Stage 4 must have a Tactical Shop Room");
+        assertEquals(1, map.getCombatRooms().size(), "Stage 4 must have exactly 1 big combat room (Grand Arena)");
 
         Room bossRoom = map.getCombatRoom();
         assertNotNull(bossRoom, "Boss room must exist");
         assertEquals(DungeonMap.BOSS_ROOM_WIDTH, bossRoom.getWidthInTiles(), "Boss room width must match BOSS_ROOM_WIDTH");
         assertEquals(DungeonMap.BOSS_ROOM_HEIGHT, bossRoom.getHeightInTiles(), "Boss room height must match BOSS_ROOM_HEIGHT");
-        assertNull(map.getExtractRoom(), "Initial Stage 3 must not have a pre-existing separate extract room");
+        assertNull(map.getExtractRoom(), "Initial Stage 4 must not have a pre-existing separate extract room");
 
         // Center should not be extract pad before clearing
         double cx = bossRoom.getCenterWorldX();
@@ -304,8 +310,8 @@ public class DungeonMapTest {
     @Test
     @DisplayName("Verify reset() restores dungeon progression to Stage 1")
     void testResetRestoresStageOne() {
-        map.generateStage(3);
-        assertEquals(3, map.getCurrentStage());
+        map.generateStage(DungeonMap.BOSS_STAGE);
+        assertEquals(DungeonMap.BOSS_STAGE, map.getCurrentStage());
         assertEquals(1, map.getCombatRooms().size());
 
         map.reset();
@@ -346,7 +352,7 @@ public class DungeonMapTest {
     @Test
     @DisplayName("Verify no solid cover surrounds room doorways across multiple dungeon runs and stages")
     void testDoorwayClearanceAcrossMultipleStages() {
-        for (int stage = 1; stage <= 3; stage++) {
+        for (int stage = 1; stage <= DungeonMap.BOSS_STAGE; stage++) {
             map.generateStage(stage);
             for (Room room : map.getRooms()) {
                 if (room.getRoomType() == Room.RoomType.COMBAT) {

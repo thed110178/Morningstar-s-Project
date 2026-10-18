@@ -1,0 +1,40 @@
+====================================================================
+           DONTKNOW - TOP-DOWN ROGUELITE SHOOTER (JAVA 21)
+====================================================================
+
+1. CÁCH CHƠI NHANH:
+-------------------
+- Cách 1 (Khuyên dùng): Nhấp đúp chuột vào file "RunGame.bat" để chơi ngay lập tức.
+- Cách 2: Nhấp đúp trực tiếp vào file "DontKnow.jar".
+- Cách 3: Mở Command Prompt (cmd) hoặc PowerShell tại thư mục này và gõ:
+    java -jar DontKnow.jar
+
+* Yêu cầu hệ thống:
+  + Đối với bản Trọn gói (All-In-One có kèm thư mục "runtime"): KHÔNG CẦN CÀI ĐẶT BẤT CỨ THỨ GÌ! Máy tính trắng chưa từng cài Java vẫn bấm chơi được ngay.
+  + Đối với bản Siêu nhẹ (chỉ có file DontKnow.jar): Máy tính cần có Java 21 LTS trở lên.
+    Tải Java 21 tại: https://adoptium.net/temurin/releases/?version=21
+
+
+2. BẢNG PHÍM ĐIỀU KHIỂN (CONTROLS):
+------------------------------------
+- [W, A, S, D]       : Di chuyển nhân vật 8 hướng.
+- [Di chuột]         : Ngắm bắn 360 độ quanh nhân vật.
+- [Chuột trái]       : Bắn vũ khí đang cầm (nhấp phát một hoặc giữ để xả đạn).
+- [R]                : Nạp lại băng đạn (Reload magazine).
+- [1, 2, Q]          : Chọn slot vũ khí chính 1, slot 2 hoặc đổi nhanh 2 vũ khí.
+- [F]                : Tương tác nhặt đồ / Dùng hộp cứu thương / Mua đồ ở Shop.
+- [Tab] hoặc [B]     : Mở/Đóng Balo chiến thuật (Xem vũ khí và trữ lượng đạn).
+- [Space] (Phím cách): Lướt né đòn chiến thuật (Bất tử trong tích tắc).
+- [Esc]              : Tạm dừng / Quay về Menu.
+- [Enter] hoặc [R]   : Chơi lại từ đầu khi tử trận (Game Over).
+
+
+3. TÍNH NĂNG NỔI BẬT:
+---------------------
+- Lối chơi hành động Rogue-lite góc nhìn từ trên xuống (Tham chiếu cơ chế hầm ngục từ Soul Knight và góc ngắm 360 độ từ POBG).
+- 4 loại vũ khí: Súng lục (vô hạn đạn), Súng trường AR (150 viên), Tiểu liên SMG (180 viên), Shotgun (50 viên).
+- Cửa phòng chiến đấu tự động phong tỏa khi có quái và mở ra khi dọn sạch phòng.
+- AI quái cận chiến áp sát chém móng vuốt và lính súng lục biết lùi xe giữ cự ly bắn tỉa.
+- Boss khổng lồ Titan Mecha Dummy máu trâu ở Stage 3.
+- Cửa hàng Shop đổi bục tiếp tế ngẫu nhiên mỗi màn chơi.
+====================================================================

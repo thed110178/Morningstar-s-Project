@@ -1,12 +1,12 @@
 Cập nhật mới nhất vào ngày: 18/10/2026
 
-# Java Programming Project – Final Project Report & Documentation
+# Project DontKnow – Final Project Report & Documentation
 
 ## 1. Project Information
 
 | Information   | Description                                                                     |
 | ------------- | ------------------------------------------------------------------------------- |
-| Project Name  | **Soul Knight & POBG Shooter – Top-Down Roguelite Dungeon Crawler**            |
+| Project Name  | **DontKnow – Top-Down Roguelite Shooter**                                      |
 | Group         | Group Unknown (Team Morningstar)                                                |
 | Course        | Java Software Development (CS / IT)                                            |
 | Academic Year | 2026–2027                                                                       |
@@ -20,7 +20,7 @@ Cập nhật mới nhất vào ngày: 18/10/2026
 | *(Your ID)* | *(Your Name)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Dungeon Generation, Combat Locking Mechanics, State Pattern. |
 | *(Member 2)* | *(Member Name)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Ballistics Simulation, Recoil & Spread System, Ammo Reserve Management. |
 | *(Member 3)* | *(Member Name)* | **Player & Economy Systems**: Health & Healing System, Shop Pedestal Randomization, Floating Pickups, High-Tech Sci-Fi HUD. |
-| *(Member 4)* | *(Member Name)* | **Testing & QA Engineer**: Automated JUnit 5 Test Suite (71 unit tests), Benchmark Performance Profiling, Memory Optimization. |
+| *(Member 4)* | *(Member Name)* | **Testing & QA Engineer**: Automated JUnit 5 Test Suite (79 unit tests), Benchmark Performance Profiling, Memory Optimization. |
 
 ---
 
@@ -33,14 +33,14 @@ Developing a responsive, high-performance 2D game in pure Java without third-par
 3. **Procedural Consistency & Ballistics**: Generating balanced, non-overlapping dungeons and simulating realistic gunplay (spread, recoil, projectiles, bullet collisions) requires robust mathematical modeling and strict Object-Oriented design.
 
 ## 2.2. Motivation
-This project bridges the gap between theoretical software engineering principles (OOP, SOLID, Design Patterns) and high-performance interactive computing. By synthesizing the procedural room-clearing dungeon exploration of **Soul Knight** with the intense, tactical 360° ballistics of **POBG (PlayerOmmni's Battlegrounds)**, we prove that pure Java (Java 21 LTS + Swing/Graphics2D) can host a commercial-grade, smooth 60 FPS / 60 UPS gaming experience when engineered with rigorous architecture.
+This project bridges the gap between theoretical software engineering principles (OOP, SOLID, Design Patterns) and high-performance interactive computing. By engineering **DontKnow**—an original top-down roguelite shooter taking mechanical reference from the procedural room-clearing dungeon exploration of Soul Knight and the intense 360° tactical ballistics of POBG—we prove that pure Java (Java 21 LTS + Swing/Graphics2D) can host a commercial-grade, smooth 60 FPS / 60 UPS gaming experience when engineered with rigorous architecture.
 
 ## 2.3. Objectives
 * Build a **decoupled multi-threaded game engine** maintaining a solid 60 UPS (Updates Per Second) and 60 FPS (Frames Per Second) with minimal jitter.
 * Implement a **procedural room-based dungeon generator** that dynamically lays out Spawn, Combat, Shop, and Boss sectors connected via corridors with combat door lockout mechanics.
 * Design a comprehensive **tactical weapon and ballistics framework** supporting varied weapon classes (Pistol, AR, SMG, Shotgun), magazine reloads, spare ammo reserves, and physical projectile simulation.
 * Implement an intuitive **Player Health, Economy, and Inventory System** featuring a high-tech on-screen HUD, manual pickup interactions, shop supply pedestal rotation, and an in-game inventory backpack.
-* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**71/71 tests passing**).
+* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**79/79 tests passing**).
 
 ## 2.4. Scope
 
@@ -86,6 +86,9 @@ This project bridges the gap between theoretical software engineering principles
   * Shop supply pedestal dynamically randomizing between Ammo Resupply (+2 Stacks) and Nanite Medkit (+50 HP) per stage.
 * **Tactical Backpack / Inventory UI (`TAB`)**:
   * Semi-transparent dark glassmorphism modal showing active weapons, magazine status, reserve ammo caps, and current stage credits.
+* **Autonomous Tactical Enemy AI**:
+  * **Melee Cyber Swarmers**: Relentlessly pursue the operative using axis-sliding terrain collision, executing kinetic contact strikes (12 HP) with a 0.9s cooldown and visual claw slash feedback.
+  * **Rogue Pistol Scouts**: Practice tactical kiting (backpedaling when player $< 190\text{px}$, closing in when $> 360\text{px}$), checking optical line-of-sight and discharging 1 to 3 round pistol bursts at deliberate slow intervals (2.0s - 2.6s rest) with dodgeable red projectile tracers.
 
 ---
 
@@ -305,7 +308,7 @@ mvn exec:java
 ## Package and Run Standalone Executable Fat JAR
 ```bash
 mvn clean package
-java -jar target/soul-knight-pobg-shooter-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+java -jar release/DontKnow.jar
 ```
 
 ## Controls & Keybindings
@@ -338,7 +341,7 @@ Run the complete automated test suite via:
 mvn test
 ```
 
-## 11.3. Test Cases Summary (71 Tests – 100% Passing)
+## 11.3. Test Cases Summary (79 Tests – 100% Passing)
 
 | Test Suite Class | Tests Run | Failures | Errors | Coverage Focus |
 |---|---|---|---|---|
@@ -347,7 +350,8 @@ mvn test
 | [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 15 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed room types. |
 | [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 10 | 0 | 0 | AR/SMG/Shotgun reserve caps, reload ammo deduction from reserve, pickup stacking, infinite pistol ammo. |
 | [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | 7 | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap at 100, death trigger, manual `[F]` interaction, shop medkit purchase. |
-| **Total** | **71** | **0** | **0** | **100% BUILD SUCCESS** |
+| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 8 | 0 | 0 | Melee pursuit locomotion, contact strike cooldowns, tactical kiting backpedal, 1-3 round pistol burst fire, raycast line-of-sight. |
+| **Total** | **79** | **0** | **0** | **100% BUILD SUCCESS** |
 
 ---
 
@@ -408,13 +412,13 @@ Traditional student 2D game projects often rely on a single `javax.swing.Timer` 
 # 16. Limitations
 
 * Sound effects and background music are currently visual/textual feedback only (audio synthesizer can be integrated via `javax.sound.sampled`).
-* Enemy behavior in current build is focused on training dummy hostiles and large Titan Bosses; full line-of-sight chase AI and ranged shooting enemies are in active development.
+* Advanced multi-phase Boss attack behaviors (e.g. bullet hell projectile rings) are reserved for future major content expansions.
 
 ---
 
 # 17. Future Work
 
-* **Dynamic Enemy AI State Machine**: Implement `PATROL`, `CHASE`, `ATTACK`, and `STUN` states with A* or direct line-of-sight pathfinding.
+* **Advanced Boss Phases**: Expand Titan Mecha Boss with multi-directional bullet spreads and seismic slam waves.
 * **Audio Engine**: Integrate 8-bit / Sci-Fi sound effects using Java Sound API.
 * **Perk Upgrade System**: Implement a 3-Card Roguelite choice system upon defeating bosses or clearing sectors.
 * **Persistent Save/Load**: Implement JSON/Binary serialization to save player high scores, unlocked weapons, and game statistics.
@@ -435,7 +439,7 @@ Traditional student 2D game projects often rely on a single `javax.swing.Timer` 
 
 Final report document for academic submission:
 ```text
-Report/GroupXX_SoulKnightPOBG_Report.docx
+Report/GroupXX_DontKnow_Report.docx
 ```
 *Checked using Compilatio (Similarity $\le 20\%$).*
 
@@ -447,7 +451,7 @@ Report/GroupXX_SoulKnightPOBG_Report.docx
 * [x] Project runs successfully (`mvn exec:java` and executable JAR).
 * [x] Complete source code included in `src/main/java`.
 * [x] README is completed and formatted according to the course rubric.
-* [x] Automated test suite completed (71/71 tests passing in `mvn test`).
+* [x] Automated test suite completed (79/79 tests passing in `mvn test`).
 * [x] Experimental evaluation and telemetry results included.
 * [x] Novelty and technical contributions clearly identified.
 * [x] All group members understand the architecture and codebase.

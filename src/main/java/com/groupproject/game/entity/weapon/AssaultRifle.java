@@ -27,14 +27,94 @@ public class AssaultRifle extends Weapon {
     private static final double BULLET_LIFETIME = 1.2;    // Đạn bay xa tới 984 px
     private static final double SPREAD_ANGLE = 0.04;      // Độ giật rung ngẫu nhiên (+- 2.3 độ)
 
+    public static final double INITIAL_SPREAD_RATIO = 0.25; // Viên đầu lệch rất nhỏ (1/4 độ lệch cơ sở)
+    public static final double MAX_SPREAD_RATIO = 3.5;       // Khi sấy liên thanh tản rộng tới 3.5x
+
+    // Cơ chế tản đạn liên thanh và hồi phục độ chính xác
+    private int continuousShots = 0;
+    private double timeSinceLastShot = 999.0;
+
     public AssaultRifle() {
-        super("Assault Rifle (AR)", 1, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
+        this(1);
+    }
+
+    public AssaultRifle(int slotIndex) {
+        super("Assault Rifle (AR)", slotIndex, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
         this.ammoType = com.groupproject.game.entity.item.AmmoType.AR;
     }
 
     @Override
     public boolean isAutomatic() {
         return true; // Giữ chuột trái để xả đạn liên tục
+    }
+
+    /**
+     * Độ lệch góc của phát bắn đầu tiên (First-shot accuracy).
+     * Số sao accuracyStars càng cao thì độ lệch viên đầu càng nhỏ, và ngược lại.
+     */
+    public double getInitialSpreadAngle() {
+        return currentSpreadAngle * INITIAL_SPREAD_RATIO;
+    }
+
+    /**
+     * Độ lệch góc tối đa khi duy trì sấy liên thanh (Full-auto spray bloom ceiling).
+     * Số sao accuracyStars càng cao thì độ lệch tối đa càng gom chặt, và ngược lại.
+     */
+    public double getMaxContinuousSpreadAngle() {
+        return currentSpreadAngle * MAX_SPREAD_RATIO;
+    }
+
+    /**
+     * Số phát đạn đã xả liên tiếp trong loạt sấy hiện tại.
+     */
+    public int getContinuousShots() {
+        return continuousShots;
+    }
+
+    /**
+     * Reset số đạn liên thanh về 0 (hồi phục hoàn toàn độ chính xác).
+     */
+    public void resetRecoil() {
+        this.continuousShots = 0;
+        this.timeSinceLastShot = 999.0;
+    }
+
+    /**
+     * Tính toán độ tản đạn thực tế của phát bắn tiếp theo:
+     * - 2 phát bắn đầu tiên: Giữ nguyên độ chính xác cao nhất (First-shot accuracy).
+     * - Từ phát thứ 3 đến phát thứ 10: Độ tản đạn tăng dần đều theo thời gian duy trì liên thanh.
+     * - Từ phát thứ 10 trở đi: Đạt ngưỡng tản đạn tối đa của khẩu súng.
+     */
+    public double getCurrentDynamicSpreadAngle() {
+        double minSpread = getInitialSpreadAngle();
+        double maxSpread = getMaxContinuousSpreadAngle();
+        if (continuousShots <= 2) {
+            return minSpread;
+        }
+        double bloomProgress = Math.min(1.0, (continuousShots - 2) / 8.0);
+        return minSpread + (maxSpread - minSpread) * bloomProgress;
+    }
+
+    @Override
+    public void update(double deltaTime) {
+        super.update(deltaTime);
+
+        timeSinceLastShot += deltaTime;
+        // Khi người chơi ngừng bắn quá 1.5 nhịp đạn (~0.13s), độ lệch liên thanh hồi phục nhanh về trạng thái viên đầu
+        if (timeSinceLastShot > fireRateCooldown * 1.5) {
+            if (continuousShots > 0) {
+                continuousShots = Math.max(0, continuousShots - (int) Math.ceil(deltaTime * 35.0));
+            }
+            if (timeSinceLastShot > 0.28) {
+                continuousShots = 0;
+            }
+        }
+    }
+
+    @Override
+    public void reload() {
+        super.reload();
+        continuousShots = 0;
     }
 
     @Override
@@ -48,9 +128,14 @@ public class AssaultRifle extends Weapon {
             return false;
         }
 
-        // Tạo độ tản xạ góc nhỏ ngẫu nhiên cho cơ chế sấy đạn chân thực (giảm dần khi accuracyStars tăng)
-        double jitter = currentSpreadAngle > 0.0001
-                ? ThreadLocalRandom.current().nextDouble(-currentSpreadAngle, currentSpreadAngle)
+        // Tăng số đạn liên tiếp và cập nhật thời gian phát bắn
+        continuousShots++;
+        timeSinceLastShot = 0.0;
+
+        // Tạo độ tản xạ động: chuẩn xác ở các viên đầu, tăng dần khi sấy liên thanh
+        double dynamicSpread = getCurrentDynamicSpreadAngle();
+        double jitter = dynamicSpread > 0.0001
+                ? ThreadLocalRandom.current().nextDouble(-dynamicSpread, dynamicSpread)
                 : 0.0;
         double firedAngle = aimAngle + jitter;
 
