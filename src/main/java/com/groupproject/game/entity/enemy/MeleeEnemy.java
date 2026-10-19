@@ -57,7 +57,7 @@ public class MeleeEnemy extends TargetDummy {
      * @param attackCooldown Cooldown in seconds between successive strikes.
      */
     public MeleeEnemy(double x, double y, int maxHealth, double speed, int meleeDamage, double attackCooldown) {
-        this(x, y, maxHealth, speed, meleeDamage, attackCooldown, "Cyber Swarmer [Melee]");
+        this(x, y, maxHealth, speed, meleeDamage, attackCooldown, "Mercenary Raider [Melee]");
     }
 
     /**
@@ -287,53 +287,66 @@ public class MeleeEnemy extends TargetDummy {
         int screenCY = camera.worldToScreenY(y);
         int half = (int) (size / 2.0);
 
-        // 1. Drop shadow
+        // 1. Bóng đổ trên mặt đất
         g.setColor(new Color(0, 0, 0, 95));
         g.fillOval(screenCX - half, screenCY + half - 5, (int) size, 10);
 
-        // 2. Chassis body (Aggressive spiky cyber-swarmer)
+        // 2. Thân người mặc áo giáp tác chiến dã chiến (Tactical Plate Carrier)
+        Color vestColor;
         if (critFlashTimer > 0) {
-            g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi dính đòn chí mạng
+            vestColor = new Color(255, 45, 45); // Chớp đỏ rực khi dính đòn chí mạng
         } else if (hitFlashTimer > 0) {
-            g.setColor(Color.WHITE);
+            vestColor = Color.WHITE;
         } else {
-            g.setColor(new Color(190, 35, 45)); // Crimson chassis
+            vestColor = new Color(52, 60, 54); // Xanh rêu xám quân sự dã chiến
         }
-        g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-        if (critFlashTimer > 0) {
-            g.setColor(new Color(255, 130, 130));
-            g.setStroke(new BasicStroke(2.0f));
-            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-            g.setStroke(new BasicStroke(1.0f));
-        } else {
-            g.setColor(new Color(255, 90, 90));
-            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-        }
+        g.setColor(vestColor);
+        g.fillRoundRect(screenCX - half + 2, screenCY - half + 2, (int) size - 4, (int) size - 4, 8, 8);
+        g.setColor(new Color(35, 42, 38));
+        g.drawRoundRect(screenCX - half + 2, screenCY - half + 2, (int) size - 4, (int) size - 4, 8, 8);
 
-        // 3. Forward kinetic mandibles / blades pointing along facingAngle
+        // 3. Mũ sắt tác chiến chống đạn (Combat Helmet) bo tròn trên đầu
+        int helmetR = 9;
+        g.setColor(critFlashTimer > 0 ? new Color(255, 80, 80) : new Color(68, 78, 65));
+        g.fillOval(screenCX - helmetR, screenCY - helmetR, helmetR * 2, helmetR * 2);
+        g.setColor(new Color(40, 48, 42));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawOval(screenCX - helmetR, screenCY - helmetR, helmetR * 2, helmetR * 2);
+        g.setStroke(new BasicStroke(1.0f));
+
+        // Kính bảo hộ tác chiến dã chiến (Tactical Goggles) xoay theo hướng nhìn
+        int eyeDist = 6;
+        int gogX = (int) (screenCX + Math.cos(facingAngle) * eyeDist);
+        int gogY = (int) (screenCY + Math.sin(facingAngle) * eyeDist);
+        g.setColor(new Color(240, 185, 45)); // Kính màu vàng hổ phách quân sự
+        g.fillOval(gogX - 3, gogY - 3, 6, 6);
+
+        // 4. Tay cầm dao găm chiến thuật Ka-Bar hướng về phía trước
+        int knifeHandDist = half + 4;
+        int hx = (int) (screenCX + Math.cos(facingAngle + 0.35) * knifeHandDist);
+        int hy = (int) (screenCY + Math.sin(facingAngle + 0.35) * knifeHandDist);
+        // Bàn tay đeo găng tác chiến màu đen
+        g.setColor(new Color(30, 32, 30));
+        g.fillOval(hx - 3, hy - 3, 6, 6);
+
+        // Lưỡi dao găm thép Ka-Bar sáng bóng
         int bladeLen = 14;
-        int bx1 = (int) (screenCX + Math.cos(facingAngle - 0.4) * (half + bladeLen));
-        int by1 = (int) (screenCY + Math.sin(facingAngle - 0.4) * (half + bladeLen));
-        int bx2 = (int) (screenCX + Math.cos(facingAngle + 0.4) * (half + bladeLen));
-        int by2 = (int) (screenCY + Math.sin(facingAngle + 0.4) * (half + bladeLen));
-
+        int tipX = (int) (hx + Math.cos(facingAngle) * bladeLen);
+        int tipY = (int) (hy + Math.sin(facingAngle) * bladeLen);
         Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(2.5f));
-        g.setColor(critFlashTimer > 0 ? new Color(255, 60, 60) : (hitFlashTimer > 0 ? Color.WHITE : new Color(255, 180, 50)));
-        g.drawLine(screenCX, screenCY, bx1, by1);
-        g.drawLine(screenCX, screenCY, bx2, by2);
+        g.setStroke(new BasicStroke(2.2f));
+        g.setColor(critFlashTimer > 0 ? new Color(255, 60, 60) : (hitFlashTimer > 0 ? Color.WHITE : new Color(225, 230, 235)));
+        g.drawLine(hx, hy, tipX, tipY);
+        // Sống dao & chuôi dao
+        g.setColor(new Color(40, 42, 45));
+        g.setStroke(new BasicStroke(3.0f));
+        g.drawLine(hx, hy, (int) (hx + Math.cos(facingAngle) * 4), (int) (hy + Math.sin(facingAngle) * 4));
         g.setStroke(oldStroke);
 
-        // 4. Predatory glowing amber optic sensor
-        g.setColor(new Color(255, 220, 40));
-        int eyeX = (int) (screenCX + Math.cos(facingAngle) * 4);
-        int eyeY = (int) (screenCY + Math.sin(facingAngle) * 4);
-        g.fillOval(eyeX - 4, eyeY - 4, 8, 8);
-
-        // 5. Kinetic claw slash arc effect when active strike occurs
+        // 5. Vết vung dao găm chém hình vòng cung khi tấn công
         if (attackAnimTimer > 0) {
-            g.setStroke(new BasicStroke(3.0f));
-            g.setColor(new Color(255, 60, 60, 220));
+            g.setStroke(new BasicStroke(2.8f));
+            g.setColor(new Color(255, 230, 140, 220)); // Ánh chém thép bạc pha vàng
             int arcRadius = (int) (half + 16);
             int startAngle = (int) Math.toDegrees(-facingAngle) - 45;
             g.drawArc(screenCX - arcRadius, screenCY - arcRadius, arcRadius * 2, arcRadius * 2, startAngle, 90);

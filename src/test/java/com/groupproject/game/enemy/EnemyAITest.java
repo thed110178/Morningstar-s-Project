@@ -269,24 +269,24 @@ class EnemyAITest {
     @Test
     @DisplayName("Verify MeleeEnemy custom constructor and getters")
     void testMeleeEnemyCustomConstructorAndGetters() {
-        MeleeEnemy melee = new MeleeEnemy(150, 150, 65, 133.0, 14, 0.85, "Cyber Swarmer MK-2 [Melee]");
+        MeleeEnemy melee = new MeleeEnemy(150, 150, 65, 133.0, 14, 0.85, "Mercenary Raider MK-2 [Melee]");
         assertEquals(65, melee.getMaxHealth());
         assertEquals(133.0, melee.getSpeed(), 0.001);
         assertEquals(14, melee.getMeleeDamage());
         assertEquals(0.85, melee.getAttackCooldown(), 0.001);
-        assertEquals("Cyber Swarmer MK-2 [Melee]", melee.getName());
+        assertEquals("Mercenary Raider MK-2 [Melee]", melee.getName());
     }
 
     @Test
     @DisplayName("Verify RangedPistolEnemy custom constructor and getters")
     void testRangedEnemyCustomConstructorAndGetters() {
-        RangedPistolEnemy ranged = new RangedPistolEnemy(200, 200, 57, 111.0, 11, 190.0, 360.0, "Rogue Scout MK-2 [Pistol]");
+        RangedPistolEnemy ranged = new RangedPistolEnemy(200, 200, 57, 111.0, 11, 190.0, 360.0, "Recon Scout MK-2 [Pistol]");
         assertEquals(57, ranged.getMaxHealth());
         assertEquals(111.0, ranged.getSpeed(), 0.001);
         assertEquals(11, ranged.getBulletDamage());
         assertEquals(190.0, ranged.getMinRange(), 0.001);
         assertEquals(360.0, ranged.getMaxRange(), 0.001);
-        assertEquals("Rogue Scout MK-2 [Pistol]", ranged.getName());
+        assertEquals("Recon Scout MK-2 [Pistol]", ranged.getName());
     }
 
     @Test
@@ -318,12 +318,12 @@ class EnemyAITest {
         assertEquals(125.0, melee1.getSpeed(), 0.001);
         assertEquals(12, melee1.getMeleeDamage());
         assertEquals(0.90, melee1.getAttackCooldown(), 0.001);
-        assertEquals("Cyber Swarmer [Melee]", melee1.getName());
+        assertEquals("Mercenary Raider [Melee]", melee1.getName());
 
         assertEquals(45, ranged1.getMaxHealth(), "Stage 1 Ranged HP must be 45");
         assertEquals(105.0, ranged1.getSpeed(), 0.001);
         assertEquals(10, ranged1.getBulletDamage());
-        assertEquals("Rogue Scout [Pistol]", ranged1.getName());
+        assertEquals("Recon Scout [Pistol]", ranged1.getName());
 
         // 2. Stage 2: MK-2 Buff (+15 HP melee, +12 HP ranged, +8 speed melee, +6 speed ranged, +2 dmg melee, +1 dmg ranged)
         PlayingState state2 = new PlayingState(gsm);
@@ -347,12 +347,12 @@ class EnemyAITest {
         assertEquals(133.0, melee2.getSpeed(), 0.001, "Stage 2 Melee speed must be buffed to 133");
         assertEquals(14, melee2.getMeleeDamage(), "Stage 2 Melee damage must be buffed to 14");
         assertEquals(0.85, melee2.getAttackCooldown(), 0.001, "Stage 2 Melee cooldown must reduce to 0.85s");
-        assertEquals("Cyber Swarmer MK-2 [Melee]", melee2.getName());
+        assertEquals("Mercenary Raider MK-2 [Melee]", melee2.getName());
 
         assertEquals(57, ranged2.getMaxHealth(), "Stage 2 Ranged HP must be buffed to 57");
         assertEquals(111.0, ranged2.getSpeed(), 0.001, "Stage 2 Ranged speed must be buffed to 111");
         assertEquals(11, ranged2.getBulletDamage(), "Stage 2 Ranged damage must be buffed to 11");
-        assertEquals("Rogue Scout MK-2 [Pistol]", ranged2.getName());
+        assertEquals("Recon Scout MK-2 [Pistol]", ranged2.getName());
 
         // 3. Stage 3: MK-3 Buff on minions
         PlayingState state3 = new PlayingState(gsm);
@@ -376,12 +376,12 @@ class EnemyAITest {
         assertEquals(141.0, melee3.getSpeed(), 0.001, "Stage 3 Melee speed must be buffed to 141");
         assertEquals(16, melee3.getMeleeDamage(), "Stage 3 Melee damage must be buffed to 16");
         assertEquals(0.80, melee3.getAttackCooldown(), 0.001, "Stage 3 Melee cooldown must reduce to 0.80s");
-        assertEquals("Cyber Swarmer MK-3 [Melee]", melee3.getName());
+        assertEquals("Mercenary Raider MK-3 [Melee]", melee3.getName());
 
         assertTrue(ranged3.getMaxHealth() >= 69, "Stage 3 minion ranged must be buffed (>= 69 HP)");
         assertEquals(117.0, ranged3.getSpeed(), 0.001, "Stage 3 Ranged speed must be buffed to 117");
         assertEquals(12, ranged3.getBulletDamage(), "Stage 3 Ranged damage must be buffed to 12");
-        assertEquals("Rogue Scout MK-3 [Pistol]", ranged3.getName());
+        assertEquals("Recon Scout MK-3 [Pistol]", ranged3.getName());
     }
 
     @Test
@@ -918,7 +918,7 @@ class EnemyAITest {
         assertEquals(1250, tank.getCurrentHealth(), "BossTank default Current HP must be 1250 HP");
         assertEquals(96.0, tank.getSize(), "BossTank default hitbox size must be enlarged to 96.0px");
         assertTrue(tank.isBoss(), "BossTank must have isBoss == true");
-        assertTrue(tank.getName().contains("TITAN MECHA"), "BossTank display name must contain TITAN MECHA");
+        assertTrue(tank.getName().contains("HEAVY COMBAT BATTLE TANK"), "BossTank display name must contain HEAVY COMBAT BATTLE TANK");
     }
 
     @Test

@@ -46,11 +46,14 @@ public class DungeonMapTest {
         assertNotNull(map.getShopRoom(), "Shop Room must be instantiated");
         assertEquals(Room.RoomType.SHOP, map.getShopRoom().getRoomType());
 
+        assertNotNull(map.getResetStatRoom(), "Reset Stat Room must be instantiated");
+        assertEquals(Room.RoomType.RESET_STAT, map.getResetStatRoom().getRoomType());
+
         int combatCount = map.getCombatRooms().size();
         assertTrue(combatCount >= 3 && combatCount <= 5,
                 "Procedural dungeon must generate between 3 and 5 combat rooms, got: " + combatCount);
-        assertEquals(combatCount + 3, map.getRooms().size(),
-                "Total rooms must match combat rooms plus spawn, extract, and shop");
+        assertEquals(combatCount + 4, map.getRooms().size(),
+                "Total rooms must match combat rooms plus spawn, extract, shop, and reset stat room");
     }
 
     @Test
@@ -174,9 +177,10 @@ public class DungeonMapTest {
             assertTrue(combatCount >= 3 && combatCount <= 5,
                     "Run " + run + " must generate 3 to 5 combat chambers, got: " + combatCount);
 
-            assertEquals(combatCount + 3, map.getRooms().size(),
-                    "Total room count must equal combat rooms + 3 (Spawn, Extract, and Shop)");
+            assertEquals(combatCount + 4, map.getRooms().size(),
+                    "Total room count must equal combat rooms + 4 (Spawn, Extract, Shop, and Reset Stat)");
             assertNotNull(map.getShopRoom(), "Shop room must be present in every run");
+            assertNotNull(map.getResetStatRoom(), "Reset stat room must be present in every run");
 
             for (Room r : map.getRooms()) {
                 assertTrue(r.getGridX() >= 0 && r.getGridX() + r.getWidthInTiles() <= DungeonMap.COLS,

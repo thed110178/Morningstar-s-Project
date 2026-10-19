@@ -557,4 +557,78 @@ public abstract class Weapon {
             return new Shotgun();
         }
     }
+
+    /**
+     * Kết quả chi tiết sau khi thực hiện hiệu chỉnh / tái phân bổ chỉ số tại Xưởng Quân Khí Dã Chiến.
+     * Cấp độ súng (Level) được bảo toàn tuyệt đối; các sao nâng cấp được tái phân bổ ngẫu nhiên giữa 3 nhánh
+     * (Sát thương, Tốc bắn, Chính xác) và tỉ lệ chí mạng được gieo lại ngẫu nhiên.
+     */
+    public record ReforgeResult(
+            int level,
+            int oldDmgStars, int newDmgStars,
+            int oldFrStars, int newFrStars,
+            int oldAccStars, int newAccStars,
+            int oldCritPercent, int newCritPercent
+    ) {
+        public int oldLevel() {
+            return level;
+        }
+
+        public int newLevel() {
+            return level;
+        }
+
+        public boolean isCritImproved() {
+            return newCritPercent > oldCritPercent;
+        }
+    }
+
+    /**
+     * Hiệu chỉnh / Tùy biến khí tài (Gunsmith Recalibration / Rearrange Stats) tại Xưởng Quân Khí Dã Chiến:
+     * <ul>
+     * <li>Bảo toàn cấp độ: Cấp độ súng ({@code this.level}) và số lần nâng cấp ({@code upgradeCount}) được giữ nguyên vẹn.</li>
+     * <li>Tái phân bổ sao: Toàn bộ số sao thặng dư {@code (damageStars - 1) + (fireRateStars - 1) + (accuracyStars - 1)}
+     *     được gieo phân bổ lại ngẫu nhiên vào 3 thông số chính (Sát thương, Tốc bắn, Chính xác).</li>
+     * <li>Roll lại chí mạng: Gieo lại độc lập tỉ lệ chí mạng trong khoảng [5%, 50%] theo chuẩn vũ khí dã chiến.</li>
+     * <li>Tái tính toán chỉ số: Cập nhật lại sát thương, thời gian trễ bắn và góc tản đạn tương ứng với cấu hình sao mới.</li>
+     * </ul>
+     *
+     * @return Bản ghi chi tiết kết quả tái phân bổ sao và tỉ lệ chí mạng mới.
+     */
+    public ReforgeResult reforgeStats() {
+        int currentLevel = this.level;
+        int oldDmg = this.damageStars;
+        int oldFr = this.fireRateStars;
+        int oldAcc = this.accuracyStars;
+        int oldCrit = getCritChancePercent();
+
+        // 1. Tính toán tổng số sao thặng dư cần tái phân bổ (Rearrange)
+        // Mỗi nhánh có 1 sao cơ sở, số sao thặng dư chính bằng tổng sao hiện có trừ đi 3 sao cơ sở
+        int totalExtraStars = (oldDmg - 1) + (oldFr - 1) + (oldAcc - 1);
+
+        // Đưa 3 chỉ số về mức cơ sở 1 sao
+        this.damageStars = 1;
+        this.fireRateStars = 1;
+        this.accuracyStars = 1;
+
+        // Tái phân bổ ngẫu nhiên lại toàn bộ số sao thặng dư vào 3 chỉ số chính
+        for (int i = 0; i < totalExtraStars; i++) {
+            addRandomStar();
+        }
+
+        // Cập nhật lại các thông số sát thương, tốc độ bắn RPM và độ chụm đạn dựa trên số sao mới
+        recalculateStatsFromStars();
+
+        // 2. Gieo lại ngẫu nhiên tỉ lệ chí mạng mới trong dải [5%, 50%]
+        double newCritChance = rollRandomCritChance();
+        setCritChance(newCritChance);
+
+        return new ReforgeResult(
+                currentLevel,
+                oldDmg, this.damageStars,
+                oldFr, this.fireRateStars,
+                oldAcc, this.accuracyStars,
+                oldCrit, getCritChancePercent()
+        );
+    }
 }

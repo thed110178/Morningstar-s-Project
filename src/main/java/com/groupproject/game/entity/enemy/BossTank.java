@@ -87,7 +87,7 @@ public class BossTank extends TargetDummy {
     }
 
     public BossTank(double x, double y) {
-        this(x, y, 1250, 96.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        this(x, y, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
     }
 
     public TankState getState() {
@@ -262,6 +262,13 @@ public class BossTank extends TargetDummy {
     private void chooseNextAction(double distToPlayer) {
         int roll = ThreadLocalRandom.current().nextInt(100);
 
+        // Nếu vừa mới thực hiện đòn đâm trước đó: BẮT BUỘC dùng súng máy để tránh spam đâm liên tục
+        if (lastAttackWasRam) {
+            triggerMachineGunBurst();
+            lastAttackWasRam = false;
+            return;
+        }
+
         // Khi HP < 50%, tháp pháo chính thức tỉnh: có 45% cơ hội dùng Chiêu 3 (Đại pháo nổ)
         if (isCannonAwakened() && roll < 45) {
             state = TankState.CANNON_AIMING;
@@ -269,13 +276,6 @@ public class BossTank extends TargetDummy {
             cannonLaserAngle = cannonAngle;
             laserTargetWorldX = x;
             laserTargetWorldY = y;
-            lastAttackWasRam = false;
-            return;
-        }
-
-        // Nếu vừa mới thực hiện đòn đâm trước đó: BẮT BUỘC dùng súng máy để tránh spam đâm liên tục
-        if (lastAttackWasRam) {
-            triggerMachineGunBurst();
             lastAttackWasRam = false;
             return;
         }
@@ -902,8 +902,8 @@ public class BossTank extends TargetDummy {
         g.setFont(new Font("SansSerif", Font.BOLD, 10));
         FontMetrics fm = g.getFontMetrics();
         String title = isCannonAwakened()
-                ? "☠ TITAN BATTLE TANK [ĐẠI PHÁO KÍCH HOẠT] ☠"
-                : "★ TITAN BATTLE TANK [PHASE 1] ★";
+                ? "☠ HEAVY COMBAT BATTLE TANK [ĐẠI PHÁO KÍCH HOẠT] ☠"
+                : "★ HEAVY COMBAT BATTLE TANK [PHASE 1] ★";
         int textW = fm.stringWidth(title);
         g.setColor(isCannonAwakened() ? new Color(255, 80, 60) : new Color(255, 215, 80));
         g.drawString(title, screenCX - textW / 2, barY - 5);

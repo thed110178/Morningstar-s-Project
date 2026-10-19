@@ -50,14 +50,25 @@ public enum TileType {
     DOOR_SHOP(false, new Color(255, 215, 60), "Shop Gateway (Always Open)"),
 
     /**
+     * Cổng vào Xưởng Quân Khí Dã Chiến (Field Gunsmith Workshop).
+     * Luôn mở và sở hữu dải ngưỡng cửa sơn sọc cảnh báo Vàng - Đen quân sự dã chiến.
+     */
+    DOOR_RESET_STAT(false, new Color(220, 180, 40), "Field Gunsmith Gateway (Hazard Striped)"),
+
+    /**
+     * Tấm lót cao su dã chiến bảo dưỡng khí tài tại tâm Xưởng Quân Khí.
+     */
+    REFORGE_ZONE(false, new Color(42, 48, 44), "Gunsmith Maintenance Mat"),
+
+    /**
      * Designates the safe staging area where the player operative deploys into the mission.
      */
     SPAWN_ZONE(false, new Color(30, 60, 50), "Spawn Pad"),
 
     /**
-     * Extraction zone gateway triggering successful level completion and next stage transition.
+     * Bãi đáp trực thăng sơ tán quân sự (Helipad Extraction LZ) chuyển tiếp sang vùng tác chiến tiếp theo.
      */
-    EXTRACT_ZONE(false, new Color(60, 45, 80), "Extraction Portal"),
+    EXTRACT_ZONE(false, new Color(48, 52, 45), "Helipad Extraction LZ"),
 
     /**
      * Void area outside of all rooms and corridors. Impassable.

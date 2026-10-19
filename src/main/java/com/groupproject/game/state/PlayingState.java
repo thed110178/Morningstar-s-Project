@@ -18,6 +18,7 @@ import com.groupproject.game.entity.projectile.ExplosionVisual;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.shop.ShopItem;
+import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.MeleeSlash;
 import com.groupproject.game.entity.weapon.SMG;
@@ -117,6 +118,7 @@ public class PlayingState extends GameState {
     // Hệ thống tiền tệ chiến thuật (Credits) và quầy giao dịch Shop
     private int playerCredits = 0;
     private final List<ShopItem> shopItems = new CopyOnWriteArrayList<>();
+    private StatReforgeStation statReforgeStation;
 
     /**
      * Constructs the playing state, builds the dungeon facility, camera, and combat managers.
@@ -192,6 +194,7 @@ public class PlayingState extends GameState {
         this.weaponManager.reset();
 
         populateShopItems();
+        populateResetStatStation();
 
         showBanner("STAGE 1", new Color(60, 220, 160), 2.0);
 
@@ -268,6 +271,7 @@ public class PlayingState extends GameState {
         weaponManager.resupplyAmmoPackage(5); // Tiếp tế tối đa đạn dự trữ cho toàn bộ vũ khí
 
         populateShopItems();
+        populateResetStatStation();
 
         showBanner("STAGE 4: BOSS ARENA", new Color(255, 60, 60), 2.0);
 
@@ -305,6 +309,7 @@ public class PlayingState extends GameState {
         screenShakeTimer = 0.0;
 
         populateShopItems();
+        populateResetStatStation();
 
         camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
 
@@ -353,6 +358,19 @@ public class PlayingState extends GameState {
             shopItems.add(ShopItem.createHealthItem(cx + 110, cy, 75));
         } else {
             shopItems.add(ShopItem.createAmmoItem(cx + 110, cy, 70));
+        }
+    }
+
+    /**
+     * Khởi tạo Trạm Tẩy Luyện Chỉ Số (StatReforgeStation) tại phòng Reset Stat nếu có.
+     */
+    private void populateResetStatStation() {
+        this.statReforgeStation = null;
+        Room reforgeRoom = dungeonMap.getResetStatRoom();
+        if (reforgeRoom != null) {
+            double cx = reforgeRoom.getCenterWorldX();
+            double cy = reforgeRoom.getCenterWorldY();
+            this.statReforgeStation = new StatReforgeStation(cx, cy);
         }
     }
 
@@ -497,7 +515,7 @@ public class PlayingState extends GameState {
         double scaledSpeed = 125.0 + stageBonus * 8.0;
         int scaledDamage = 12 + stageBonus * 2;
         double scaledCooldown = Math.max(0.60, 0.90 - stageBonus * 0.05);
-        String name = stageBonus == 0 ? "Cyber Swarmer [Melee]" : String.format("Cyber Swarmer MK-%d [Melee]", currentStage);
+        String name = stageBonus == 0 ? "Mercenary Raider [Melee]" : String.format("Mercenary Raider MK-%d [Melee]", currentStage);
 
         MeleeEnemy enemy = new MeleeEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, scaledDamage, scaledCooldown, name);
         enemy.setSpawnTelegraph(0.40); // 0.40s vòng tròn cảnh báo trước khi kích hoạt
@@ -519,7 +537,7 @@ public class PlayingState extends GameState {
         int scaledHealth = baseHealth + stageBonus * 12;
         double scaledSpeed = 105.0 + stageBonus * 6.0;
         int scaledDamage = 10 + stageBonus * 1;
-        String name = stageBonus == 0 ? "Rogue Scout [Pistol]" : String.format("Rogue Scout MK-%d [Pistol]", currentStage);
+        String name = stageBonus == 0 ? "Recon Scout [Pistol]" : String.format("Recon Scout MK-%d [Pistol]", currentStage);
 
         RangedPistolEnemy enemy = new RangedPistolEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, scaledDamage, 190.0, 360.0, name);
         enemy.setSpawnTelegraph(0.40); // 0.40s vòng tròn cảnh báo trước khi kích hoạt
@@ -562,8 +580,8 @@ public class PlayingState extends GameState {
         double cy = arena.getCenterWorldY();
 
         if (currentStage == BOSS_STAGE) {
-            // Stage Boss (Stage 4) Grand Boss Arena: Titan Mecha Dummy khổng lồ (size 96px, 1250 HP) và 8 AI hộ tống
-            spawnBossSafely(arena, cx, cy, 1250, 96.0, "TITAN MECHA DUMMY [BOSS]");
+            // Stage Boss (Stage 4) Grand Boss Arena: Xe tăng chiến đấu hạng nặng (size 96px, 1250 HP) và 8 AI hộ tống
+            spawnBossSafely(arena, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
             spawnMeleeEnemySafely(arena, cx + 220, cy, 80);
             spawnMeleeEnemySafely(arena, cx - 220, cy, 80);
             spawnRangedPistolEnemySafely(arena, cx, cy + 180, 60);
@@ -671,10 +689,10 @@ public class PlayingState extends GameState {
             double ox = spawnOffsets[i][0];
             double oy = spawnOffsets[i][1];
             if (i % 2 == 0) {
-                // Lính cận chiến Cyber Swarmer
+                // Lính cận chiến Mercenary Raider
                 spawnMeleeEnemySafely(arena, cx + ox, cy + oy, 75);
             } else {
-                // Lính bắn tầm xa Rogue Pistol Scout
+                // Lính bắn tầm xa Recon Scout
                 spawnRangedPistolEnemySafely(arena, cx + ox, cy + oy, 60);
             }
         }
@@ -1021,10 +1039,24 @@ public class PlayingState extends GameState {
             }
         }
 
+        // --- 11.6. Handle Stat Reforge Station Interaction [F] ---
+        boolean reforgeInteracted = false;
+        if (statReforgeStation != null) {
+            statReforgeStation.update(deltaTime);
+            if (statReforgeStation.isPlayerInRange(playerX, playerY, playerSize)) {
+                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+                    boolean reforged = statReforgeStation.interact(this);
+                    if (reforged) {
+                        reforgeInteracted = true;
+                    }
+                }
+            }
+        }
+
         // --- 12. Check Extraction Zone Interaction [F] ---
         // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract or advance stage
         isStandingOnExtract = dungeonMap.isIntersectsExtractZone(playerX, playerY, playerSize, playerSize);
-        if (!chestInteracted && !shopInteracted && !healthInteracted && isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+        if (!chestInteracted && !shopInteracted && !healthInteracted && !reforgeInteracted && isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
             if (currentStage < MAX_STAGES) {
                 advanceToNextStage();
             } else {
@@ -1227,6 +1259,12 @@ public class PlayingState extends GameState {
             item.render(g, camera, inRange);
         }
 
+        // 3.7 Render Trạm Tẩy Luyện Chỉ Số (Stat Reforge Station)
+        if (statReforgeStation != null) {
+            statReforgeStation.render(g, camera, playerX, playerY, playerSize,
+                    weaponManager.getActiveWeapon(), playerCredits);
+        }
+
         // 4. Render Player Operative (Screen Space)
         double playerCenterX = playerX + (playerSize / 2.0);
         double playerCenterY = playerY + (playerSize / 2.0);
@@ -1237,22 +1275,48 @@ public class PlayingState extends GameState {
         g.setColor(new Color(0, 0, 0, 100));
         g.fillOval(screenPX - 14, screenPY - 8, 28, 16);
 
-        // Operative body (Cyan cyber tactical suit)
+        // Operative body (Chiến binh đặc nhiệm tác chiến: Áo giáp Plate Carrier màu Sa Mạc / Coyote Tan)
         // Khi bất tử (invulnerableTimer > 0): Nhấp nháy chớp đỏ / trong suốt phản hồi lực va chạm
+        Color operatorVest;
+        Color operatorBorder;
         if (invulnerableTimer > 0 && ((int) (invulnerableTimer * 18)) % 2 == 0) {
-            g.setColor(new Color(255, 90, 90, 180));
+            operatorVest = new Color(255, 90, 90, 190);
+            operatorBorder = new Color(180, 40, 40);
         } else {
-            g.setColor(new Color(40, 180, 220));
+            operatorVest = new Color(195, 155, 95); // Coyote Tan / Desert Khaki dã chiến nổi bật
+            operatorBorder = new Color(130, 98, 55); // Viền đai vải chịu lực tác chiến
         }
+        g.setColor(operatorVest);
         g.fillOval(screenPX - 15, screenPY - 15, 30, 30);
-        g.setColor(new Color(255, 255, 255, 200));
+        g.setColor(operatorBorder);
+        g.setStroke(new BasicStroke(1.5f));
         g.drawOval(screenPX - 15, screenPY - 15, 30, 30);
+        g.setStroke(new BasicStroke(1.0f));
 
-        // Operative visor/helmet indicator pointing toward aim angle
-        int visorX = (int) (screenPX + Math.cos(aimAngle) * 6);
-        int visorY = (int) (screenPY + Math.sin(aimAngle) * 6);
-        g.setColor(new Color(255, 230, 80));
-        g.fillOval(visorX - 4, visorY - 4, 8, 8);
+        // Tấm đệm giáp ngực dã chiến (MOLLE Chest Rig Plate)
+        g.setColor(invulnerableTimer > 0 ? new Color(255, 130, 130) : new Color(165, 128, 75));
+        g.fillRoundRect(screenPX - 8, screenPY - 8, 16, 16, 4, 4);
+
+        // Mũ chống đạn Kevlar tác chiến Sa Mạc (Desert FAST Combat Helmet) bo tròn trên đầu
+        int helmetR = 10;
+        Color helmetColor = invulnerableTimer > 0 ? new Color(255, 120, 120) : new Color(225, 188, 125);
+        g.setColor(helmetColor);
+        g.fillOval(screenPX - helmetR, screenPY - helmetR, helmetR * 2, helmetR * 2);
+        g.setColor(new Color(145, 115, 75));
+        g.drawOval(screenPX - helmetR, screenPY - helmetR, helmetR * 2, helmetR * 2);
+
+        // Dải phản quang nhận diện đồng minh chiến thuật (IFF Squad Beacon) trên gáy mũ
+        g.setColor(new Color(0, 210, 255)); // Cyan nhận diện đặc nhiệm phe ta
+        g.fillRect(screenPX - 4, screenPY - helmetR - 1, 8, 3);
+
+        // Kính ngắm quang học tác chiến Xanh Lam Điện Tử (Electric Cyan HUD Visor) theo góc ngắm
+        // Tạo sự tương phản sắc nét, hoàn toàn khác biệt với kính màu hổ phách/đỏ của lính địch
+        int visorX = (int) (screenPX + Math.cos(aimAngle) * 7);
+        int visorY = (int) (screenPY + Math.sin(aimAngle) * 7);
+        g.setColor(new Color(0, 235, 255)); // Xanh lam neon / cyan rực rỡ
+        g.fillOval(visorX - 3, visorY - 3, 7, 7);
+        g.setColor(new Color(230, 255, 255)); // Tâm kính sáng hội tụ
+        g.fillOval(visorX - 1, visorY - 1, 3, 3);
 
         // 4.5. Thanh đếm ngược tiến trình nạp đạn dưới chân người chơi khi đang reload
         renderPlayerReloadIndicator(g, screenPX, screenPY);
@@ -1490,11 +1554,13 @@ public class PlayingState extends GameState {
     private void renderExtractPrompt(Graphics2D g, int screenPX, int screenPY) {
         String prompt;
         if (currentStage == 1) {
-            prompt = "[F] TIẾN VÀO STAGE 2";
+            prompt = "[F] LÊN TRỰC THĂNG TIẾN VÀO SECTOR 2";
         } else if (currentStage == 2) {
-            prompt = "[F] TIẾN VÀO STAGE 3 (BOSS ARENA)";
+            prompt = "[F] LÊN TRỰC THĂNG TIẾN VÀO SECTOR 3";
+        } else if (currentStage == 3) {
+            prompt = "[F] LÊN TRỰC THĂNG TIẾN VÀO VÙNG CHIẾN SỰ TRÙM (SECTOR 4)";
         } else {
-            prompt = "[F] SƠ TÁN (HOÀN THÀNH BIOME)";
+            prompt = "[F] LÊN TRỰC THĂNG SƠ TÁN (HOÀN THÀNH CHIẾN DỊCH)";
         }
         g.setFont(new Font("SansSerif", Font.BOLD, 14));
         FontMetrics fm = g.getFontMetrics();
@@ -1507,9 +1573,9 @@ public class PlayingState extends GameState {
         int boxY = screenPY - 50;
 
         // Background box with glowing border
-        g.setColor(new Color(15, 25, 35, 230));
+        g.setColor(new Color(22, 26, 24, 235));
         g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setColor(new Color(160, 80, 255)); // Purple portal glow
+        g.setColor(new Color(235, 190, 35)); // Helipad amber gold
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
         // Keycap [F] indicator
@@ -1716,6 +1782,10 @@ public class PlayingState extends GameState {
         return shopItems;
     }
 
+    public StatReforgeStation getStatReforgeStation() {
+        return statReforgeStation;
+    }
+
     /**
      * Thả vũ khí xuống mặt đất dưới dạng hòm tiếp tế đã mở sẵn (phục vụ việc thay thế vũ khí phòng bấm nhầm).
      */
@@ -1735,6 +1805,10 @@ public class PlayingState extends GameState {
     }
 
     public void showTacticalBanner(String message, Color color, double duration) {
+        showBanner(message, color, duration);
+    }
+
+    public void showTacticalBanner(String message, double duration, Color color) {
         showBanner(message, color, duration);
     }
 

@@ -136,25 +136,25 @@ public class BackpackUI {
         // Cập nhật vùng nút đóng
         closeBtnBounds.setBounds(panelX + panelW - 44, panelY + 14, 30, 30);
 
-        // 2. Thân bảng điều khiển
-        g.setColor(new Color(14, 20, 32, 250));
+        // Thân máy tính quân sự dã chiến
+        g.setColor(new Color(18, 22, 20, 252));
         g.fillRoundRect(panelX, panelY, panelW, panelH, 16, 16);
 
-        // Viền đôi dạ quang phong cách Cyberpunk
-        g.setColor(new Color(45, 75, 105));
-        g.setStroke(new BasicStroke(2.0f));
+        // Khung viền bọc cao su chịu lực và viền kim loại dã chiến
+        g.setColor(new Color(65, 78, 64));
+        g.setStroke(new BasicStroke(2.2f));
         g.drawRoundRect(panelX, panelY, panelW, panelH, 16, 16);
-        g.setColor(new Color(60, 220, 160));
+        g.setColor(new Color(185, 155, 65)); // Vàng hổ phách quân sự
         g.drawRoundRect(panelX + 3, panelY + 3, panelW - 6, panelH - 6, 14, 14);
 
-        // 3. Header Tiêu đề Balo
+        // 3. Header Tiêu đề Sổ tay Tác chiến
         g.setFont(new Font("SansSerif", Font.BOLD, 20));
-        g.setColor(new Color(60, 220, 160));
-        g.drawString("🎒 BALO CHIẾN THUẬT // TACTICAL BACKPACK", panelX + 25, panelY + 38);
+        g.setColor(new Color(245, 215, 80));
+        g.drawString("📋 SỔ TAY TÁC CHIẾN DÃ CHIẾN // TACTICAL FIELD PDA", panelX + 25, panelY + 38);
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        g.setColor(new Color(150, 175, 205));
-        g.drawString("QUẢN LÝ TRANG BỊ & SẮP XẾP VŨ KHÍ CHIẾN ĐẤU", panelX + 25, panelY + 56);
+        g.setColor(new Color(185, 200, 185));
+        g.drawString("QUẢN LÝ KHÍ TÀI & TẢI TRỌNG TRANG BỊ QUÂN SỰ", panelX + 25, panelY + 56);
 
         // Nút đóng [X]
         g.setColor(isCloseHovered ? new Color(255, 60, 60) : new Color(50, 65, 85));
@@ -266,7 +266,7 @@ public class BackpackUI {
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 12));
         g.setColor(new Color(160, 185, 215));
-        drawCenteredString(g, "[TAB / ESC] Đóng Balo  |  [SPACE / Click ⇄] Đổi vị trí Slot 1 & 2  |  [1, 2, 3, 4] Trang bị lên tay",
+        drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [SPACE / Click ⇄] Đổi vị trí Slot 1 & 2  |  [1, 2, 3, 4] Trang bị lên tay",
                 panelX + panelW / 2, panelY + 465);
 
         g.setStroke(new BasicStroke(1.0f));

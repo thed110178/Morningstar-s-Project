@@ -66,7 +66,7 @@ public class RangedPistolEnemy extends TargetDummy {
      */
     public RangedPistolEnemy(double x, double y, int maxHealth, double speed, int bulletDamage,
                              double minRange, double maxRange) {
-        this(x, y, maxHealth, speed, bulletDamage, minRange, maxRange, "Rogue Scout [Pistol]");
+        this(x, y, maxHealth, speed, bulletDamage, minRange, maxRange, "Recon Scout [Pistol]");
     }
 
     /**
@@ -307,13 +307,13 @@ public class RangedPistolEnemy extends TargetDummy {
         g.setColor(new Color(0, 0, 0, 95));
         g.fillOval(screenCX - half, screenCY + half - 5, (int) size, 10);
 
-        // 2. Chassis body (Tactical Cobalt Scout)
+        // 2. Thân người mặc áo giáp trinh sát dã chiến (Tactical Urban Plate Carrier)
         if (critFlashTimer > 0) {
             g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi chịu sát thương chí mạng
         } else if (hitFlashTimer > 0) {
             g.setColor(Color.WHITE);
         } else {
-            g.setColor(new Color(40, 65, 88)); // Dark cobalt armor
+            g.setColor(new Color(42, 48, 52)); // Xám than quân sự dã chiến
         }
         g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
         if (critFlashTimer > 0) {
@@ -322,12 +322,12 @@ public class RangedPistolEnemy extends TargetDummy {
             g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
             g.setStroke(new BasicStroke(1.0f));
         } else {
-            g.setColor(new Color(80, 130, 170));
+            g.setColor(new Color(78, 88, 95));
             g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
         }
 
-        // 3. Tactical optical lens visor
-        g.setColor(new Color(60, 210, 255)); // Glowing cyan optic
+        // 3. Mũ bảo hộ & kính ngắm quang học tác chiến màu hổ phách (Tactical Recon Visor)
+        g.setColor(new Color(245, 185, 40)); // Kính ngắm màu hổ phách quân sự
         int eyeX = (int) (screenCX + Math.cos(facingAngle) * 5);
         int eyeY = (int) (screenCY + Math.sin(facingAngle) * 5);
         g.fillOval(eyeX - 4, eyeY - 4, 8, 8);

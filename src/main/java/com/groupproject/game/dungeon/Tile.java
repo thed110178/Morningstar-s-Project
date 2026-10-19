@@ -240,15 +240,96 @@ public class Tile {
             g.setColor(new Color(255, 250, 180));
             g.fillOval(cx - 2, cy - 2, 4, 4);
             g.setStroke(new BasicStroke(1.0f));
+        } else if (type == TileType.DOOR_RESET_STAT) {
+            // Ngưỡng cửa Xưởng Quân Khí Dã Chiến: Tấm thép dập gân với sọc chéo cảnh báo Vàng - Đen (Hazard Stripes)
+            // Áp dụng Graphics2D clipRect để đảm bảo dải sọc không bao giờ tràn ra ngoài phạm vi ô cửa
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.clipRect(screenX, screenY, size, size);
+
+            // Nền thép tấm chịu lực dã chiến
+            g2.setColor(new Color(38, 42, 44));
+            g2.fillRect(screenX, screenY, size, size);
+
+            // Dải sọc xiên chéo cảnh báo màu Vàng Dã Chiến - Đen quân sự
+            g2.setStroke(new BasicStroke(2.5f));
+            for (int offset = -size; offset < size * 2; offset += 10) {
+                g2.setColor(new Color(230, 185, 30, 210)); // Vàng dã chiến
+                g2.drawLine(screenX + offset, screenY, screenX + offset + 12, screenY + size);
+            }
+
+            // Khung viền kim loại nẹp 4 cạnh
+            g2.setStroke(new BasicStroke(1.0f));
+            g2.setColor(new Color(85, 95, 92));
+            g2.drawRect(screenX, screenY, size - 1, size - 1);
+
+            // Nẹp thép gia cố 2 đầu (trên & dưới) chống mài mòn
+            g2.setColor(new Color(22, 25, 27));
+            g2.fillRect(screenX, screenY, size, 3);
+            g2.fillRect(screenX, screenY + size - 3, size, 3);
+
+            g2.dispose();
+        } else if (type == TileType.REFORGE_ZONE) {
+            // Tấm lót cao su dã chiến bảo dưỡng súng (Gunsmith Maintenance Mat)
+            g.setColor(new Color(36, 42, 38));
+            g.fillRect(screenX, screenY, size, size);
+
+            // Khung nẹp thép dập viền xanh rêu quân đội
+            g.setColor(new Color(70, 85, 72));
+            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+
+            // Đinh tán kim loại ở 4 góc tấm lót
+            g.setColor(new Color(150, 165, 155));
+            g.fillRect(screenX + 4, screenY + 4, 2, 2);
+            g.fillRect(screenX + size - 6, screenY + 4, 2, 2);
+            g.fillRect(screenX + 4, screenY + size - 6, 2, 2);
+            g.fillRect(screenX + size - 6, screenY + size - 6, 2, 2);
+
+            // Vân lưới chống trượt dã chiến
+            g.setColor(new Color(50, 60, 52));
+            g.drawLine(screenX + 6, screenY + size / 2, screenX + size - 6, screenY + size / 2);
+            g.drawLine(screenX + size / 2, screenY + 6, screenX + size / 2, screenY + size - 6);
         } else if (type == TileType.SPAWN_ZONE) {
-            // Glowing cyan deployment grid pattern
-            g.setColor(new Color(50, 160, 120, 80));
+            // Điểm tập kết dã chiến: Vạch định vị góc màu xanh rêu quân đội (Tactical Corner Brackets)
+            g.setColor(new Color(55, 75, 60, 140));
             g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+            g.setColor(new Color(120, 160, 130));
+            // Góc trên-trái
+            g.drawLine(screenX + 4, screenY + 4, screenX + 10, screenY + 4);
+            g.drawLine(screenX + 4, screenY + 4, screenX + 4, screenY + 10);
+            // Góc dưới-phải
+            g.drawLine(screenX + size - 5, screenY + size - 5, screenX + size - 11, screenY + size - 5);
+            g.drawLine(screenX + size - 5, screenY + size - 5, screenX + size - 5, screenY + size - 11);
         } else if (type == TileType.EXTRACT_ZONE) {
-            // Glowing purple extraction portal pattern
-            g.setColor(new Color(160, 80, 220, 90));
-            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
-            g.drawOval(screenX + 8, screenY + 8, size - 16, size - 16);
+            // BÃI ĐÁP TRỰC THĂNG SƠ TÁN QUÂN SỰ (HELIPAD LZ)
+            g.setColor(new Color(38, 42, 40));
+            g.fillRect(screenX, screenY, size, size);
+
+            int cx = screenX + size / 2;
+            int cy = screenY + size / 2;
+
+            // Vòng tròn sơn vàng quân sự viền quanh Helipad
+            g.setColor(new Color(230, 190, 40, 200));
+            g.setStroke(new BasicStroke(1.5f));
+            g.drawOval(screenX + 4, screenY + 4, size - 8, size - 8);
+
+            // Chữ [ H ] màu trắng phản quang nổi bật ở chính giữa bãi đáp
+            g.setColor(new Color(245, 245, 240));
+            g.setStroke(new BasicStroke(2.2f));
+            // Cột đứng trái
+            g.drawLine(cx - 5, cy - 7, cx - 5, cy + 7);
+            // Thanh ngang
+            g.drawLine(cx - 5, cy, cx + 5, cy);
+            // Cột đứng phải
+            g.drawLine(cx + 5, cy - 7, cx + 5, cy + 7);
+            g.setStroke(new BasicStroke(1.0f));
+
+            // Đèn tín hiệu dẫn đường màu hổ phách chớp nhẹ ở 4 góc bãi đáp
+            float strobe = (float) (Math.sin(System.currentTimeMillis() * 0.006) * 0.3 + 0.7);
+            g.setColor(new Color(255, 180, 30, (int) (220 * strobe)));
+            g.fillOval(screenX + 2, screenY + 2, 3, 3);
+            g.fillOval(screenX + size - 5, screenY + 2, 3, 3);
+            g.fillOval(screenX + 2, screenY + size - 5, 3, 3);
+            g.fillOval(screenX + size - 5, screenY + size - 5, 3, 3);
         } else if (type == TileType.FLOOR) {
             // Subtle floor tile separation line
             g.setColor(new Color(35, 42, 58));

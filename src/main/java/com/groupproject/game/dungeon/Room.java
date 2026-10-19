@@ -22,7 +22,8 @@ public class Room {
         SPAWN,
         COMBAT,
         EXTRACT,
-        SHOP
+        SHOP,
+        RESET_STAT
     }
 
     /**
@@ -55,7 +56,7 @@ public class Room {
      * @param gridY         Topmost row on the map grid.
      * @param widthInTiles  Width spanning across columns.
      * @param heightInTiles Height spanning across rows.
-     * @param roomType      Category defining gameplay behavior (Spawn, Combat, Extract).
+     * @param roomType      Category defining gameplay behavior (Spawn, Combat, Extract, Shop, Reset Stat).
      * @param name          Descriptive room title.
      */
     public Room(int gridX, int gridY, int widthInTiles, int heightInTiles, RoomType roomType, String name) {
@@ -88,11 +89,11 @@ public class Room {
      * Engages combat lockdown by closing and solidifying all entrance/exit blast gates.
      */
     public void lockdown() {
-        if (roomType == RoomType.SHOP || status == RoomStatus.CLEARED) return; // Shop never locks down
+        if (roomType == RoomType.SHOP || roomType == RoomType.RESET_STAT || status == RoomStatus.CLEARED) return; // Shop & Reset Stat never lock down
 
         this.status = RoomStatus.ACTIVE_LOCKDOWN;
         for (Tile door : doorTiles) {
-            if (door.getType() != TileType.DOOR_SHOP) {
+            if (door.getType() != TileType.DOOR_SHOP && door.getType() != TileType.DOOR_RESET_STAT) {
                 door.setType(TileType.DOOR_CLOSED);
             }
         }

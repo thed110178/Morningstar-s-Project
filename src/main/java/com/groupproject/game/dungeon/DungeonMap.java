@@ -30,6 +30,7 @@ public class DungeonMap {
     private Room combatRoom; // First combat room for backward compatibility
     private Room extractRoom;
     private Room shopRoom;
+    private Room resetStatRoom;
 
     /**
      * Constructs the dungeon matrix and builds the procedural multi-room layout.
@@ -297,6 +298,41 @@ public class DungeonMap {
             rooms.add(shopRoom);
             connections.add(new RoomConnection(shopSource, shopNode, shopDir));
 
+            // 4.6. Đặt Reset Stat Room ở ô lân cận theo 12h, 3h, 6h, 9h
+            RoomNode resetSource = null;
+            Direction resetDir = null;
+
+            List<RoomNode> resetCandidates = new ArrayList<>();
+            resetCandidates.addAll(combatNodes);
+            resetCandidates.add(extNode);
+            resetCandidates.add(spawnNode);
+            resetCandidates.add(shopNode);
+            java.util.Collections.shuffle(resetCandidates);
+
+            for (RoomNode cand : resetCandidates) {
+                List<Direction> validDirs = getValidAdjacentDirections(cand, grid);
+                if (!validDirs.isEmpty()) {
+                    resetSource = cand;
+                    resetDir = validDirs.get(ThreadLocalRandom.current().nextInt(validDirs.size()));
+                    break;
+                }
+            }
+
+            if (resetSource == null || resetDir == null) {
+                continue;
+            }
+
+            int resetGx = resetSource.gx + resetDir.dx;
+            int resetGy = resetSource.gy + resetDir.dy;
+            int resetCol = gridOriginX(resetGx);
+            int resetRow = gridOriginY(resetGy);
+
+            resetStatRoom = new Room(resetCol, resetRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.RESET_STAT, "Field Gunsmith Workshop");
+            RoomNode resetNode = new RoomNode(resetGx, resetGy, resetStatRoom);
+            grid[resetGx][resetGy] = resetNode;
+            rooms.add(resetStatRoom);
+            connections.add(new RoomConnection(resetSource, resetNode, resetDir));
+
             // 5. Chạm trổ tất cả các phòng và bệ / cột bên trong
             for (Room r : rooms) {
                 carveRoom(r);
@@ -307,6 +343,9 @@ public class DungeonMap {
 
             // Bệ Extract 4x4 tại tâm Extract Room
             carvePad(extractRoom.getGridX() + 5, extractRoom.getGridY() + 3, 4, 4, TileType.EXTRACT_ZONE);
+
+            // Bệ Reforge 4x4 tại tâm Reset Stat Room
+            carvePad(resetStatRoom.getGridX() + 5, resetStatRoom.getGridY() + 3, 4, 4, TileType.REFORGE_ZONE);
 
 
             // 6. Tự động kết nối TẤT CẢ các phòng Combat ở cạnh nhau (theo 4 hướng 12h, 3h, 6h, 9h)
@@ -406,12 +445,16 @@ public class DungeonMap {
                     installDoorTile(from, exitCol, r);
                 } else if (from.getRoomType() == Room.RoomType.SHOP) {
                     installShopDoorTile(from, exitCol, r);
+                } else if (from.getRoomType() == Room.RoomType.RESET_STAT) {
+                    installResetStatDoorTile(from, exitCol, r);
                 }
 
                 if (to.getRoomType() == Room.RoomType.COMBAT) {
                     installDoorTile(to, entryCol, r);
                 } else if (to.getRoomType() == Room.RoomType.SHOP) {
                     installShopDoorTile(to, entryCol, r);
+                } else if (to.getRoomType() == Room.RoomType.RESET_STAT) {
+                    installResetStatDoorTile(to, entryCol, r);
                 }
             }
 
@@ -444,12 +487,16 @@ public class DungeonMap {
                     installDoorTile(from, c, exitRow);
                 } else if (from.getRoomType() == Room.RoomType.SHOP) {
                     installShopDoorTile(from, c, exitRow);
+                } else if (from.getRoomType() == Room.RoomType.RESET_STAT) {
+                    installResetStatDoorTile(from, c, exitRow);
                 }
 
                 if (to.getRoomType() == Room.RoomType.COMBAT) {
                     installDoorTile(to, c, entryRow);
                 } else if (to.getRoomType() == Room.RoomType.SHOP) {
                     installShopDoorTile(to, c, entryRow);
+                } else if (to.getRoomType() == Room.RoomType.RESET_STAT) {
+                    installResetStatDoorTile(to, c, entryRow);
                 }
             }
 
@@ -485,6 +532,17 @@ public class DungeonMap {
         if (isValidGrid(col, row)) {
             Tile doorTile = tiles[col][row];
             doorTile.setType(TileType.DOOR_SHOP); // Luôn mở, nhận diện đặc trưng của Shop
+            room.addDoorTile(doorTile);
+        }
+    }
+
+    /**
+     * Lắp đặt cửa cổng phòng Tẩy Luyện Chỉ Số luôn mở (DOOR_RESET_STAT) tại vị trí chỉ định và đăng ký vào resetStatRoom.
+     */
+    private void installResetStatDoorTile(Room room, int col, int row) {
+        if (isValidGrid(col, row)) {
+            Tile doorTile = tiles[col][row];
+            doorTile.setType(TileType.DOOR_RESET_STAT); // Luôn mở, nhận diện Neon Cyan của Reset Stat Lab
             room.addDoorTile(doorTile);
         }
     }
@@ -703,10 +761,7 @@ public class DungeonMap {
                         g.drawString("[ " + room.getName() + " ]", screenX, screenY);
                     }
                 } else if (room.getRoomType() == Room.RoomType.SHOP) {
-                    g.setColor(new Color(255, 215, 60, 220));
-                    g.drawString("[ TACTICAL FIELD SHOP ]", screenX, screenY);
-
-                    // Hiển thị biển hiệu cổng vào Shop [ ★ SHOP (LUÔN MỞ) ★ ] ngay trên ngưỡng cửa
+                    // Hiển thị biển hiệu cổng vào Shop [ ★ CỬA SHOP (LUÔN MỞ) ★ ] ngay trên vòm cửa
                     if (!room.getDoorTiles().isEmpty()) {
                         double avgDoorX = 0, avgDoorY = 0;
                         for (Tile dt : room.getDoorTiles()) {
@@ -719,7 +774,23 @@ public class DungeonMap {
                         int doorScreenX = camera.worldToScreenX(avgDoorX);
                         int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
 
-                        renderShopArchwayBadge(g, doorScreenX, doorScreenY, "★ CỬA SHOP (LUÔN MỞ) ★");
+                        renderArchwayBadge(g, doorScreenX, doorScreenY, "★ CỬA SHOP (LUÔN MỞ) ★", new Color(255, 215, 60, 220), new Color(25, 20, 10, 230));
+                    }
+                } else if (room.getRoomType() == Room.RoomType.RESET_STAT) {
+                    // Hiển thị biển hiệu cổng vào Xưởng Quân Khí ngay trên vòm cửa
+                    if (!room.getDoorTiles().isEmpty()) {
+                        double avgDoorX = 0, avgDoorY = 0;
+                        for (Tile dt : room.getDoorTiles()) {
+                            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
+                            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
+                        }
+                        avgDoorX /= room.getDoorTiles().size();
+                        avgDoorY /= room.getDoorTiles().size();
+
+                        int doorScreenX = camera.worldToScreenX(avgDoorX);
+                        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
+
+                        renderArchwayBadge(g, doorScreenX, doorScreenY, "★ XƯỞNG QUÂN KHÍ DÃ CHIẾN (LUÔN MỞ) ★", new Color(235, 190, 30, 230), new Color(28, 28, 24, 235));
                     }
                 } else {
                     g.setColor(new Color(190, 100, 255, 200));
@@ -728,7 +799,7 @@ public class DungeonMap {
         }
     }
 
-    private void renderShopArchwayBadge(Graphics2D g, int centerX, int centerY, String text) {
+    private void renderArchwayBadge(Graphics2D g, int centerX, int centerY, String text, Color themeColor, Color bgColor) {
         g.setFont(new Font("SansSerif", Font.BOLD, 11));
         FontMetrics fm = g.getFontMetrics();
         int textW = fm.stringWidth(text);
@@ -738,9 +809,9 @@ public class DungeonMap {
         int boxX = centerX - boxW / 2;
         int boxY = centerY - boxH / 2;
 
-        g.setColor(new Color(25, 20, 10, 230));
+        g.setColor(bgColor);
         g.fillRoundRect(boxX, boxY, boxW, boxH, 6, 6);
-        g.setColor(new Color(255, 215, 60, 220));
+        g.setColor(themeColor);
         g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
         g.drawString(text, boxX + pad, boxY + 13);
     }
@@ -769,6 +840,10 @@ public class DungeonMap {
 
     public Room getShopRoom() {
         return shopRoom;
+    }
+
+    public Room getResetStatRoom() {
+        return resetStatRoom;
     }
 
     public List<Room> getRooms() {
@@ -828,6 +903,38 @@ public class DungeonMap {
             if (tiles[shopCorridorEndCol + 1][r].getType() == TileType.VOID) {
                 tiles[shopCorridorEndCol + 1][r].setType(TileType.WALL);
             }
+        }
+
+        // 2.5. Đặt Reset Stat Room ở phía Nam Spawn Room để người chơi tẩy luyện chỉ số trước khi đối đầu Boss
+        int resetCol = 4;
+        int resetRow = 28;
+        int resetW = 12;
+        int resetH = 10;
+        resetStatRoom = new Room(resetCol, resetRow, resetW, resetH, Room.RoomType.RESET_STAT, "Field Gunsmith Workshop");
+        rooms.add(resetStatRoom);
+        carveRoom(resetStatRoom);
+        carvePad(resetCol + 4, resetRow + 3, 4, 4, TileType.REFORGE_ZONE);
+
+        int resetCorridorStartCol = spawnCol + 4;
+        int resetCorridorEndCol = spawnCol + 7;
+        int spawnExitRow = spawnRow + spawnH - 1;
+        int resetEntryRow = resetRow;
+
+        for (int r = spawnExitRow; r <= resetEntryRow; r++) {
+            for (int c = resetCorridorStartCol; c <= resetCorridorEndCol; c++) {
+                tiles[c][r].setType(TileType.FLOOR);
+            }
+        }
+        for (int r = spawnExitRow; r <= resetEntryRow; r++) {
+            if (tiles[resetCorridorStartCol - 1][r].getType() == TileType.VOID) {
+                tiles[resetCorridorStartCol - 1][r].setType(TileType.WALL);
+            }
+            if (tiles[resetCorridorEndCol + 1][r].getType() == TileType.VOID) {
+                tiles[resetCorridorEndCol + 1][r].setType(TileType.WALL);
+            }
+        }
+        for (int c = resetCorridorStartCol; c <= resetCorridorEndCol; c++) {
+            installResetStatDoorTile(resetStatRoom, c, resetEntryRow);
         }
 
         // 3. Đặt Boss Arena to ở giữa bản đồ
