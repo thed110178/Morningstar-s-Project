@@ -32,8 +32,9 @@ public class TargetDummy {
     protected boolean isBoss;
     protected String name;
 
-    // Flash white when hit
+    // Flash white when hit, or radiant gold when struck critically
     protected double hitFlashTimer = 0.0;
+    protected double critFlashTimer = 0.0;
     // Animation timer for boss pulsing core
     protected double animTimer = 0.0;
     // Directional knockback impulse velocity
@@ -85,10 +86,25 @@ public class TargetDummy {
      * @param damage Amount of hit points to deduct.
      */
     public void takeDamage(int damage) {
+        takeDamage(damage, false);
+    }
+
+    /**
+     * Applies damage to this target, flashing white for standard hit or radiant gold for critical strike.
+     *
+     * @param damage   Amount of hit points to deduct.
+     * @param critical True if this damage was a critical strike.
+     */
+    public void takeDamage(int damage, boolean critical) {
         if (!alive || isSpawning()) return;
 
         currentHealth -= damage;
-        hitFlashTimer = 0.1; // Flash white for 100ms
+        if (critical) {
+            critFlashTimer = 0.18; // Flash fiery radiant gold for 180ms
+            hitFlashTimer = 0.18;
+        } else {
+            hitFlashTimer = 0.10; // Flash white for 100ms
+        }
 
         if (currentHealth <= 0) {
             currentHealth = 0;
@@ -104,8 +120,20 @@ public class TargetDummy {
      * @param knockbackForce Impulse magnitude in pixels per second.
      */
     public void takeDamage(int damage, double knockbackAngle, double knockbackForce) {
+        takeDamage(damage, knockbackAngle, knockbackForce, false);
+    }
+
+    /**
+     * Applies damage to this target, triggers hit/crit flash, and imparts directional knockback.
+     *
+     * @param damage         Amount of hit points to deduct.
+     * @param knockbackAngle Angle of impact in radians.
+     * @param knockbackForce Impulse magnitude in pixels per second.
+     * @param critical       True if this damage was a critical strike.
+     */
+    public void takeDamage(int damage, double knockbackAngle, double knockbackForce, boolean critical) {
         if (!alive || isSpawning()) return;
-        takeDamage(damage);
+        takeDamage(damage, critical);
         applyKnockback(knockbackAngle, knockbackForce);
     }
 
@@ -165,6 +193,11 @@ public class TargetDummy {
         animTimer += deltaTime;
         if (hitFlashTimer > 0) {
             hitFlashTimer -= deltaTime;
+            if (hitFlashTimer < 0) hitFlashTimer = 0.0;
+        }
+        if (critFlashTimer > 0) {
+            critFlashTimer -= deltaTime;
+            if (critFlashTimer < 0) critFlashTimer = 0.0;
         }
         if (spawnTelegraphTimer > 0) {
             spawnTelegraphTimer -= deltaTime;
@@ -172,6 +205,14 @@ public class TargetDummy {
                 spawnTelegraphTimer = 0.0;
             }
         }
+    }
+
+    public double getHitFlashTimer() {
+        return hitFlashTimer;
+    }
+
+    public double getCritFlashTimer() {
+        return critFlashTimer;
     }
 
     /**
@@ -275,15 +316,24 @@ public class TargetDummy {
             g.setColor(new Color(0, 0, 0, 90));
             g.fillOval(screenCX - half, screenCY, (int) size, 14);
 
-            // Entity body: flashes white when damaged, otherwise dark crimson with glowing core
-            if (hitFlashTimer > 0) {
+            // Entity body: flashes searing red when critically struck, white when damaged, otherwise dark crimson
+            if (critFlashTimer > 0) {
+                g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi chịu đòn chí mạng
+            } else if (hitFlashTimer > 0) {
                 g.setColor(Color.WHITE);
             } else {
                 g.setColor(new Color(220, 50, 50));
             }
             g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-            g.setColor(new Color(255, 120, 120));
-            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+            if (critFlashTimer > 0) {
+                g.setColor(new Color(255, 140, 140));
+                g.setStroke(new BasicStroke(2.0f));
+                g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+                g.setStroke(new BasicStroke(1.0f));
+            } else {
+                g.setColor(new Color(255, 120, 120));
+                g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+            }
 
             // Glowing red optic eye
             g.setColor(new Color(255, 240, 60));
@@ -324,7 +374,10 @@ public class TargetDummy {
             int bodyY = screenCY - half;
             int bSize = (int) size;
 
-            if (hitFlashTimer > 0) {
+            if (critFlashTimer > 0) {
+                g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi chịu đòn chí mạng
+                g.fillRoundRect(bodyX, bodyY, bSize, bSize, 14, 14);
+            } else if (hitFlashTimer > 0) {
                 g.setColor(Color.WHITE);
                 g.fillRoundRect(bodyX, bodyY, bSize, bSize, 14, 14);
             } else {
@@ -409,6 +462,13 @@ public class TargetDummy {
 
     public boolean isAlive() {
         return alive;
+    }
+
+    public void setAlive(boolean alive) {
+        this.alive = alive;
+        if (!alive) {
+            this.currentHealth = 0;
+        }
     }
 
     public double getX() {

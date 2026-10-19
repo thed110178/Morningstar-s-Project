@@ -5,6 +5,8 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Represents an instantaneous melee strike hitbox and visual slash arc effect.
@@ -16,34 +18,79 @@ import java.awt.Rectangle;
  */
 public class MeleeSlash {
 
+    public static final double DEFAULT_KNOCKBACK = 520.0;
+
     private final double centerX;
     private final double centerY;
     private final double angle;
     private final double hitboxSize;
     private final int damage;
+    private final double knockbackForce;
+    private final boolean critical;
 
     private double lifetime;
     private final double maxLifetime;
     private boolean active = true;
 
+    // WHY: Ngăn ngừa lỗi Multi-Hit gây sát thương mỗi frame lặp lại trong suốt 0.12s tồn tại
+    private final Set<Object> hitTargets = new HashSet<>();
+    private boolean coverDamaged = false;
+
     /**
-     * Constructs a melee slash hitbox.
+     * Constructs a melee slash hitbox with default knockback impulse.
      *
      * @param originX     Operative center X coordinate.
      * @param originY     Operative center Y coordinate.
      * @param aimAngle    Direction in radians towards the mouse pointer.
      * @param reachOffset Distance from operative center to hitbox center (pixels).
-     * @param hitboxSize  Width and height of the damage square (approximately 1 tile: ~44px).
+     * @param hitboxSize  Width and height of the damage square (approximately 1 tile: ~44-48px).
      * @param damage      Damage dealt to targets in range.
      * @param duration    Visual persistence duration in seconds (e.g. 0.12s).
      */
     public MeleeSlash(double originX, double originY, double aimAngle, double reachOffset,
                       double hitboxSize, int damage, double duration) {
+        this(originX, originY, aimAngle, reachOffset, hitboxSize, damage, duration, DEFAULT_KNOCKBACK, false);
+    }
+
+    /**
+     * Constructs a melee slash hitbox with customizable knockback impulse magnitude.
+     *
+     * @param originX        Operative center X coordinate.
+     * @param originY        Operative center Y coordinate.
+     * @param aimAngle       Direction in radians towards the mouse pointer.
+     * @param reachOffset    Distance from operative center to hitbox center (pixels).
+     * @param hitboxSize     Width and height of the damage square.
+     * @param damage         Damage dealt to targets in range.
+     * @param duration       Visual persistence duration in seconds.
+     * @param knockbackForce Impulse magnitude in pixels per second (e.g. 520.0 px/s).
+     */
+    public MeleeSlash(double originX, double originY, double aimAngle, double reachOffset,
+                      double hitboxSize, int damage, double duration, double knockbackForce) {
+        this(originX, originY, aimAngle, reachOffset, hitboxSize, damage, duration, knockbackForce, false);
+    }
+
+    /**
+     * Constructs a melee slash hitbox with customizable knockback impulse and critical strike flag.
+     *
+     * @param originX        Operative center X coordinate.
+     * @param originY        Operative center Y coordinate.
+     * @param aimAngle       Direction in radians towards the mouse pointer.
+     * @param reachOffset    Distance from operative center to hitbox center (pixels).
+     * @param hitboxSize     Width and height of the damage square.
+     * @param damage         Damage dealt to targets in range.
+     * @param duration       Visual persistence duration in seconds.
+     * @param knockbackForce Impulse magnitude in pixels per second.
+     * @param critical       True if this slash was rolled as a critical strike.
+     */
+    public MeleeSlash(double originX, double originY, double aimAngle, double reachOffset,
+                      double hitboxSize, int damage, double duration, double knockbackForce, boolean critical) {
         this.angle = aimAngle;
         this.hitboxSize = hitboxSize;
         this.damage = damage;
         this.maxLifetime = duration;
         this.lifetime = duration;
+        this.knockbackForce = knockbackForce;
+        this.critical = critical;
 
         // Position the hitbox center forward along the aim vector
         this.centerX = originX + Math.cos(aimAngle) * reachOffset;
@@ -61,7 +108,7 @@ public class MeleeSlash {
     }
 
     /**
-     * Renders a sweeping silver-cyan slash arc in the direction of the strike.
+     * Renders a sweeping silver-cyan or fiery crimson-gold slash arc in the direction of the strike.
      */
     public void render(Graphics2D g, Camera camera) {
         if (!active) return;
@@ -75,23 +122,34 @@ public class MeleeSlash {
         int alpha = Math.clamp((int) (progress * 220), 40, 220);
 
         // Draw translucent tactical damage sector
-        g.setColor(new Color(255, 230, 100, alpha / 3));
-        g.fillRect(screenCX - halfSize, screenCY - halfSize, (int) hitboxSize, (int) hitboxSize);
-        g.setColor(new Color(255, 240, 150, alpha));
-        g.drawRect(screenCX - halfSize, screenCY - halfSize, (int) hitboxSize, (int) hitboxSize);
+        if (critical) {
+            g.setColor(new Color(255, 60, 40, alpha / 3));
+            g.fillRect(screenCX - halfSize, screenCY - halfSize, (int) hitboxSize, (int) hitboxSize);
+            g.setColor(new Color(255, 215, 0, alpha));
+            g.drawRect(screenCX - halfSize, screenCY - halfSize, (int) hitboxSize, (int) hitboxSize);
+        } else {
+            g.setColor(new Color(255, 230, 100, alpha / 3));
+            g.fillRect(screenCX - halfSize, screenCY - halfSize, (int) hitboxSize, (int) hitboxSize);
+            g.setColor(new Color(255, 240, 150, alpha));
+            g.drawRect(screenCX - halfSize, screenCY - halfSize, (int) hitboxSize, (int) hitboxSize);
+        }
 
         // Draw swift kinetic slash line along the perpendicular tangent
         double perpAngle = angle + Math.PI / 2.0;
-        int slashLength = (int) (hitboxSize * 0.75);
+        int slashLength = (int) (hitboxSize * (critical ? 0.95 : 0.75));
         int x1 = (int) (screenCX + Math.cos(perpAngle) * slashLength);
         int y1 = (int) (screenCY + Math.sin(perpAngle) * slashLength);
         int x2 = (int) (screenCX - Math.cos(perpAngle) * slashLength);
         int y2 = (int) (screenCY - Math.sin(perpAngle) * slashLength);
 
-        g.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.setColor(new Color(255, 255, 255, alpha));
+        g.setStroke(new BasicStroke(critical ? 4.5f : 3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(critical ? new Color(255, 225, 70, alpha) : new Color(255, 255, 255, alpha));
         g.drawLine(x1, y1, x2, y2);
         g.setStroke(new BasicStroke(1.0f)); // Reset stroke
+    }
+
+    public boolean isCritical() {
+        return critical;
     }
 
     /**
@@ -124,5 +182,40 @@ public class MeleeSlash {
 
     public double getAngle() {
         return angle;
+    }
+
+    public double getKnockbackForce() {
+        return knockbackForce;
+    }
+
+    /**
+     * Kiểm tra xem mục tiêu đã bị nhát chém này tác động sát thương trước đó hay chưa.
+     * WHY: Ngăn chặn lỗi một nhát chém gây sát thương lặp đi lặp lại qua nhiều frame liên tiếp trong thời gian hiển thị (0.12s).
+     */
+    public boolean canHit(Object target) {
+        return active && target != null && !hitTargets.contains(target);
+    }
+
+    /**
+     * Đánh dấu mục tiêu đã nhận sát thương từ nhát chém này.
+     */
+    public void markHit(Object target) {
+        if (target != null) {
+            hitTargets.add(target);
+        }
+    }
+
+    /**
+     * Kiểm tra xem nhát chém đã gây sát thương lên ô cover tạm thời hay chưa.
+     */
+    public boolean hasDamagedCover() {
+        return coverDamaged;
+    }
+
+    /**
+     * Đánh dấu nhát chém đã tác động sát thương lên chướng ngại vật cover.
+     */
+    public void markCoverDamaged() {
+        this.coverDamaged = true;
     }
 }

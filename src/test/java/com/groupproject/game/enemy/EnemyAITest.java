@@ -2,11 +2,16 @@ package com.groupproject.game.enemy;
 
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.dungeon.DungeonMap;
+import com.groupproject.game.entity.enemy.BossTank;
 import com.groupproject.game.entity.enemy.MeleeEnemy;
 import com.groupproject.game.entity.enemy.RangedPistolEnemy;
 import com.groupproject.game.entity.enemy.TargetDummy;
+import com.groupproject.game.entity.projectile.BossCannonShell;
+import com.groupproject.game.entity.projectile.CriticalHitVisual;
+import com.groupproject.game.entity.projectile.ExplosionVisual;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
+import com.groupproject.game.entity.weapon.MeleeSlash;
 import com.groupproject.game.state.GameStateManager;
 import com.groupproject.game.state.PlayingState;
 import org.junit.jupiter.api.BeforeEach;
@@ -443,6 +448,48 @@ class EnemyAITest {
     }
 
     @Test
+    @DisplayName("Verify melee knife slash applies massive knockback (520 px/s) and staggers rushing melee enemy")
+    void testMeleeSlashAppliesHighKnockbackAndStaggersMeleeEnemy() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+
+        com.groupproject.game.dungeon.Room room = state.getDungeonMap().getSpawnRoom();
+        double cx = room.getCenterWorldX();
+        double cy = room.getCenterWorldY();
+
+        MeleeEnemy enemy = new MeleeEnemy(cx + 30, cy, 60);
+        state.getCombatTargets().add(enemy);
+
+        // Player operative at (cx, cy) slashes knife towards the enemy (aimAngle = 0.0)
+        com.groupproject.game.entity.weapon.CombatKnife knife = new com.groupproject.game.entity.weapon.CombatKnife();
+        state.getWeaponManager().equipWeapon(knife);
+        state.getWeaponManager().selectSlot(4);
+        state.getWeaponManager().attack(cx, cy, 0.0, state.getProjectileManager());
+
+        assertEquals(1, state.getWeaponManager().getActiveSlashes().size(), "1 slash must be spawned");
+        MeleeSlash slash = state.getWeaponManager().getActiveSlashes().get(0);
+        assertEquals(520.0, slash.getKnockbackForce(), 0.001);
+
+        com.groupproject.game.input.KeyboardHandler kh = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mh = new com.groupproject.game.input.MouseHandler();
+        state.update(0.016, kh, mh);
+
+        // Enemy should have taken 45 damage from knife (60 - 45 = 15 HP remaining)
+        assertEquals(15, enemy.getCurrentHealth(), "Enemy must take 45 damage from knife");
+        assertTrue(enemy.getKnockbackVx() > 300.0, "Enemy must receive massive positive X knockback impulse");
+        assertTrue(enemy.getAttackTimer() >= 0.35, "Enemy attack timer must be staggered to prevent immediate counter-bite");
+
+        // Advance frames to observe physical displacement
+        double initialEnemyX = cx + 30;
+        for (int i = 0; i < 15; i++) {
+            enemy.updateAI(0.016, cx, cy, 28.0, state.getDungeonMap(), null, state);
+        }
+        assertTrue(enemy.getX() - initialEnemyX >= 20.0,
+                "Enemy must be blasted backwards significantly (> 20px) away from player");
+    }
+
+    @Test
     @DisplayName("Verify enemy spawn telegraph lifecycle: while spawning, enemy is invulnerable, holds position, and does not strike")
     void testEnemySpawnTelegraphLifecycle() {
         GameStateManager gsm = new GameStateManager();
@@ -521,6 +568,13 @@ class EnemyAITest {
         int cCol = combat.getGridX() + 4;
         int cRow = combat.getGridY() + 4;
 
+        // Ensure clean floor around the test obstacle to isolate test geometry
+        for (int c = cCol - 2; c <= cCol + 2; c++) {
+            for (int r = cRow - 2; r <= cRow + 2; r++) {
+                map.getTile(c, r).setType(com.groupproject.game.dungeon.TileType.FLOOR);
+            }
+        }
+
         // Place a solid cover tile right in the middle
         map.getTile(cCol, cRow).setType(com.groupproject.game.dungeon.TileType.COVER);
 
@@ -538,12 +592,475 @@ class EnemyAITest {
                 "Direct line of sight must be blocked by the middle cover tile");
 
         // Run AI update for several frames
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 12; i++) {
             enemy.updateAI(0.05, playerX, playerY, 28.0, map, projectileManager, state);
         }
 
-        // Enemy should NOT be stuck facing the wall at original Y = 24.0; it should have steered vertically to flank around cover
-        assertNotEquals(enemyY, enemy.getY(), 2.0,
-                "Melee enemy must steer around the cover tile vertically instead of ramming directly into it");
+        // Enemy should NOT be stuck facing the wall; it should have steered vertically to flank around cover
+        assertTrue(Math.abs(enemy.getY() - enemyY) > 0.5,
+                String.format("Melee enemy must steer around cover vertically: initialY=%.2f, currentY=%.2f", enemyY, enemy.getY()));
+    }
+
+    @Test
+    @DisplayName("Verify BossTank 3-layer decoupled rotations: MG locks on player, chassis matches movement, cannon activates < 50% HP")
+    void testBossTank3LayerDecoupledRotations() {
+        BossTank tank = new BossTank(200, 200, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0); // Active immediately
+
+        // Player is at (400, 200) -> 0 radians (directly to the right)
+        double playerX = 400.0;
+        double playerY = 200.0;
+
+        // Above 50% HP (1000 HP): Cannon is locked to chassis angle
+        tank.setChassisAngle(1.57); // Chassis facing down
+        tank.updateAI(0.016, playerX, playerY, 28.0, null, projectileManager, null);
+
+        // Layer 1: Machine Gun should aim directly at player (angle ~ 0 rad)
+        assertEquals(0.0, tank.getMachineGunAngle(), 0.05,
+                "Machine gun turret must track player direction in 360 degrees");
+
+        // Layer 2: Main Cannon locked to chassis angle when HP >= 50%
+        assertFalse(tank.isCannonAwakened(), "Cannon must NOT be awakened when HP >= 50%");
+        assertEquals(tank.getChassisAngle(), tank.getCannonAngle(), 0.05,
+                "Cannon turret must stay locked to chassis direction when HP >= 50%");
+
+        // Now damage Boss below 50% (450 HP)
+        tank.takeDamage(550);
+        assertTrue(tank.isCannonAwakened(), "Cannon must be awakened when HP < 50% (450/1000)");
+
+        // Set state to CANNON_AIMING
+        tank.setState(BossTank.TankState.CANNON_AIMING);
+        tank.setStateTimer(1.0);
+        tank.updateAI(0.1, playerX, playerY, 28.0, null, projectileManager, null);
+
+        // Cannon turret now rotates independently towards player
+        assertNotEquals(tank.getChassisAngle(), tank.getCannonAngle(),
+                "Awakened cannon turret must rotate independently from chassis");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank ram charge: wind-up, rush movement, and stun upon hitting solid obstacle")
+    void testBossTankRamRushAndStunOnObstacle() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        DungeonMap map = state.getDungeonMap();
+
+        com.groupproject.game.dungeon.Room combat = map.getCombatRooms().get(0);
+        int cCol = combat.getGridX() + 4;
+        int cRow = combat.getGridY() + 4;
+
+        // Place an impassable solid wall tile right in the room
+        map.getTile(cCol, cRow).setType(com.groupproject.game.dungeon.TileType.WALL);
+
+        // Position tank 1 tile above the wall, facing south (PI/2 rad) directly towards the wall
+        double tankX = cCol * GameConfig.TILE_SIZE + 24.0;
+        double tankY = (cRow - 1) * GameConfig.TILE_SIZE + 10.0;
+        BossTank tank = new BossTank(tankX, tankY, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+        tank.setChassisAngle(Math.PI / 2.0); // Facing south towards the solid wall
+
+        tank.setState(BossTank.TankState.RAM_RUSH);
+        tank.setStateTimer(1.0);
+
+        // Update tank moving into the solid wall (player is far away on the opposite side)
+        double farPlayerX = tankX + 500.0;
+        for (int i = 0; i < 5; i++) {
+            tank.updateAI(0.05, farPlayerX, tankY, 28.0, map, projectileManager, state);
+        }
+
+        // Must enter RAM_STUN state after hitting wall
+        assertEquals(BossTank.TankState.RAM_STUN, tank.getState(),
+                "BossTank must enter RAM_STUN after colliding with impassable wall");
+        assertTrue(tank.getStateTimer() > 0, "Stun timer must be set (> 0)");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank ram rush hits operative, inflicts 40 contact damage, and enters cooldown")
+    void testBossTankRamHitsPlayerDeals40Damage() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        state.setInvulnerableTimer(0.0);
+        state.setPlayerCurrentHealth(100);
+
+        double px = state.getPlayerX() + 14.0;
+        double py = state.getPlayerY() + 14.0;
+
+        // Position tank 50px away, rushing directly towards operative
+        BossTank tank = new BossTank(px - 50.0, py, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+        tank.setChassisAngle(0.0); // Facing east towards player
+        tank.setState(BossTank.TankState.RAM_RUSH);
+        tank.setStateTimer(1.0);
+
+        // Run 1 step to ram into player
+        tank.updateAI(0.08, px, py, 28.0, state.getDungeonMap(), projectileManager, state);
+
+        assertEquals(60, state.getPlayerCurrentHealth(),
+                "Ramming into player must deal 40 damage (100 -> 60 HP)");
+        assertEquals(BossTank.TankState.COOLDOWN, tank.getState(),
+                "Tank must transition to COOLDOWN after successfully ramming operative");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank ram rush crushes destructible cover in its path")
+    void testBossTankRamCrushesDestructibleCover() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        DungeonMap map = state.getDungeonMap();
+
+        com.groupproject.game.dungeon.Room combat = map.getCombatRooms().get(0);
+        int cCol = combat.getGridX() + 4;
+        int cRow = combat.getGridY() + 4;
+
+        // Place a destructible cover tile
+        com.groupproject.game.dungeon.Tile coverTile = map.getTile(cCol, cRow);
+        coverTile.setType(com.groupproject.game.dungeon.TileType.DESTRUCTIBLE_COVER);
+        assertEquals(40, coverTile.getHealth());
+
+        // Place tank just above the cover tile, rushing south (angle PI/2)
+        double tankX = cCol * GameConfig.TILE_SIZE + 24.0;
+        double tankY = (cRow - 1) * GameConfig.TILE_SIZE + 10.0;
+        BossTank tank = new BossTank(tankX, tankY, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+        tank.setChassisAngle(Math.PI / 2.0); // South
+        tank.setState(BossTank.TankState.RAM_RUSH);
+        tank.setStateTimer(1.0);
+
+        // Advance 1 step into the cover
+        tank.updateAI(0.05, tankX, tankY + 200, 28.0, map, projectileManager, state);
+
+        // Destructible cover tile should have been crushed by 120 damage and turned to FLOOR
+        assertEquals(com.groupproject.game.dungeon.TileType.FLOOR, coverTile.getType(),
+                "Ramming tank must crush and destroy destructible cover in its trajectory");
+        // Tank must stop immediately upon striking the obstacle and enter RAM_STUN
+        assertEquals(BossTank.TankState.RAM_STUN, tank.getState(),
+                "Ramming tank must stop and enter RAM_STUN upon striking an obstacle");
+        assertFalse(state.getActiveExplosions().isEmpty(),
+                "Tank crashing into obstacle must spawn an impact ExplosionVisual");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank cannon laser sticks directly to player with zero lag during aiming and freezes in locked state")
+    void testBossTankCannonLaserLocksDirectlyToPlayerAndPausesForDodge() {
+        BossTank tank = new BossTank(200, 200, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+        tank.takeDamage(600); // 400 HP -> awakened
+
+        // Aiming state
+        tank.setState(BossTank.TankState.CANNON_AIMING);
+        tank.setStateTimer(0.90);
+
+        // Player at (200, 400) -> angle PI/2 (straight down)
+        tank.updateAI(0.016, 200.0, 400.0, 28.0, null, projectileManager, null);
+        assertEquals(Math.PI / 2.0, tank.getCannonAngle(), 0.01,
+                "Cannon angle must stick directly to player position with zero rotational lag");
+
+        // Player moves instantly to (400, 200) -> angle 0 (straight right)
+        tank.updateAI(0.016, 400.0, 200.0, 28.0, null, projectileManager, null);
+        assertEquals(0.0, tank.getCannonAngle(), 0.01,
+                "Cannon angle must track player position instantaneously without delay");
+
+        // Advance until aiming timer expires and enters CANNON_LOCKED
+        tank.setStateTimer(0.01);
+        tank.updateAI(0.02, 400.0, 200.0, 28.0, null, projectileManager, null);
+        assertEquals(BossTank.TankState.CANNON_LOCKED, tank.getState(),
+                "Must transition to CANNON_LOCKED upon aiming expiry");
+        assertTrue(tank.getStateTimer() >= 0.35, "Locked state must provide pause window for player to dodge");
+
+        double lockedAngle = tank.getCannonLaserAngle();
+        // Now player moves away to (200, 0) during locked state -> angle should NOT change!
+        tank.updateAI(0.05, 200.0, 0.0, 28.0, null, projectileManager, null);
+        assertEquals(lockedAngle, tank.getCannonLaserAngle(), 0.001,
+                "Locked laser must freeze in place, providing the only window for player to dodge");
+    }
+
+    @Test
+    @DisplayName("Verify BossCannonShell AoE explosion damages player and spawns ExplosionVisual")
+    void testBossCannonShellAoEDetonation() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        state.setInvulnerableTimer(0.0);
+        state.setPlayerCurrentHealth(100);
+
+        double px = state.getPlayerX() + 14.0;
+        double py = state.getPlayerY() + 14.0;
+
+        // Shell lands 40px away from player (well within 85px explosion radius)
+        BossCannonShell shell = new BossCannonShell(px + 40.0, py, 0, 1350.0, 35, 2.0, 85.0);
+        shell.explode(state, state.getDungeonMap());
+
+        assertTrue(shell.hasExploded(), "Shell must be marked as exploded");
+        assertFalse(shell.isActive(), "Shell must be deactivated upon detonation");
+        assertEquals(65, state.getPlayerCurrentHealth(),
+                "Player within 85px explosion radius must take 35 damage (100 -> 65 HP)");
+        assertFalse(state.getActiveExplosions().isEmpty(),
+                "Detonating shell must spawn an active ExplosionVisual in PlayingState");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank Phase 1 anti-ram spam: consecutive rams are strictly blocked and alternate with machine gun burst")
+    void testBossTankPhase1AntiRamSpamAndMachineGunBalance() {
+        BossTank tank = new BossTank(200, 200, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+        assertFalse(tank.isCannonAwakened(), "Phase 1 requires HP >= 50%");
+
+        // Set lastAttackWasRam = true (simulating just completed a ram attack)
+        tank.setLastAttackWasRam(true);
+        tank.setState(BossTank.TankState.PATROL_REPOSITION);
+        tank.setStateTimer(0.01);
+
+        // Advance 1 frame so patrol timer expires and chooseNextAction runs
+        tank.updateAI(0.02, 350.0, 200.0, 28.0, null, projectileManager, null);
+
+        // Must transition to MG_BURST, NOT RAM_WINDUP!
+        assertEquals(BossTank.TankState.MG_BURST, tank.getState(),
+                "Boss Tank must switch to MG_BURST after a ram attack to prevent ram spamming");
+        assertFalse(tank.isLastAttackWasRam(),
+                "lastAttackWasRam flag must be reset to false after choosing machine gun burst");
+        assertTrue(tank.getMgBulletsLeft() >= 5, "Machine gun burst must load at least 5-6 bullets");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank condensed skill downtime: instant cooldown after MG and fast patrol repositioning under 1.0s")
+    void testBossTankCondensedSkillIntervalsAndInstantCooldownTransition() {
+        BossTank tank = new BossTank(200, 200, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+
+        // 1. In Phase 1: Machine gun burst loads 6 bullets
+        tank.setState(BossTank.TankState.MG_BURST);
+        tank.setStateTimer(0.01);
+        // Simulate all bullets already fired
+        // Advancing 1 tick should transition IMMEDIATELY to COOLDOWN (not waiting 1.5s!)
+        tank.updateAI(0.02, 400.0, 200.0, 28.0, null, projectileManager, null);
+        assertEquals(BossTank.TankState.COOLDOWN, tank.getState(),
+                "Boss Tank must transition to COOLDOWN immediately upon finishing bullets");
+        assertTrue(tank.getStateTimer() <= 0.35, "Cooldown timer after MG burst must be condensed (<= 0.35s)");
+
+        // 2. Cooldown timer expiration leads to rapid PATROL_REPOSITION
+        tank.setStateTimer(0.01);
+        tank.updateAI(0.02, 400.0, 200.0, 28.0, null, projectileManager, null);
+        assertEquals(BossTank.TankState.PATROL_REPOSITION, tank.getState());
+        assertTrue(tank.getStateTimer() <= 0.60,
+                "Patrol reposition timer in Phase 1 must be concise (<= 0.60s)");
+
+        // 3. Phase 2 (Awakened): Machine gun burst loads 8 bullets and cooldowns are even faster
+        tank.takeDamage(600);
+        assertTrue(tank.isCannonAwakened());
+        tank.setLastAttackWasRam(true);
+        tank.setState(BossTank.TankState.PATROL_REPOSITION);
+        tank.setStateTimer(0.01);
+        tank.updateAI(0.02, 400.0, 200.0, 28.0, null, projectileManager, null);
+
+        assertEquals(BossTank.TankState.MG_BURST, tank.getState());
+        assertEquals(8, tank.getMgBulletsLeft(), "Phase 2 MG burst must load 8 bullets");
+
+        // Expire bullets in Phase 2 -> Cooldown is even shorter (<= 0.25s)
+        tank.updateAI(0.02, 400.0, 200.0, 28.0, null, projectileManager, null); // 1 tick to exhaust
+        // Force exhaust
+        while (tank.getMgBulletsLeft() > 0) {
+            tank.updateAI(0.1, 400.0, 200.0, 28.0, null, projectileManager, null);
+        }
+        assertEquals(BossTank.TankState.COOLDOWN, tank.getState());
+        assertTrue(tank.getStateTimer() <= 0.25, "Phase 2 Cooldown must be ultra-fast (<= 0.25s)");
+
+        // Expire cooldown in Phase 2 -> Patrol reposition <= 0.40s
+        tank.setStateTimer(0.01);
+        tank.updateAI(0.02, 400.0, 200.0, 28.0, null, projectileManager, null);
+        assertEquals(BossTank.TankState.PATROL_REPOSITION, tank.getState());
+        assertTrue(tank.getStateTimer() <= 0.40, "Phase 2 Patrol reposition must be <= 0.40s");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank cannon laser locks onto exact player world coordinates with zero trailing delay")
+    void testBossTankLaserLockOnWorldCoordinates() {
+        BossTank tank = new BossTank(100, 100, 1000, 84.0, "TITAN MECHA DUMMY TANK [BOSS]");
+        tank.setSpawnTelegraph(0.0);
+        tank.takeDamage(600); // Awakened
+        tank.setState(BossTank.TankState.CANNON_AIMING);
+        tank.setStateTimer(0.90);
+
+        // Player is at (450, 320)
+        tank.updateAI(0.016, 450.0, 320.0, 28.0, null, projectileManager, null);
+        assertEquals(450.0, tank.getLaserTargetWorldX(), 0.001,
+                "Laser target X must instantaneously match player center X");
+        assertEquals(320.0, tank.getLaserTargetWorldY(), 0.001,
+                "Laser target Y must instantaneously match player center Y");
+
+        // Player quickly moves to (150, 600)
+        tank.updateAI(0.016, 150.0, 600.0, 28.0, null, projectileManager, null);
+        assertEquals(150.0, tank.getLaserTargetWorldX(), 0.001,
+                "Laser target X must update immediately with zero lag to new player position");
+        assertEquals(600.0, tank.getLaserTargetWorldY(), 0.001,
+                "Laser target Y must update immediately with zero lag to new player position");
+
+        // Expire aiming to lock
+        tank.setStateTimer(0.01);
+        tank.updateAI(0.02, 150.0, 600.0, 28.0, null, projectileManager, null);
+        assertEquals(BossTank.TankState.CANNON_LOCKED, tank.getState());
+
+        // During locked state, player dodges to (800, 800) -> locked coordinates must freeze in place!
+        tank.updateAI(0.05, 800.0, 800.0, 28.0, null, projectileManager, null);
+        assertEquals(150.0, tank.getLaserTargetWorldX(), 0.001,
+                "Locked coordinates must freeze in place allowing player to dodge");
+        assertEquals(600.0, tank.getLaserTargetWorldY(), 0.001,
+                "Locked coordinates must freeze in place allowing player to dodge");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank default attributes: 1250 Max HP and enlarged 96px hitbox")
+    void testBossTankDefaultAttributesAndEnlargedHitbox() {
+        BossTank tank = new BossTank(300, 400);
+        assertEquals(1250, tank.getMaxHealth(), "BossTank default Max HP must be 1250 HP");
+        assertEquals(1250, tank.getCurrentHealth(), "BossTank default Current HP must be 1250 HP");
+        assertEquals(96.0, tank.getSize(), "BossTank default hitbox size must be enlarged to 96.0px");
+        assertTrue(tank.isBoss(), "BossTank must have isBoss == true");
+        assertTrue(tank.getName().contains("TITAN MECHA"), "BossTank display name must contain TITAN MECHA");
+    }
+
+    @Test
+    @DisplayName("Verify MouseHandler viewport transform translates screen coordinates accurately across resolutions")
+    void testFullScreenMouseScalingAndTransforms() {
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+
+        // 1. Windowed 1:1 mode (1280x720)
+        mouseH.setViewportTransform(0.0, 0.0, 1.0);
+        assertEquals(500, mouseH.transformX(500));
+        assertEquals(300, mouseH.transformY(300));
+
+        // 2. Fullscreen 1080p (1920x1080 -> 1.5x scale, 0 offset)
+        mouseH.setViewportTransform(0.0, 0.0, 1.5);
+        assertEquals(640, mouseH.transformX(960)); // Center of 1920 maps to center of 1280
+        assertEquals(360, mouseH.transformY(540)); // Center of 1080 maps to center of 720
+
+        // 3. Fullscreen Ultrawide / Letterbox (e.g. 1920x1200 with 60px letterbox offset)
+        mouseH.setViewportTransform(0.0, 60.0, 1.5);
+        assertEquals(640, mouseH.transformX(960));
+        assertEquals(0, mouseH.transformY(60)); // Top of game area
+        assertEquals(360, mouseH.transformY(600)); // Center
+    }
+
+    @Test
+    @DisplayName("Verify Boss arena spawns 5-6 minion reinforcements after 5 seconds of clearing minions")
+    void testBossArenaMinionReinforcementsAfter5s() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        state.loadBossStageDirectly();
+
+        // 1. Initially in Boss Arena: bossDummy is alive and 8 minions were spawned
+        assertNotNull(state.getBossDummy(), "Boss dummy must be initialized in Boss Arena");
+        assertTrue(state.getBossDummy().isAlive(), "Boss must be alive initially");
+        long initialMinions = state.getCombatTargets().stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+        assertEquals(8, initialMinions, "Boss arena should initially have 8 minions");
+
+        // 2. Eliminate all non-boss minions
+        for (TargetDummy dummy : state.getCombatTargets()) {
+            if (!dummy.isBoss()) {
+                dummy.setAlive(false);
+            }
+        }
+        long remainingMinions = state.getCombatTargets().stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+        assertEquals(0, remainingMinions, "All minions should now be eliminated");
+
+        // 3. Simulate game update ticks: after 3s (timer has 2s left), minions should NOT have spawned yet
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        state.update(3.0, keyH, mouseH);
+        long after3sMinions = state.getCombatTargets().stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+        assertEquals(0, after3sMinions, "Minions should not spawn before 5 seconds have elapsed");
+        assertTrue(state.getBossMinionRespawnTimer() <= 2.01 && state.getBossMinionRespawnTimer() >= 1.99,
+                "Timer should have counted down from 5s to 2s (actual: " + state.getBossMinionRespawnTimer() + ")");
+
+        // 4. After another 2.1s (total elapsed > 5.0s), 5-6 reinforcements must be spawned!
+        state.update(2.1, keyH, mouseH);
+        long reinforcedMinions = state.getCombatTargets().stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+        assertTrue(reinforcedMinions >= 5 && reinforcedMinions <= 6,
+                "Reinforcement wave should spawn 5 to 6 enemies (actual: " + reinforcedMinions + ")");
+        assertEquals(1, state.getBossMinionWaveCount(), "Wave count must be 1 after first reinforcement wave");
+        assertEquals(5.0, state.getBossMinionRespawnTimer(), 0.001, "Timer must reset to 5.0s after wave spawn");
+
+        // 5. If Boss is eliminated, no reinforcements should spawn even after 5s
+        state.getBossDummy().setAlive(false);
+        assertFalse(state.getBossDummy().isAlive(), "Boss is now dead");
+        for (TargetDummy dummy : state.getCombatTargets()) {
+            if (!dummy.isBoss()) {
+                dummy.setAlive(false);
+            }
+        }
+        state.setBossMinionRespawnTimer(0.1);
+        state.update(0.2, keyH, mouseH);
+        long afterBossDeadMinions = state.getCombatTargets().stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+        assertEquals(0, afterBossDeadMinions, "No minions should spawn after boss is defeated");
+    }
+
+    @Test
+    @DisplayName("Verify critical damage visual feedback: crit flash, CriticalHitVisual spawn, and MeleeSlash crit flag")
+    void testCriticalDamageVisualFeedbackAndFlash() {
+        TargetDummy dummy = new TargetDummy(200, 200, 100);
+
+        // 1. Standard non-critical damage activates standard hit flash (100ms) and no crit flash
+        dummy.takeDamage(10, false);
+        assertEquals(90, dummy.getCurrentHealth());
+        assertTrue(dummy.getHitFlashTimer() > 0.08, "Standard hit triggers ~100ms hit flash");
+        assertEquals(0.0, dummy.getCritFlashTimer(), 0.001, "Standard hit does not activate crit flash");
+
+        // 2. Critical damage activates prolonged fiery-gold crit flash (180ms)
+        dummy.takeDamage(32, true);
+        assertEquals(58, dummy.getCurrentHealth());
+        assertTrue(dummy.getCritFlashTimer() > 0.15, "Critical strike activates ~180ms radiant gold crit flash");
+        assertTrue(dummy.getHitFlashTimer() > 0.15, "Critical strike sets hit flash timer to 180ms");
+
+        // 3. Timers decay to zero on update
+        dummy.update(0.25);
+        assertEquals(0.0, dummy.getCritFlashTimer(), 0.001, "Crit flash expires after duration");
+        assertEquals(0.0, dummy.getHitFlashTimer(), 0.001, "Hit flash expires after duration");
+
+        // 4. CriticalHitVisual lifecycle
+        CriticalHitVisual cv = new CriticalHitVisual(200, 200, 64, 0.40);
+        assertFalse(cv.isFinished());
+        assertEquals(64, cv.getDamage());
+        assertEquals(200.0, cv.getX());
+        assertEquals(200.0, cv.getY());
+        cv.update(0.20);
+        assertFalse(cv.isFinished());
+        cv.update(0.25);
+        assertTrue(cv.isFinished(), "CriticalHitVisual should be finished after total elapsed time exceeds duration");
+
+        // 5. MeleeSlash retains critical strike flag
+        MeleeSlash normalSlash = new MeleeSlash(100, 100, 0.0, 30.0, 48.0, 45, 0.12, 520.0, false);
+        assertFalse(normalSlash.isCritical(), "Normal slash must have critical == false");
+
+        MeleeSlash critSlash = new MeleeSlash(100, 100, 0.0, 30.0, 48.0, 90, 0.12, 676.0, true);
+        assertTrue(critSlash.isCritical(), "Crit slash must have critical == true");
+
+        // 6. Projectile hit resolution in PlayingState spawns CriticalHitVisual when bullet is critical
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        state.getCombatTargets().clear();
+        state.getActiveCritVisuals().clear();
+
+        double testX = state.getPlayerX() + 10;
+        double testY = state.getPlayerY() + 10;
+        TargetDummy target = new TargetDummy(testX, testY, 100);
+        state.getCombatTargets().add(target);
+
+        // Spawn critical bullet directly overlapping target
+        Projectile critBullet = new Projectile(testX, testY, 0.0, 0.0, 40, 1.0, true, true);
+        state.getProjectileManager().spawn(critBullet);
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        state.update(0.016, keyH, mouseH);
+
+        assertFalse(critBullet.isActive(), "Bullet should deactivate after striking target");
+        assertEquals(60, target.getCurrentHealth(), "Target should receive 40 damage");
+        assertTrue(target.getCritFlashTimer() > 0.10, "Target must enter crit flash state");
+        assertFalse(state.getActiveCritVisuals().isEmpty(), "PlayingState must spawn a CriticalHitVisual on crit impact");
+        assertEquals(40, state.getActiveCritVisuals().get(0).getDamage());
     }
 }

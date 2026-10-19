@@ -22,14 +22,19 @@ public class MenuState extends GameState {
     /**
      * Primary menu choices available to the user.
      */
-    private final String[] options = { "START MISSION", "HOW TO PLAY", "EXIT" };
+    private final String[] options = {
+        "BOSS FIGHT: TITAN TANK",
+        "START CAMPAIGN (STAGE 1)",
+        "HOW TO PLAY",
+        "EXIT"
+    };
     private int selectedOption = 0;
     private boolean showHowToPlay = false;
 
     /**
      * Cached bounding boxes for mouse hover/click collision detection.
      */
-    private final Rectangle[] optionBounds = new Rectangle[3];
+    private final Rectangle[] optionBounds = new Rectangle[4];
 
     // Typography styling
     private final Font titleFont = new Font("SansSerif", Font.BOLD, 54);
@@ -96,9 +101,16 @@ public class MenuState extends GameState {
      */
     private void selectCurrentOption() {
         switch (selectedOption) {
-            case 0 -> gsm.setState(GameStateManager.StateType.PLAYING);
-            case 1 -> showHowToPlay = true;
-            case 2 -> System.exit(0);
+            case 0 -> {
+                PlayingState.setSpawnDirectlyInBossRoom(true);
+                gsm.setState(GameStateManager.StateType.PLAYING);
+            }
+            case 1 -> {
+                PlayingState.setSpawnDirectlyInBossRoom(false);
+                gsm.setState(GameStateManager.StateType.PLAYING);
+            }
+            case 2 -> showHowToPlay = true;
+            case 3 -> System.exit(0);
         }
     }
 
@@ -147,8 +159,8 @@ public class MenuState extends GameState {
         // --- 3. Interactive Menu Buttons ---
         g.setFont(menuFont);
         FontMetrics fmMenu = g.getFontMetrics();
-        int startY = 360;
-        int spacing = 65;
+        int startY = 325;
+        int spacing = 58;
 
         for (int i = 0; i < options.length; i++) {
             String opt = options[i];
@@ -182,7 +194,7 @@ public class MenuState extends GameState {
         // --- 4. Footer Help Tip ---
         g.setFont(infoFont);
         g.setColor(new Color(100, 115, 140));
-        String footer = "Use W/S or Arrow Keys to navigate, Enter to Select | Mouse Click supported";
+        String footer = "Use W/S or Arrow Keys to navigate, Enter to Select | F11: Full Screen | Mouse Click supported";
         FontMetrics fmFoot = g.getFontMetrics();
         g.drawString(footer, (GameConfig.SCREEN_WIDTH - fmFoot.stringWidth(footer)) / 2, GameConfig.SCREEN_HEIGHT - 40);
     }
@@ -209,18 +221,19 @@ public class MenuState extends GameState {
         g.setFont(infoFont);
         g.setColor(Color.WHITE);
         int lineY = boxY + 100;
-        int gap = 32;
+        int gap = 30;
 
         g.drawString("• [W, A, S, D]: Move Operative (Up, Left, Down, Right)", boxX + 50, lineY);
         g.drawString("• [MOUSE AIM 360°]: Aim crosshair freely around operative", boxX + 50, lineY += gap);
-        g.drawString("• [LEFT CLICK]: Fire Equipped Weapon", boxX + 50, lineY += gap);
+        g.drawString("• [LEFT CLICK]: Fire Equipped Weapon | [4]: Combat Knife", boxX + 50, lineY += gap);
         g.drawString("• [R]: Reload Weapon magazine", boxX + 50, lineY += gap);
         g.drawString("• [1, 2, Q]: Swap between primary and secondary firearms", boxX + 50, lineY += gap);
         g.drawString("• [SPACEBAR]: Tactical Dash / Roll (brief invulnerability)", boxX + 50, lineY += gap);
-        g.drawString("• [ESC]: Pause Mission / Options", boxX + 50, lineY += gap);
+        g.drawString("• [F11 / ALT+ENTER]: Toggle Full Screen (Bật / Tắt Toàn Màn Hình)", boxX + 50, lineY += gap);
+        g.drawString("• [ESC]: Pause Mission / Options | [TAB]: Open Tactical Backpack", boxX + 50, lineY += gap);
         g.drawString("• ROGUELITE UPGRADES: Defeat enemies, gather EXP, pick 1 of 3 Perks!", boxX + 50, lineY += gap);
 
         g.setColor(new Color(255, 120, 50));
-        g.drawString("Click anywhere or press [ENTER] / [ESC] to return to Main Menu", boxX + 50, boxY + boxH - 30);
+        g.drawString("Click anywhere or press [ENTER] / [ESC] to return to Main Menu", boxX + 50, boxY + boxH - 24);
     }
 }

@@ -346,7 +346,7 @@ public class CombatDoorTest {
     }
 
     @Test
-    @DisplayName("Verify Boss Stage (Stage 4) spawns Titan Mecha Boss Dummy with 1000 HP and large size 64px")
+    @DisplayName("Verify Boss Stage (Stage 4) spawns Titan Mecha Boss Dummy with 1250 HP and large size 96px")
     void testBossStageBossDummyPropertiesAndLifecycle() {
         com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
         com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
@@ -368,9 +368,9 @@ public class CombatDoorTest {
         TargetDummy boss = state.getBossDummy();
         assertNotNull(boss, "Boss Stage Grand Boss Arena must spawn a designated Boss Dummy");
         assertTrue(boss.isBoss(), "Boss Dummy must have isBoss == true");
-        assertEquals(1000, boss.getMaxHealth(), "Titan Boss Dummy must have 1000 Max HP");
-        assertEquals(1000, boss.getCurrentHealth(), "Titan Boss Dummy must start with full 1000 HP");
-        assertEquals(64.0, boss.getSize(), "Titan Boss Dummy must be 64px large");
+        assertEquals(1250, boss.getMaxHealth(), "Titan Boss Dummy must have 1250 Max HP");
+        assertEquals(1250, boss.getCurrentHealth(), "Titan Boss Dummy must start with full 1250 HP");
+        assertEquals(96.0, boss.getSize(), "Titan Boss Dummy must be 96px large");
         assertTrue(boss.getName().contains("TITAN MECHA DUMMY"), "Boss name should be Titan Mecha Dummy");
         assertTrue(boss.isAlive(), "Boss must start alive");
 
@@ -379,11 +379,11 @@ public class CombatDoorTest {
 
         // Gây sát thương một phần cho Boss
         boss.takeDamage(250);
-        assertEquals(750, boss.getCurrentHealth());
+        assertEquals(1000, boss.getCurrentHealth());
         assertTrue(boss.isAlive());
 
         // Kiểm tra hạ gục Boss bằng sát thương chí mạng
-        boss.takeDamage(750);
+        boss.takeDamage(1000);
         assertEquals(0, boss.getCurrentHealth());
         assertFalse(boss.isAlive());
     }

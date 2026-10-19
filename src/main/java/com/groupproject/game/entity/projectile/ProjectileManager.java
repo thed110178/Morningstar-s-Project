@@ -2,6 +2,7 @@ package com.groupproject.game.entity.projectile;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.dungeon.DungeonMap;
+import com.groupproject.game.state.PlayingState;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,18 @@ public class ProjectileManager {
      * @param dungeonMap Reference to the active dungeon terrain for wall collision testing.
      */
     public synchronized void update(double deltaTime, DungeonMap dungeonMap) {
+        update(deltaTime, dungeonMap, null);
+    }
+
+    /**
+     * Updates positions of all flying bullets and checks for collisions against dungeon walls,
+     * triggering explosive payloads if the projectile is a heavy explosive ordnance (BossCannonShell).
+     *
+     * @param deltaTime    Elapsed delta time in seconds.
+     * @param dungeonMap   Reference to the active dungeon terrain for wall collision testing.
+     * @param playingState Reference to active gameplay state for area-of-effect damage resolution.
+     */
+    public synchronized void update(double deltaTime, DungeonMap dungeonMap, PlayingState playingState) {
         // Integrate new bullets from staging buffer
         if (!pendingAdd.isEmpty()) {
             projectiles.addAll(pendingAdd);
@@ -56,10 +69,19 @@ public class ProjectileManager {
                 // WHY: isAreaBlockingProjectiles absorbs bullets on walls, cover, closed doors,
                 // and open doors (DOOR_OPEN) to prevent cheesing encounters from corridors.
                 if (dungeonMap.isAreaBlockingProjectiles(p.getX() - 2, p.getY() - 2, 4, 4)) {
-                    // Gây sát thương lên ô cover tạm thời (nếu trúng)
-                    dungeonMap.damageDestructibleCoverInArea(p.getX() - 4, p.getY() - 4, 8, 8, p.getDamage());
-                    p.deactivate(); // Impact absorbed by terrain or door energy threshold
+                    if (p instanceof BossCannonShell) {
+                        ((BossCannonShell) p).explode(playingState, dungeonMap);
+                    } else {
+                        // Gây sát thương lên ô cover tạm thời (nếu trúng)
+                        dungeonMap.damageDestructibleCoverInArea(p.getX() - 4, p.getY() - 4, 8, 8, p.getDamage());
+                        p.deactivate(); // Impact absorbed by terrain or door energy threshold
+                    }
                 }
+            }
+
+            // In case lifetime expired on BossCannonShell without impact, trigger detonation payload
+            if (!p.isActive() && p instanceof BossCannonShell) {
+                ((BossCannonShell) p).explode(playingState, dungeonMap);
             }
         }
 

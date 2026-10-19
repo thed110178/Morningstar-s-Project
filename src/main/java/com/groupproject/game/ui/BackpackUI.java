@@ -320,24 +320,27 @@ public class BackpackUI {
                 g.fillRect(iconCenterX + 10, iconCenterY - 3, 3, 5);
             }
 
-            // Thông số chi tiết đo lường bằng sao
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            // Thông số chi tiết đo lường bằng sao và chí mạng
+            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
             g.setColor(new Color(185, 205, 230));
-            g.drawString("• Sát thương:", x + 15, y + 74);
-            g.drawString("• Tốc ra đạn:", x + 15, y + 94);
-            g.drawString("• Chính xác:", x + 15, y + 114);
+            g.drawString("• Sát thương:", x + 15, y + 68);
+            g.drawString("• Tốc ra đạn:", x + 15, y + 84);
+            g.drawString("• Chính xác:", x + 15, y + 100);
+            g.drawString("• Chí mạng:", x + 15, y + 116);
             String ammoText = "• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize();
             if (weapon.getAmmoType() != null) {
                 ammoText += " [Kho: " + weapon.getReserveAmmo() + "/" + weapon.getAmmoType().getMaxCapacity() + "]";
             }
             g.drawString(ammoText, x + 15, y + 134);
 
-            // Các cột sao hiển thị màu vàng kim
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            // Các cột sao hiển thị màu vàng kim và thông số thực tế
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
             g.setColor(new Color(255, 225, 75));
-            g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", x + 90, y + 74);
-            g.drawString(Weapon.formatStars(weapon.getFireRateStars()), x + 90, y + 94);
-            g.drawString(Weapon.formatStars(weapon.getAccuracyStars()), x + 90, y + 114);
+            g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", x + 88, y + 68);
+            g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", x + 88, y + 84);
+            g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", x + 88, y + 100);
+            g.setColor(new Color(255, 130, 90));
+            g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.1f", weapon.getCritMultiplier()) + " DMG)", x + 88, y + 116);
 
             // Nhãn trạng thái trang bị
             if (isEquipped) {
@@ -381,26 +384,43 @@ public class BackpackUI {
         if (weapon != null) {
             g.setFont(new Font("SansSerif", Font.BOLD, 14));
             g.setColor(weapon.isMelee() ? Color.WHITE : new Color(255, 220, 75));
-            g.drawString(weapon.getShortDisplayName().toUpperCase(), x + 12, y + 42);
+            g.drawString(weapon.getShortDisplayName().toUpperCase(), x + 12, y + 40);
+
+            // Badge tỉ lệ chí mạng nổi bật góc phải
+            int badgeW = 95;
+            int badgeH = 18;
+            int badgeX = x + w - badgeW - 12;
+            int badgeY = y + 26;
+            g.setColor(new Color(45, 20, 20, 220));
+            g.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 6, 6);
+            g.setColor(new Color(255, 95, 80));
+            g.drawRoundRect(badgeX, badgeY, badgeW, badgeH, 6, 6);
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            g.drawString("CRIT: " + weapon.getCritChancePercent() + "%", badgeX + 12, badgeY + 13);
 
             g.setFont(new Font("SansSerif", Font.PLAIN, 11));
             g.setColor(new Color(180, 205, 230));
             if (weapon.isMelee()) {
-                g.drawString("• Sát thương: " + weapon.getDamage() + " HP | Cận chiến (Vô hạn)", x + 12, y + 62);
+                g.drawString(String.format("• Sát thương: %d HP  • Chí mạng: %d%% (x2.0 DMG)",
+                        weapon.getDamage(), weapon.getCritChancePercent()), x + 12, y + 57);
+                g.drawString(String.format("• Tốc vung: %s  • Loại: Cận chiến (∞)",
+                        weapon.getFormattedRPM()), x + 12, y + 73);
             } else {
                 String subAmmo = weapon.hasInfiniteAmmo() ? " (∞)" : "";
-                g.drawString("• Sát thương: " + weapon.getDamage() + " HP  " + Weapon.formatStars(weapon.getDamageStars()) +
-                        " | Đạn: " + weapon.getCurrentAmmo() + "/" + weapon.getMagazineSize() + subAmmo, x + 12, y + 62);
+                g.drawString(String.format("• Sát thương: %d HP  • Chí mạng: %d%% (x2.0 DMG)",
+                        weapon.getDamage(), weapon.getCritChancePercent()), x + 12, y + 57);
+                g.drawString(String.format("• Băng đạn: %d/%d%s  • Tốc bắn: %s",
+                        weapon.getCurrentAmmo(), weapon.getMagazineSize(), subAmmo, weapon.getFormattedRPM()), x + 12, y + 73);
             }
 
             if (isEquipped) {
                 g.setColor(new Color(60, 220, 160));
                 g.setFont(new Font("SansSerif", Font.BOLD, 11));
-                g.drawString("★ ĐANG CẦM", x + 12, y + 84);
+                g.drawString("★ ĐANG CẦM", x + 12, y + 89);
             } else {
                 g.setColor(new Color(130, 155, 185));
                 g.setFont(new Font("SansSerif", Font.PLAIN, 11));
-                g.drawString("[Click hoặc nhấn " + slot + " để cầm]", x + 12, y + 84);
+                g.drawString("[Click hoặc nhấn " + slot + " để cầm]", x + 12, y + 89);
             }
         }
     }

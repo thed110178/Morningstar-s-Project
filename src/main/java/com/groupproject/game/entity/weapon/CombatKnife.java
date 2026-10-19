@@ -16,11 +16,12 @@ import java.util.List;
  */
 public class CombatKnife extends Weapon {
 
-    private static final int DEFAULT_DAMAGE = 45;
+    private static final int DEFAULT_DAMAGE = 45; // Buff sát thương từ 22 lên 45 HP (thưởng xứng đáng cho rủi ro cận chiến)
     private static final double SWING_COOLDOWN = 0.32; // Seconds between swings
-    private static final double REACH_OFFSET = 34.0;   // Distance in front of player
-    private static final double HITBOX_SIZE = 44.0;    // ~1 tile size
+    private static final double REACH_OFFSET = 36.0;   // Distance in front of player
+    private static final double HITBOX_SIZE = 48.0;    // ~1 tile size
     private static final double SLASH_DURATION = 0.12; // Duration of visual arc
+    private static final double KNOCKBACK_FORCE = 520.0; // High knockback impulse (px/s) to push rushing enemies away
 
     public CombatKnife() {
         super("Combat Knife", 4, DEFAULT_DAMAGE, SWING_COOLDOWN, 0, 0.0);
@@ -31,9 +32,14 @@ public class CombatKnife extends Weapon {
                           ProjectileManager pm, List<MeleeSlash> slashList) {
         if (!canAttack()) return false;
 
-        // Project a melee strike hitbox 1 tile ahead in the aim direction
+        // Roll critical hit and calculate dynamic damage and knockback
+        boolean isCrit = rollCritical();
+        int slashDmg = calculateDamage(isCrit);
+        double knockback = KNOCKBACK_FORCE;
+
+        // Project a melee strike hitbox 1 tile ahead in the aim direction with high knockback
         MeleeSlash slash = new MeleeSlash(originX, originY, aimAngle, REACH_OFFSET,
-                HITBOX_SIZE, damage, SLASH_DURATION);
+                HITBOX_SIZE, slashDmg, SLASH_DURATION, knockback, isCrit);
         if (slashList != null) {
             slashList.add(slash);
         }

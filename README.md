@@ -89,6 +89,21 @@ This project bridges the gap between theoretical software engineering principles
     * **Controlled Burst Fire**: Discharges 1 to 3 round pistol volleys with dodgeable projectile tracers.
   * **Directional Knockback Simulation**:
     * Hostiles receive physical knockback impulses upon bullet impacts ($130\text{ px/s}$) and knife slashes ($160\text{ px/s}$), dissipated rapidly via high-friction damping.
+* **Titan Battle Tank Boss (Stage 4 Climax Encounter)**:
+  * **Enlarged 96px Heavy Hitbox & 3-Layer Decoupled Rotations**:
+    * *Size & Scale*: Massive $96\text{px}$ combat footprint with $94 \times 76\text{px}$ armored chassis, $1250\text{ HP}$, dual caterpillar tracks, and $160\text{px}$ overhead commander boss health bar.
+    * *Layer 1 (Top)*: Independent 360° twin-barrel machine gun turret tracking operative at all times.
+    * *Layer 2 (Middle)*: Heavy tank cannon turret locked to chassis when $\text{HP} \ge 50\%$, and awakened with independent laser targeting and supersonic explosive ordnance when $\text{HP} < 50\%$.
+    * *Layer 3 (Bottom)*: Armored chassis and caterpillar treads strictly aligned with actual locomotion movement vector.
+  * **Multi-Phase Moveset**:
+    * *Lightning Ram / Charge (950 px/s Rocket Charge, Obstacle Impact Stop, Exclamation Warning)*: Rapid $0.30\text{s}$ steering wind-up displaying an overhead pulsing warning badge with a bold exclamation mark `"!"`; explosive $950\text{ px/s}$ charge dealing $40\text{ HP}$ contact damage. Striking any obstacle (walls, pillars, or destructible cover) immediately halts the charge, crushes destructible cover into rubble, triggers a $65\text{px}$ impact shockwave explosion, spouts fiery sparks and billowing smoke from the front bumper, triggers $0.45\text{s}$ screen shake, and stuns the tank for $0.8\text{s}$.
+    * *Phase 1 Moveset Balance & Anti-Ram Spam*: In the first half of the health bar ($\text{HP} \ge 50\%$), attacks are balanced between machine gun bursts (55%) and ram charges (45%). Consecutive ram attacks are strictly prohibited, guaranteeing alternating machine gun suppression after every ram.
+    * *Machine Gun Bursts*: 6-round bursts ($9\text{ HP/bullet}$) with a 60% chance of lateral strafe-fire to flank player cover.
+    * *Supersonic High-Explosive Cannon (Zero-Lag Laser Lock-On & Dodge Freeze Window - HP < 50%)*: $0.90\text{s}$ laser aiming that locks directly onto operative world coordinates in real-time with zero trailing delay; laser and optical reticle then freeze locked in place for $0.40\text{s}$ (the operative's sole window to dodge); followed by an instantaneous $1350\text{ px/s}$ supersonic shell dealing $35\text{ HP}$ damage in an $85\text{px}$ AoE that penetrates all cover and terrain.
+  * **Minion Guardian Reinforcements Wave System**:
+    * Clearing all escort minions in the Grand Boss Arena triggers a 5-second countdown timer displayed in the top HUD below the Boss Health Bar.
+    * When the countdown reaches zero, $5 - 6$ mixed reinforcements (Melee Chasers and Rogue Pistol Scouts) spawn evenly around the arena with safe $0.40\text{s}$ portal telegraphs.
+    * Reinforcement waves continuously respawn every 5 seconds after minions are cleared until the Boss Tank is eliminated.
 * **360° Omnidirectional Aiming & Star-Level Ballistics**:
   * Mouse crosshair aiming via $\theta = \text{atan2}(\Delta y, \Delta x)$.
   * **Star-Level AR Accuracy Curve**: Pinpoint initial burst accuracy with dynamic recoil dispersion blooming during sustained automatic fire. Higher star ratings (Level 1 to 5) grant tighter initial cones and reduced maximum spread.
@@ -358,6 +373,7 @@ RunGame.bat
 | **Q** | Quick-Swap between last 2 equipped weapons |
 | **F** | Manual Tactical Interaction (Use Medkit, Pick up Weapon, Shop Purchase, Advance Stage) |
 | **Tab** / **B** | Toggle Tactical Backpack / Inventory Modal |
+| **F11** / **Alt + Enter** | Toggle Full Screen (Bật / Tắt Toàn Màn Hình) |
 | **Esc** | Pause Game / Return to Menu |
 | **Enter / R** | Restart Game upon Game Over |
 
@@ -376,17 +392,17 @@ Run the complete automated test suite via:
 mvn test
 ```
 
-## 11.3. Test Cases Summary (99 Tests – 100% Passing)
+## 11.3. Test Cases Summary (110 Tests – 100% Passing)
 
 | Test Suite Class | Tests Run | Failures | Errors | Coverage Focus |
 |---|---|---|---|---|
-| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 31 | 0 | 0 | Weapon creation, star-level AR accuracy curve, continuous auto-fire recoil bloom, magazine reloads, fire rates, cycling, slot constraints. |
-| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 15 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss dummy lifecycle, door unlock on room clear. |
+| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 31 | 0 | 0 | Weapon creation, star-level AR accuracy curve, continuous auto-fire recoil bloom, magazine reloads, fire rates, cycling, slot constraints, knife nerfed damage (22 HP), and anti-multi-hit tracking. |
+| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 15 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss dummy lifecycle (1250 HP, 96px), door unlock on room clear. |
 | [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 15 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed room types across 3 stages + Boss stage. |
 | [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 11 | 0 | 0 | AR/SMG/Shotgun reserve caps, reload ammo deduction from reserve, pickup stacking, distinct color identities, infinite pistol ammo. |
 | [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | 7 | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap at 100, death trigger, manual `[F]` interaction, shop medkit purchase. |
-| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 20 | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, minimum 130px safe spawn distance, tactical kiting, active lateral strafing, cover flanking, direction-inverting wall reflexes, 1-3 round pistol burst fire. |
-| **Total** | **99** | **0** | **0** | **100% BUILD SUCCESS** |
+| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 31 | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, minimum 130px safe spawn distance, tactical kiting, active lateral strafing, cover flanking, direction-inverting wall reflexes, 1-3 round pistol burst fire, BossTank 3-layer decoupled rotations, cannon unlock threshold <50% HP, ram charge into solid obstacle -> stun, ram into destructible cover -> crush, BossCannonShell AoE blast, BossTank 1250 HP/96px default attributes, mouse viewport scaling across resolutions, and Boss Arena 5s minion reinforcements wave respawn. |
+| **Total** | **110** | **0** | **0** | **100% BUILD SUCCESS** |
 
 ---
 
@@ -413,7 +429,7 @@ mvn test
 
 * **Simulation & Graphics**: Smooth rendering without flickering or frame tearing via `Graphics2D` double-buffering.
 * **Audio-Visual Feedback**: Dynamic camera screenshake, danger vignette pulse, weapon recoil kick, under-operative reload bar, and real-time floating damage/interaction tags.
-* **Test Reliability**: The entire test suite of **99 unit tests** executes in under 2.5 seconds (`Total time: ~2.4s`), proving high modularity and zero flaky tests.
+* **Test Reliability**: The entire test suite of **104 unit tests** executes in under 2.5 seconds (`Total time: ~2.4s`), proving high modularity and zero flaky tests.
 
 ---
 
@@ -487,7 +503,7 @@ Report/GroupXX_DontKnow_Report.docx
 * [x] Project runs successfully (`mvn exec:java` and executable JAR).
 * [x] Complete source code included in `src/main/java`.
 * [x] README is completed and formatted according to the course rubric.
-* [x] Automated test suite completed (99/99 tests passing in `mvn test`).
+* [x] Automated test suite completed (109/109 tests passing in `mvn test`).
 * [x] Experimental evaluation and telemetry results included.
 * [x] Novelty and technical contributions clearly identified.
 * [x] All group members understand the architecture and codebase.

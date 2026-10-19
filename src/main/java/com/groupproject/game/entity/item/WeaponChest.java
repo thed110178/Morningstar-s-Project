@@ -119,14 +119,8 @@ public class WeaponChest {
     private void setupWeaponReward() {
         rewardType = ChestRewardType.WEAPON;
         creditsReward = 0;
-        int weaponRoll = ThreadLocalRandom.current().nextInt(3);
-        if (weaponRoll == 0) {
-            droppedWeapon = new AssaultRifle();
-        } else if (weaponRoll == 1) {
-            droppedWeapon = new Shotgun();
-        } else {
-            droppedWeapon = new SMG();
-        }
+        // Quy tắc: Tỉ lệ chí mạng càng cao thì tỉ lệ ra càng ít (SMG 10% -> 50%, AR 20% -> 30%, Shotgun 30% -> 20%)
+        droppedWeapon = Weapon.getRandomDropWeapon();
         // Quy tắc: Stage nào thì cho súng free khi clear room ở lv như thế (Stage 1 -> Lv 1; Stage 2 -> Lv 2; Stage 100 -> Lv 100)
         int weaponLevel = Math.max(1, stage);
         droppedWeapon.configureLevel(weaponLevel);
@@ -409,8 +403,8 @@ public class WeaponChest {
     public static void renderWeaponStatCard(Graphics2D g, int centerX, int bottomY, Weapon weapon, String actionPrompt) {
         if (weapon == null) return;
 
-        int boxW = 210;
-        int boxH = 96;
+        int boxW = 230;
+        int boxH = 114;
         int boxX = centerX - boxW / 2;
         int boxY = bottomY - boxH;
 
@@ -432,29 +426,32 @@ public class WeaponChest {
         g.setColor(new Color(50, 75, 100));
         g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
 
-        // 3. 3 hàng chỉ số đo bằng sao
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        // 3. 4 hàng chỉ số đo bằng sao và chí mạng
+        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
         g.setColor(new Color(200, 220, 240));
-        g.drawString("• Sát thương:", boxX + 14, boxY + 38);
-        g.drawString("• Tốc ra đạn:", boxX + 14, boxY + 54);
-        g.drawString("• Chính xác:", boxX + 14, boxY + 70);
+        g.drawString("• Sát thương:", boxX + 14, boxY + 36);
+        g.drawString("• Tốc ra đạn:", boxX + 14, boxY + 51);
+        g.drawString("• Chính xác:", boxX + 14, boxY + 66);
+        g.drawString("• Chí mạng:", boxX + 14, boxY + 81);
 
         // Giá trị sao màu vàng kim
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(new Font("SansSerif", Font.BOLD, 10));
         g.setColor(new Color(255, 225, 75));
-        g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", boxX + 90, boxY + 38);
-        g.drawString(Weapon.formatStars(weapon.getFireRateStars()), boxX + 90, boxY + 54);
-        g.drawString(Weapon.formatStars(weapon.getAccuracyStars()), boxX + 90, boxY + 70);
+        g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", boxX + 88, boxY + 36);
+        g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", boxX + 88, boxY + 51);
+        g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", boxX + 88, boxY + 66);
+        g.setColor(new Color(255, 130, 90));
+        g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.1f", weapon.getCritMultiplier()) + " DMG)", boxX + 88, boxY + 81);
 
         // 4. Thanh lời nhắc phím bấm [F]
         g.setColor(new Color(25, 65, 45, 230));
-        g.fillRoundRect(boxX + 10, boxY + 76, boxW - 20, 16, 4, 4);
+        g.fillRoundRect(boxX + 10, boxY + 91, boxW - 20, 16, 4, 4);
         g.setColor(new Color(60, 220, 160));
-        g.drawRoundRect(boxX + 10, boxY + 76, boxW - 20, 16, 4, 4);
+        g.drawRoundRect(boxX + 10, boxY + 91, boxW - 20, 16, 4, 4);
 
         g.setFont(new Font("SansSerif", Font.BOLD, 10));
         g.setColor(new Color(255, 220, 60));
-        g.drawString("[F] " + actionPrompt, boxX + 16, boxY + 88);
+        g.drawString("[F] " + actionPrompt, boxX + 16, boxY + 103);
 
         g.setStroke(new BasicStroke(1.0f));
     }

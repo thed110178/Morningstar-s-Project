@@ -154,6 +154,10 @@ public class Shotgun extends Weapon {
         double currentCone = currentSpreadAngle > 0.0001 ? currentSpreadAngle : SPREAD_CONE_ANGLE;
         double angleStep = (currentCone * 2.0) / (PELLETS_PER_SHOT - 1);
 
+        // Roll critical hit and calculate dynamic pellet damage
+        boolean isCrit = rollCritical();
+        int pelletDmg = calculateDamage(isCrit);
+
         for (int i = 0; i < PELLETS_PER_SHOT; i++) {
             double angleOffset = -currentCone + (i * angleStep);
             // Thêm rung lắc ngẫu nhiên nhẹ giữa các viên
@@ -165,9 +169,10 @@ public class Shotgun extends Weapon {
                     muzzleY,
                     pelletAngle,
                     PELLET_SPEED,
-                    damage,
+                    pelletDmg,
                     PELLET_LIFETIME,
-                    true);
+                    true,
+                    isCrit);
             pm.spawn(pellet);
         }
 

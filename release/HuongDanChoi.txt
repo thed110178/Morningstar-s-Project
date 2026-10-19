@@ -25,6 +25,7 @@
 - [F]                : Tương tác nhặt đồ / Dùng hộp cứu thương / Mua đồ ở Shop.
 - [Tab] hoặc [B]     : Mở/Đóng Balo chiến thuật (Xem vũ khí và trữ lượng đạn).
 - [Space] (Phím cách): Lướt né đòn chiến thuật (Bất tử trong tích tắc).
+- [F2]               : Vào thẳng / Hồi sinh ngay tại phòng Boss Titan Tank (Kèm full vũ khí).
 - [Esc]              : Tạm dừng / Quay về Menu.
 - [Enter] hoặc [R]   : Chơi lại từ đầu khi tử trận (Game Over).
 

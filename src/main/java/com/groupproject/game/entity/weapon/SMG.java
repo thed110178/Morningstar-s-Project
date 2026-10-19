@@ -48,8 +48,7 @@ public class SMG extends Weapon {
      * Khởi tạo súng tiểu liên SMG với cấu hình mặc định (Slot 1 hoặc Slot 2).
      */
     public SMG() {
-        super("Submachine Gun (SMG)", 1, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
-        this.ammoType = com.groupproject.game.entity.item.AmmoType.SMG;
+        this(1);
     }
 
     /**
@@ -90,9 +89,13 @@ public class SMG extends Weapon {
         double muzzleX = originX + Math.cos(firedAngle) * barrelLength;
         double muzzleY = originY + Math.sin(firedAngle) * barrelLength;
 
+        // Roll critical hit and calculate dynamic damage
+        boolean isCrit = rollCritical();
+        int shotDamage = calculateDamage(isCrit);
+
         // Bắn viên đạn SMG
         Projectile bullet = new Projectile(muzzleX, muzzleY, firedAngle, BULLET_SPEED,
-                damage, BULLET_LIFETIME, true);
+                shotDamage, BULLET_LIFETIME, true, isCrit);
         pm.spawn(bullet);
 
         // Tiêu hao 1 viên đạn và bắt đầu đếm thời gian hồi chiêu

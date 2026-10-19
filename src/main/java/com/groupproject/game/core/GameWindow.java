@@ -31,6 +31,9 @@ public class GameWindow extends JFrame {
         this.gamePanel = new GamePanel();
         this.gameLoop = new GameLoop(gamePanel);
 
+        // Đăng ký bộ chuyển đổi toàn màn hình F11
+        this.gamePanel.setFullScreenToggler(this::toggleFullScreen);
+
         add(gamePanel);
 
         // WHY: pack() sizes the frame so that the content pane (GamePanel) matches its preferredSize exactly,
@@ -47,6 +50,36 @@ public class GameWindow extends JFrame {
                 gameLoop.stop();
             }
         });
+    }
+
+    private boolean fullScreen = false;
+    private java.awt.Rectangle windowedBounds = null;
+
+    /**
+     * Chuyển đổi mượt mà giữa chế độ Cửa sổ (Windowed 1280x720) và Toàn màn hình (Borderless Fullscreen).
+     */
+    public void toggleFullScreen() {
+        fullScreen = !fullScreen;
+        dispose();
+        if (fullScreen) {
+            windowedBounds = getBounds();
+            setUndecorated(true);
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+        } else {
+            setUndecorated(false);
+            setExtendedState(JFrame.NORMAL);
+            if (windowedBounds != null) {
+                setBounds(windowedBounds);
+            }
+            pack();
+            setLocationRelativeTo(null);
+        }
+        setVisible(true);
+        gamePanel.requestFocusInWindow();
+    }
+
+    public boolean isFullScreen() {
+        return fullScreen;
     }
 
     /**

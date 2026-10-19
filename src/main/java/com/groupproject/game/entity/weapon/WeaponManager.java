@@ -231,13 +231,14 @@ public class WeaponManager {
         g.setColor(new Color(50, 70, 95));
         g.drawRoundRect(hudX, hudY, hudW, hudH, 10, 10);
 
-        // 2. Dòng 1: Tên vũ khí đang cầm kèm CẤP ĐỘ (Level) (Yêu cầu 1)
+        // 2. Dòng 1: Tên vũ khí đang cầm kèm CẤP ĐỘ (Level) và TỈ LỆ CHÍ MẠNG
         g.setFont(new Font("SansSerif", Font.BOLD, 13));
         g.setColor(new Color(255, 205, 50)); // Màu vàng kim
-        String weaponTitle = String.format("[%d] %s   Lv.%d",
+        String weaponTitle = String.format("[%d] %s   Lv.%d   •   CRIT: %d%%",
                 activeWeapon.getSlotIndex(),
                 activeWeapon.getName().toUpperCase(),
-                activeWeapon.getLevel());
+                activeWeapon.getLevel(),
+                activeWeapon.getCritChancePercent());
         g.drawString(weaponTitle, hudX + 14, hudY + 22);
 
         // 3. Dòng 2: Hiển thị đạn băng / nạp đạn của vũ khí đang cầm

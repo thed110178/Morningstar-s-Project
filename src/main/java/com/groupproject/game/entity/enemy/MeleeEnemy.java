@@ -214,8 +214,11 @@ public class MeleeEnemy extends TargetDummy {
         double navDist = Math.hypot(toNavX, toNavY);
 
         // Locomotion: Chase operative until within physical contact distance
+        // WHY: Khi đang chịu lực đẩy lùi mạnh (knockback > 35 px/s), kẻ địch bị choáng khựng (reeling)
+        // và không thể tiếp tục chủ động di chuyển tiến tới ngược lại hướng văng.
+        boolean isReeling = Math.hypot(knockbackVx, knockbackVy) > 35.0;
         double minDistance = (size / 2.0) + (playerSize / 2.0) - 2.0;
-        if (dist > minDistance) {
+        if (dist > minDistance && !isReeling) {
             double desiredAngle = (navDist > 0.001) ? Math.atan2(toNavY, toNavX) : facingAngle;
             double stepDist = speed * deltaTime;
             double half = size / 2.0;
@@ -262,6 +265,16 @@ public class MeleeEnemy extends TargetDummy {
         }
     }
 
+    /**
+     * Staggers the melee enemy by resetting or delaying its contact strike timer.
+     * Prevents immediate counter-attacks upon being struck by heavy melee attacks or shotgun blasts.
+     *
+     * @param duration Delay in seconds.
+     */
+    public void stagger(double duration) {
+        this.attackTimer = Math.max(this.attackTimer, duration);
+    }
+
     @Override
     public void render(Graphics2D g, Camera camera) {
         if (!alive) return;
@@ -279,14 +292,23 @@ public class MeleeEnemy extends TargetDummy {
         g.fillOval(screenCX - half, screenCY + half - 5, (int) size, 10);
 
         // 2. Chassis body (Aggressive spiky cyber-swarmer)
-        if (hitFlashTimer > 0) {
+        if (critFlashTimer > 0) {
+            g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi dính đòn chí mạng
+        } else if (hitFlashTimer > 0) {
             g.setColor(Color.WHITE);
         } else {
             g.setColor(new Color(190, 35, 45)); // Crimson chassis
         }
         g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-        g.setColor(new Color(255, 90, 90));
-        g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+        if (critFlashTimer > 0) {
+            g.setColor(new Color(255, 130, 130));
+            g.setStroke(new BasicStroke(2.0f));
+            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+            g.setStroke(new BasicStroke(1.0f));
+        } else {
+            g.setColor(new Color(255, 90, 90));
+            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+        }
 
         // 3. Forward kinetic mandibles / blades pointing along facingAngle
         int bladeLen = 14;
@@ -297,7 +319,7 @@ public class MeleeEnemy extends TargetDummy {
 
         Stroke oldStroke = g.getStroke();
         g.setStroke(new BasicStroke(2.5f));
-        g.setColor(hitFlashTimer > 0 ? Color.WHITE : new Color(255, 180, 50));
+        g.setColor(critFlashTimer > 0 ? new Color(255, 60, 60) : (hitFlashTimer > 0 ? Color.WHITE : new Color(255, 180, 50)));
         g.drawLine(screenCX, screenCY, bx1, by1);
         g.drawLine(screenCX, screenCY, bx2, by2);
         g.setStroke(oldStroke);

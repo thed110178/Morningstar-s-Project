@@ -47,9 +47,13 @@ public class Pistol extends Weapon {
         double muzzleX = originX + Math.cos(aimAngle) * barrelLength;
         double muzzleY = originY + Math.sin(aimAngle) * barrelLength;
 
+        // Roll critical hit and calculate dynamic damage
+        boolean isCrit = rollCritical();
+        int shotDamage = calculateDamage(isCrit);
+
         // Spawn bullet projectile travelling along the aim angle
         Projectile bullet = new Projectile(muzzleX, muzzleY, aimAngle, BULLET_SPEED,
-                damage, 1.6, true);
+                shotDamage, 1.6, true, isCrit);
         pm.spawn(bullet);
 
         // Deduct ammunition and reset trigger cooldown

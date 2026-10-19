@@ -1,5 +1,6 @@
 package com.groupproject.game.weapon;
 
+import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.CombatKnife;
@@ -197,6 +198,7 @@ public class WeaponSystemTest {
         assertEquals(0, knife.getMagazineSize(), "Knife has no magazine");
         assertEquals(4, knife.getSlotIndex(), "Knife must be mapped to slot 4");
 
+        knife.setCritChance(0.0); // Ensure deterministic non-crit base damage
         List<MeleeSlash> slashes = new ArrayList<>();
         boolean attacked = knife.attack(200, 200, Math.PI / 4, projectileManager, slashes);
 
@@ -205,7 +207,21 @@ public class WeaponSystemTest {
 
         MeleeSlash slash = slashes.get(0);
         assertTrue(slash.isActive(), "Slash hitbox must be initially active");
-        assertTrue(slash.getDamage() > 0, "Slash must carry damage payload");
+        assertEquals(45, knife.getDamage(), "Knife base damage must be buffed to 45 HP");
+        assertEquals(45, slash.getDamage(), "Slash payload must match buffed damage of 45 HP");
+        assertEquals(520.0, slash.getKnockbackForce(), 0.001, "Knife slash must have high knockback impulse of 520 px/s");
+
+        // Verify anti-multi-hit tracking
+        Object targetA = new Object();
+        Object targetB = new Object();
+        assertTrue(slash.canHit(targetA), "Target A should be hittable on initial contact");
+        slash.markHit(targetA);
+        assertFalse(slash.canHit(targetA), "Target A must not be hit again during the same swing");
+        assertTrue(slash.canHit(targetB), "Target B should still be hittable");
+
+        assertFalse(slash.hasDamagedCover(), "Cover should not be marked damaged initially");
+        slash.markCoverDamaged();
+        assertTrue(slash.hasDamagedCover(), "Cover must be marked damaged after first hit");
     }
 
     @Test
@@ -601,9 +617,10 @@ public class WeaponSystemTest {
         assertEquals("★ ☆ ☆", Weapon.formatStars(1));
         assertEquals("★ ★ ☆", Weapon.formatStars(2));
         assertEquals("★ ★ ★", Weapon.formatStars(3));
-        assertEquals("★ ★ ★ ★", Weapon.formatStars(4));
-        assertEquals("★ x6", Weapon.formatStars(6));
-        assertEquals("★ x100", Weapon.formatStars(100));
+        assertEquals("4x ★", Weapon.formatStars(4));
+        assertEquals("5x ★", Weapon.formatStars(5));
+        assertEquals("6x ★", Weapon.formatStars(6));
+        assertEquals("100x ★", Weapon.formatStars(100));
     }
 
     @Test
@@ -971,5 +988,87 @@ public class WeaponSystemTest {
         assertFalse(ar.isReloading(), "Reload must complete");
         assertEquals(30, ar.getCurrentAmmo(), "Magazine must be full");
         assertEquals(0.0, ar.getReloadTimer(), "Reload timer resets to 0 after completion");
+    }
+
+    @Test
+    @DisplayName("Verify weapon RPM calculation and formatted spread angle display")
+    void testWeaponRPMAndFormattedSpread() {
+        AssaultRifle testAr = new AssaultRifle();
+        assertEquals(700, testAr.getRPM(), "AR fire rate cooldown 60/700s corresponds to 700 RPM");
+        assertEquals("700 RPM", testAr.getFormattedRPM());
+        assertTrue(testAr.getMaxSpreadAngle() > 0.05, "AR max spread reflects continuous spray bloom");
+        assertTrue(testAr.getFormattedSpread().startsWith("±"), "Formatted spread must start with ± prefix");
+
+        SMG testSmg = new SMG();
+        assertEquals(920, testSmg.getRPM(), "SMG fire rate cooldown corresponds to 920 RPM");
+        assertEquals("920 RPM", testSmg.getFormattedRPM());
+        assertEquals("±10.3°", testSmg.getFormattedSpread(), "SMG spread 0.18 rad corresponds to ±10.3°");
+
+        Shotgun testSg = new Shotgun();
+        assertEquals(80, testSg.getRPM(), "Shotgun fire rate cooldown 0.75s corresponds to 80 RPM");
+        assertEquals("±12.6°", testSg.getFormattedSpread(), "Shotgun spread 0.22 rad corresponds to ±12.6°");
+
+        CombatKnife testKnife = new CombatKnife();
+        assertEquals("±0.0°", testKnife.getFormattedSpread(), "Knife melee has zero spread");
+    }
+
+    @Test
+    @DisplayName("Verify individual random crit chance distribution, max 50% cap, and class independence")
+    void testIndividualRandomCritChanceDistributionAndCap() {
+        // 1. Verify two instances of the same weapon class can have distinct crit chances
+        boolean foundDifferentCrits = false;
+        for (int i = 0; i < 30; i++) {
+            Shotgun sg1 = new Shotgun();
+            Shotgun sg2 = new Shotgun();
+            if (sg1.getCritChancePercent() != sg2.getCritChancePercent()) {
+                foundDifferentCrits = true;
+                break;
+            }
+        }
+        assertTrue(foundDifferentCrits, "Guns of the same class must roll independent random crit chances");
+
+        // 2. Verify bounds [0.05, 0.50] and distribution across 2,000 rolls
+        int lowCount = 0; // 5% - 20%
+        int highCount = 0; // 35% - 50%
+        for (int i = 0; i < 2000; i++) {
+            double rolled = Weapon.rollRandomCritChance();
+            assertTrue(rolled >= 0.05 && rolled <= 0.50, "Rolled crit chance must stay within [5%, 50%], was: " + rolled);
+            if (rolled <= 0.20) lowCount++;
+            if (rolled >= 0.35) highCount++;
+        }
+        // Higher crit chances must be rarer than lower crit chances
+        assertTrue(lowCount > highCount * 2,
+                "Lower crit chances must roll significantly more frequently than high crit chances: low=" + lowCount + ", high=" + highCount);
+
+        // 3. Verify max 50% cap on manual setter
+        AssaultRifle testAr = new AssaultRifle();
+        testAr.setCritChance(0.85);
+        assertEquals(0.50, testAr.getCritChance(), 0.001, "Crit chance must be strictly capped at 50% (0.50)");
+        assertEquals(50, testAr.getCritChancePercent());
+
+        // 4. Verify leveling up does NOT change crit chance
+        double initialCrit = testAr.getCritChance();
+        testAr.configureLevel(5);
+        assertEquals(initialCrit, testAr.getCritChance(), 0.001, "Level configuration must not alter weapon crit chance");
+        testAr.upgradeLevel();
+        assertEquals(initialCrit, testAr.getCritChance(), 0.001, "Shop upgrade must not alter weapon crit chance");
+    }
+
+    @Test
+    @DisplayName("Verify critical damage calculation, multiplier, and projectile critical flag")
+    void testCriticalDamageCalculationAndProjectile() {
+        AssaultRifle testAr = new AssaultRifle();
+        int baseDmg = testAr.getDamage();
+        assertEquals(baseDmg, testAr.calculateDamage(false), "Non-crit damage must match base damage");
+        assertEquals(baseDmg * 2, testAr.calculateDamage(true), "Crit damage must apply x2.0 multiplier");
+
+        // Force 100% crit chance temporarily to verify projectile firing
+        testAr.setCritChance(1.0); // Will be clamped to 0.50, but we can test calculateDamage directly
+        Projectile critProj = new Projectile(100, 100, 0.0, 700.0, testAr.calculateDamage(true), 1.0, true, true);
+        assertTrue(critProj.isCritical(), "Projectile must report isCritical == true");
+        assertEquals(baseDmg * 2, critProj.getDamage());
+
+        Projectile normalProj = new Projectile(100, 100, 0.0, 700.0, baseDmg, 1.0, true, false);
+        assertFalse(normalProj.isCritical(), "Normal projectile must report isCritical == false");
     }
 }

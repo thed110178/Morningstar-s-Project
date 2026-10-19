@@ -22,6 +22,28 @@ public class MouseHandler extends MouseAdapter {
     private boolean leftClickedOnce;
     private boolean rightClickedOnce;
 
+    // WHY: Thông số viewport hỗ trợ chuyển đổi tọa độ chuột chính xác khi phóng to / toàn màn hình
+    private double viewportOffsetX = 0.0;
+    private double viewportOffsetY = 0.0;
+    private double viewportScale = 1.0;
+
+    /**
+     * Cập nhật thông số biến đổi tọa độ viewport khi phóng to / toàn màn hình.
+     */
+    public void setViewportTransform(double offsetX, double offsetY, double scale) {
+        this.viewportOffsetX = offsetX;
+        this.viewportOffsetY = offsetY;
+        this.viewportScale = scale > 0 ? scale : 1.0;
+    }
+
+    public int transformX(int rawX) {
+        return (int) Math.round((rawX - viewportOffsetX) / viewportScale);
+    }
+
+    public int transformY(int rawY) {
+        return (int) Math.round((rawY - viewportOffsetY) / viewportScale);
+    }
+
     /**
      * Resets single-click pulse flags at the end of each frame.
      *
@@ -92,6 +114,8 @@ public class MouseHandler extends MouseAdapter {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        screenX = transformX(e.getX());
+        screenY = transformY(e.getY());
         if (e.getButton() == MouseEvent.BUTTON1) {
             leftPressed = true;
             leftClickedOnce = true;
@@ -103,6 +127,8 @@ public class MouseHandler extends MouseAdapter {
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        screenX = transformX(e.getX());
+        screenY = transformY(e.getY());
         if (e.getButton() == MouseEvent.BUTTON1) {
             leftPressed = false;
         } else if (e.getButton() == MouseEvent.BUTTON3) {
@@ -112,14 +138,14 @@ public class MouseHandler extends MouseAdapter {
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        screenX = e.getX();
-        screenY = e.getY();
+        screenX = transformX(e.getX());
+        screenY = transformY(e.getY());
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        screenX = e.getX();
-        screenY = e.getY();
+        screenX = transformX(e.getX());
+        screenY = transformY(e.getY());
     }
 
     @Override

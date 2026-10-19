@@ -64,6 +64,11 @@ public class AssaultRifle extends Weapon {
         return currentSpreadAngle * MAX_SPREAD_RATIO;
     }
 
+    @Override
+    public double getMaxSpreadAngle() {
+        return getMaxContinuousSpreadAngle();
+    }
+
     /**
      * Số phát đạn đã xả liên tiếp trong loạt sấy hiện tại.
      */
@@ -144,9 +149,13 @@ public class AssaultRifle extends Weapon {
         double muzzleX = originX + Math.cos(firedAngle) * barrelLength;
         double muzzleY = originY + Math.sin(firedAngle) * barrelLength;
 
+        // Roll critical hit and calculate dynamic damage
+        boolean isCrit = rollCritical();
+        int shotDamage = calculateDamage(isCrit);
+
         // Bắn viên đạn AR
         Projectile bullet = new Projectile(muzzleX, muzzleY, firedAngle, BULLET_SPEED,
-                damage, BULLET_LIFETIME, true);
+                shotDamage, BULLET_LIFETIME, true, isCrit);
         pm.spawn(bullet);
 
         // Tiêu hao đạn và hồi cooldown

@@ -40,6 +40,12 @@ public abstract class Weapon {
     protected com.groupproject.game.entity.item.AmmoType ammoType = null;
     protected com.groupproject.game.entity.item.AmmoInventory boundAmmoInventory = null;
 
+    // --- Hệ thống Tỉ Lệ Chí Mạng (Critical Hit) ---
+    // WHY: Mỗi khẩu súng có tỉ lệ chí mạng riêng cố định, KHÔNG dựa theo cấp độ/số sao.
+    // Tỉ lệ chí mạng càng cao thì tỉ lệ xuất hiện trong hòm/shop càng ít.
+    protected double critChance = 0.15; // Mặc định 15%
+    protected double critMultiplier = 2.0; // Sát thương x2.0 khi nổ chí mạng
+
     protected int currentAmmo;
     protected double cooldownTimer = 0.0;
     protected double reloadTimer = 0.0;
@@ -73,6 +79,7 @@ public abstract class Weapon {
         this.damageStars = 1;
         this.fireRateStars = 1;
         this.accuracyStars = 1;
+        this.critChance = rollRandomCritChance();
     }
 
     /**
@@ -379,14 +386,14 @@ public abstract class Weapon {
     }
 
     /**
-     * Trả về chuỗi sao hiển thị (1 sao -> "★ ☆ ☆", 2 sao -> "★ ★ ☆", 3 sao -> "★ ★ ★", 4-5 sao -> "★ ★ ★ ★", >5 sao -> "★ x[N]").
+     * Trả về chuỗi sao hiển thị (1 sao -> "★ ☆ ☆", 2 sao -> "★ ★ ☆", 3 sao -> "★ ★ ★", khi số sao > 3 -> "[stars]x ★").
      */
     public static String formatStars(int stars) {
-        if (stars > 5) {
-            return "★ x" + stars;
+        if (stars > 3) {
+            return stars + "x ★";
         }
         StringBuilder sb = new StringBuilder();
-        int totalSlots = Math.max(3, stars);
+        int totalSlots = 3;
         for (int i = 1; i <= totalSlots; i++) {
             if (i <= stars) {
                 sb.append("★ ");
@@ -452,5 +459,102 @@ public abstract class Weapon {
         this.accuracyStars = Math.max(1, acc);
         this.level = Math.max(1, (damageStars + fireRateStars + accuracyStars) - 2);
         recalculateStatsFromStars();
+    }
+
+    public double getCritChance() {
+        return critChance;
+    }
+
+    public void setCritChance(double critChance) {
+        this.critChance = Math.clamp(critChance, 0.0, 0.50);
+    }
+
+    public int getCritChancePercent() {
+        return (int) Math.round(critChance * 100.0);
+    }
+
+    public double getCritMultiplier() {
+        return critMultiplier;
+    }
+
+    public void setCritMultiplier(double critMultiplier) {
+        this.critMultiplier = Math.max(1.0, critMultiplier);
+    }
+
+    /**
+     * Quay xúc xắc ngẫu nhiên xác định phát bắn/chém có phải đòn chí mạng hay không.
+     */
+    public boolean rollCritical() {
+        return ThreadLocalRandom.current().nextDouble() < critChance;
+    }
+
+    /**
+     * Quay ngẫu nhiên tỉ lệ chí mạng riêng cho mỗi khẩu súng (tối đa 50%).
+     * WHY: Mỗi khẩu súng có tỉ lệ chí mạng riêng biệt kể cả cùng lớp.
+     * Tỉ lệ chí mạng càng cao thì tỉ lệ ra càng thấp:
+     * - ~50% súng rơi vào khoảng phổ thông: 5% - 15%
+     * - ~30% súng rơi vào khoảng khá: 16% - 30%
+     * - ~15% súng rơi vào khoảng hiếm: 31% - 44%
+     * - ~5% súng siêu hiếm đạt cực đại: 45% - 50%
+     */
+    public static double rollRandomCritChance() {
+        double r = ThreadLocalRandom.current().nextDouble(); // [0.0, 1.0)
+        // Đường cong lũy thừa r^2.2 làm giảm mạnh xác suất xuất hiện của các giá trị cao
+        int percent = 5 + (int) Math.round(45.0 * Math.pow(r, 2.2));
+        percent = Math.clamp(percent, 5, 50);
+        return percent / 100.0;
+    }
+
+    /**
+     * Tính toán lượng sát thương thực tế dựa trên cờ chí mạng (x2.0 sát thương).
+     */
+    public int calculateDamage(boolean isCrit) {
+        if (isCrit) {
+            return Math.max(1, (int) Math.round(damage * critMultiplier));
+        }
+        return damage;
+    }
+
+    /**
+     * Tốc độ bắn tính theo đơn vị RPM (Rounds Per Minute / Số phát mỗi phút).
+     */
+    public int getRPM() {
+        if (fireRateCooldown <= 0.0001) return 0;
+        return (int) Math.round(60.0 / fireRateCooldown);
+    }
+
+    public String getFormattedRPM() {
+        return getRPM() + " RPM";
+    }
+
+    /**
+     * Trả về góc lệch tối đa khi bắn (radian).
+     * Mặc định là currentSpreadAngle, các lớp con (như AssaultRifle) override để trả về góc nở tối đa khi sấy.
+     */
+    public double getMaxSpreadAngle() {
+        return currentSpreadAngle;
+    }
+
+    public String getFormattedSpread() {
+        double deg = Math.toDegrees(getMaxSpreadAngle());
+        return String.format("±%.1f°", deg);
+    }
+
+    /**
+     * Sinh ngẫu nhiên một khẩu súng chính theo trọng số xác suất nghịch đảo với tỉ lệ chí mạng.
+     * Quy tắc: Tỉ lệ chí mạng càng cao thì tỉ lệ ra càng ít.
+     * - SMG (10% crit): Tỉ lệ ra cao nhất ~50%
+     * - Assault Rifle (20% crit): Tỉ lệ ra trung bình ~30%
+     * - Shotgun (30% crit): Tỉ lệ ra hiếm nhất ~20%
+     */
+    public static Weapon getRandomDropWeapon() {
+        int roll = ThreadLocalRandom.current().nextInt(100);
+        if (roll < 50) {
+            return new SMG();
+        } else if (roll < 80) {
+            return new AssaultRifle();
+        } else {
+            return new Shotgun();
+        }
     }
 }

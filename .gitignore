@@ -31,3 +31,7 @@ Desktop.ini
 save_data/
 scores.dat
 scores.json
+
+# Release bundles
+*.zip
+release/*.zip

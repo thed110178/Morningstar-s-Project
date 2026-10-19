@@ -308,14 +308,23 @@ public class RangedPistolEnemy extends TargetDummy {
         g.fillOval(screenCX - half, screenCY + half - 5, (int) size, 10);
 
         // 2. Chassis body (Tactical Cobalt Scout)
-        if (hitFlashTimer > 0) {
+        if (critFlashTimer > 0) {
+            g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi chịu sát thương chí mạng
+        } else if (hitFlashTimer > 0) {
             g.setColor(Color.WHITE);
         } else {
             g.setColor(new Color(40, 65, 88)); // Dark cobalt armor
         }
         g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-        g.setColor(new Color(80, 130, 170));
-        g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+        if (critFlashTimer > 0) {
+            g.setColor(new Color(255, 140, 140));
+            g.setStroke(new BasicStroke(2.0f));
+            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+            g.setStroke(new BasicStroke(1.0f));
+        } else {
+            g.setColor(new Color(80, 130, 170));
+            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+        }
 
         // 3. Tactical optical lens visor
         g.setColor(new Color(60, 210, 255)); // Glowing cyan optic

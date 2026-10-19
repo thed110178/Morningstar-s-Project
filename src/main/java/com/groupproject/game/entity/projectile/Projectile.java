@@ -21,12 +21,21 @@ public class Projectile {
     private final int damage;
     private final double radius;
     private final boolean playerBullet;
+    private final boolean critical;
 
     private double lifetime;
     private boolean active = true;
 
     /**
-     * Constructs a flying projectile with directional velocity and damage payload.
+     * Constructs a flying projectile with standard critical flag set to false.
+     */
+    public Projectile(double originX, double originY, double angle, double speed,
+                      int damage, double maxLifetime, boolean playerBullet) {
+        this(originX, originY, angle, speed, damage, maxLifetime, playerBullet, false);
+    }
+
+    /**
+     * Constructs a flying projectile with directional velocity, damage payload, and critical hit flag.
      *
      * @param originX      Starting X coordinate in world space (tip of gun barrel).
      * @param originY      Starting Y coordinate in world space.
@@ -35,9 +44,10 @@ public class Projectile {
      * @param damage       Damage dealt upon impact.
      * @param maxLifetime  Maximum duration in seconds before self-dissipating.
      * @param playerBullet True if fired by operative; false if fired by hostile enemy.
+     * @param critical     True if this projectile is an empowered critical hit.
      */
     public Projectile(double originX, double originY, double angle, double speed,
-                      int damage, double maxLifetime, boolean playerBullet) {
+                      int damage, double maxLifetime, boolean playerBullet, boolean critical) {
         this.x = originX;
         this.y = originY;
         this.vx = Math.cos(angle) * speed;
@@ -45,7 +55,8 @@ public class Projectile {
         this.damage = damage;
         this.lifetime = maxLifetime;
         this.playerBullet = playerBullet;
-        this.radius = 4.0;
+        this.critical = critical;
+        this.radius = critical ? 5.5 : 4.0;
     }
 
     /**
@@ -76,11 +87,19 @@ public class Projectile {
         int r = (int) radius;
 
         // Glowing outer halo
-        g.setColor(playerBullet ? new Color(255, 200, 50, 100) : new Color(255, 60, 60, 100));
+        if (critical) {
+            g.setColor(new Color(255, 65, 20, 170)); // Rực lửa đỏ cam kim sắc khi nổ đòn chí mạng
+        } else {
+            g.setColor(playerBullet ? new Color(255, 200, 50, 100) : new Color(255, 60, 60, 100));
+        }
         g.fillOval(screenX - r - 2, screenY - r - 2, (r + 2) * 2, (r + 2) * 2);
 
         // Solid core bullet
-        g.setColor(playerBullet ? new Color(255, 240, 120) : new Color(255, 100, 100));
+        if (critical) {
+            g.setColor(new Color(255, 255, 210)); // Lõi siêu nhiệt ánh vàng trắng
+        } else {
+            g.setColor(playerBullet ? new Color(255, 240, 120) : new Color(255, 100, 100));
+        }
         g.fillOval(screenX - r, screenY - r, r * 2, r * 2);
     }
 
@@ -101,6 +120,10 @@ public class Projectile {
 
     public int getDamage() {
         return damage;
+    }
+
+    public boolean isCritical() {
+        return critical;
     }
 
     public boolean isActive() {
