@@ -581,6 +581,19 @@ public class DungeonMap {
     }
 
     /**
+     * Tạo một cụm thùng gỗ quân sự che chắn tạm thời (Destructible Cover) theo kích thước chỉ định.
+     */
+    private void carveDestructibleCluster(int startCol, int startRow, int width, int height) {
+        for (int c = startCol; c < startCol + width; c++) {
+            for (int r = startRow; r < startRow + height; r++) {
+                if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
+                    tiles[c][r].setType(TileType.DESTRUCTIBLE_COVER);
+                }
+            }
+        }
+    }
+
+    /**
      * Validates whether a grid index falls within the map matrix boundaries.
      */
     public boolean isValidGrid(int col, int row) {
@@ -613,6 +626,33 @@ public class DungeonMap {
                     return false;
                 }
                 if (tiles[c][r].isSolid()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Kiểm tra xem vùng AABB có bị chặn bởi các chướng ngại vật kiên cố vĩnh viễn (WALL, Cột COVER, Cửa khóa)
+     * hay không, hoàn toàn BỎ QUA các chướng ngại vật tạm thời có thể phá hủy (DESTRUCTIBLE_COVER).
+     *
+     * <p>WHY: Dùng cho đòn đâm húc (Ram Rush) của BossTank để cỗ xe tăng thiết giáp có thể cày nát và đâm xuyên qua
+     * các hàng thùng gỗ mà không bị dừng lại hay khựng Stun.
+     */
+    public boolean isAreaWalkableIgnoringDestructible(double worldX, double worldY, double width, double height) {
+        int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
+        int maxCol = (int) Math.floor((worldX + width - 0.001) / GameConfig.TILE_SIZE);
+        int minRow = (int) Math.floor(worldY / GameConfig.TILE_SIZE);
+        int maxRow = (int) Math.floor((worldY + height - 0.001) / GameConfig.TILE_SIZE);
+
+        for (int c = minCol; c <= maxCol; c++) {
+            for (int r = minRow; r <= maxRow; r++) {
+                if (!isValidGrid(c, r)) {
+                    return false;
+                }
+                Tile t = tiles[c][r];
+                if (t.isSolid() && !t.isDestructible()) {
                     return false;
                 }
             }
@@ -954,8 +994,18 @@ public class DungeonMap {
         carvePillar(bossCol + 8, bossRow + bossH - 4, 2, 2);
         carvePillar(bossCol + bossW - 8, bossRow + bossH - 4, 2, 2);
 
-        // Sinh ngẫu nhiên 8 ô cover tạm thời (thùng gỗ che chắn) trong Grand Boss Arena
-        spawnRandomDestructibleCovers(bossRoom, 8);
+        // Bố trí dày đặc các cụm cover tạm thời (thùng gỗ đạn dược dã chiến - DESTRUCTIBLE_COVER)
+        // Tạo bối cảnh kho quân nhu dã chiến kiên cố, nơi đạn pháo phát nổ bộc phá xuyên qua
+        // và cỗ xe tăng có thể cày nát đâm xuyên qua các hàng thùng gỗ mà không bị dừng lại.
+        carveDestructibleCluster(bossCol + 6, bossRow + 4, 2, 2);
+        carveDestructibleCluster(bossCol + 6, bossRow + bossH - 6, 2, 2);
+        carveDestructibleCluster(bossCol + bossW - 7, bossRow + 4, 2, 2);
+        carveDestructibleCluster(bossCol + bossW - 7, bossRow + bossH - 6, 2, 2);
+        carveDestructibleCluster(bossCol + 12, bossRow + 3, 4, 1);
+        carveDestructibleCluster(bossCol + 12, bossRow + bossH - 4, 4, 1);
+
+        // Sinh thêm 16 ô cover tạm thời ngẫu nhiên rải đều trong Grand Boss Arena (tổng cộng ~36 cover)
+        spawnRandomDestructibleCovers(bossRoom, 16);
 
         // 4. Nối hành lang thẳng từ Spawn Room sang Boss Arena (hướng EAST)
         int exitCol = spawnCol + spawnW - 1;

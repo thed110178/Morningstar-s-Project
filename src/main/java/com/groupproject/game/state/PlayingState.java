@@ -5,6 +5,7 @@ import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.dungeon.Room;
 import com.groupproject.game.entity.enemy.BossTank;
+import com.groupproject.game.entity.enemy.EnemyCorpse;
 import com.groupproject.game.entity.enemy.MeleeEnemy;
 import com.groupproject.game.entity.enemy.RangedPistolEnemy;
 import com.groupproject.game.entity.enemy.TargetDummy;
@@ -22,12 +23,17 @@ import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.MeleeSlash;
 import com.groupproject.game.entity.weapon.SMG;
+import com.groupproject.game.entity.player.Player;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
+import com.groupproject.game.input.KeyBindings;
+import com.groupproject.game.input.KeyBindings.GameAction;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import com.groupproject.game.ui.BackpackUI;
+import com.groupproject.game.ui.PauseMenuUI;
+import com.groupproject.game.ui.PlayingHUD;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -59,16 +65,13 @@ public class PlayingState extends GameState {
     private final DungeonMap dungeonMap;
     private final ProjectileManager projectileManager;
     private final WeaponManager weaponManager;
+    private final Player player;
 
     private final List<TargetDummy> combatTargets = new CopyOnWriteArrayList<>();
     private TargetDummy bossDummy = null;
     private final List<ExplosionVisual> activeExplosions = new CopyOnWriteArrayList<>();
     private final List<CriticalHitVisual> activeCritVisuals = new CopyOnWriteArrayList<>();
-
-    // Player operative spatial variables
-    private double playerX;
-    private double playerY;
-    private final double playerSize = 28.0; // Hitbox width and height in pixels
+    private final List<EnemyCorpse> activeCorpses = new CopyOnWriteArrayList<>();
 
     /**
      * Angle in radians from player center to cursor in world space: atan2(dy, dx).
@@ -103,17 +106,18 @@ public class PlayingState extends GameState {
     private double bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
     private int bossMinionWaveCount = 0;
 
-    // Hệ thống Sinh Lực (HP) của Chiến binh Operative
-    private int playerMaxHealth = 100;
-    private int playerCurrentHealth = 100;
-    private double invulnerableTimer = 0.0; // Thời gian bất tử (i-frames: 0.8s) khi dính đòn
-    private double screenShakeTimer = 0.0;  // Rung màn hình khi bị thương (0.2s)
-    private boolean isPlayerDead = false;   // Trạng thái tử trận (HP = 0)
+    // Rung màn hình khi bị thương hoặc bộc phá (0.2s)
+    private double screenShakeTimer = 0.0;
     private final List<HealthPickup> healthPickups = new CopyOnWriteArrayList<>();
 
-    // Giao diện Balo chiến thuật (Tab)
+    // Giao diện Balo chiến thuật (Tab) và Hệ thống HUD
     private final BackpackUI backpackUI = new BackpackUI();
+    private final PlayingHUD playingHUD = new PlayingHUD();
     private boolean isBackpackOpen = false;
+
+    // Menu Tạm dừng (Pause Menu UI) và Trạng thái Tạm dừng
+    private final PauseMenuUI pauseMenuUI = new PauseMenuUI();
+    private boolean isPaused = false;
 
     // Hệ thống tiền tệ chiến thuật (Credits) và quầy giao dịch Shop
     private int playerCredits = 0;
@@ -131,6 +135,7 @@ public class PlayingState extends GameState {
         this.dungeonMap = new DungeonMap();
         this.projectileManager = new ProjectileManager();
         this.weaponManager = new WeaponManager();
+        this.player = new Player(0, 0);
     }
 
     /**
@@ -161,11 +166,10 @@ public class PlayingState extends GameState {
 
         Room spawnRoom = dungeonMap.getSpawnRoom();
         if (spawnRoom != null) {
-            this.playerX = spawnRoom.getCenterWorldX() - (playerSize / 2.0);
-            this.playerY = spawnRoom.getCenterWorldY() - (playerSize / 2.0);
+            player.reset(spawnRoom.getCenterWorldX() - (player.getSize() / 2.0),
+                         spawnRoom.getCenterWorldY() - (player.getSize() / 2.0));
         } else {
-            this.playerX = GameConfig.WORLD_WIDTH / 2.0;
-            this.playerY = GameConfig.WORLD_HEIGHT / 2.0;
+            player.reset(GameConfig.WORLD_WIDTH / 2.0, GameConfig.WORLD_HEIGHT / 2.0);
         }
 
         projectileManager.clear();
@@ -178,16 +182,12 @@ public class PlayingState extends GameState {
         healthPickups.clear();
         activeCombatRoom = null;
 
-        this.playerMaxHealth = 100;
-        this.playerCurrentHealth = 100;
-        this.invulnerableTimer = 0.0;
         this.screenShakeTimer = 0.0;
-        this.isPlayerDead = false;
-
         this.isStandingOnExtract = false;
         this.isExtracting = false;
         this.extractTransitionTimer = 0.0;
         this.isBackpackOpen = false;
+        this.isPaused = false;
         this.stage1FreeWeaponGranted = false;
         this.bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
         this.bossMinionWaveCount = 0;
@@ -199,7 +199,7 @@ public class PlayingState extends GameState {
         showBanner("STAGE 1", new Color(60, 220, 160), 2.0);
 
         // Center camera on operative immediately on mission start
-        camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
+        camera.update(player.getCenterX(), player.getCenterY());
     }
 
     /**
@@ -216,21 +216,18 @@ public class PlayingState extends GameState {
         bossDummy = null;
         activeExplosions.clear();
         activeCritVisuals.clear();
+        activeCorpses.clear();
         weaponChests.clear();
         ammoPickups.clear();
         healthPickups.clear();
         activeCombatRoom = null;
 
-        this.playerMaxHealth = 100;
-        this.playerCurrentHealth = 100;
-        this.invulnerableTimer = 0.0;
         this.screenShakeTimer = 0.0;
-        this.isPlayerDead = false;
-
         this.isStandingOnExtract = false;
         this.isExtracting = false;
         this.extractTransitionTimer = 0.0;
         this.isBackpackOpen = false;
+        this.isPaused = false;
         this.stage1FreeWeaponGranted = false;
         this.bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
         this.bossMinionWaveCount = 0;
@@ -239,8 +236,8 @@ public class PlayingState extends GameState {
         Room bossRoom = dungeonMap.getCombatRooms().isEmpty() ? null : dungeonMap.getCombatRooms().get(0);
         if (bossRoom != null) {
             // Đặt người chơi ngay trong lòng phòng Grand Boss Arena (phía Tây phòng, cách tâm phòng ~520px)
-            this.playerX = (bossRoom.getGridX() + 3) * GameConfig.TILE_SIZE;
-            this.playerY = bossRoom.getCenterWorldY() - (playerSize / 2.0);
+            player.reset((bossRoom.getGridX() + 3) * GameConfig.TILE_SIZE,
+                         bossRoom.getCenterWorldY() - (player.getSize() / 2.0));
             this.activeCombatRoom = bossRoom;
             bossRoom.setCurrentPhase(1);
             bossRoom.lockdown();
@@ -248,11 +245,10 @@ public class PlayingState extends GameState {
         } else {
             Room spawnRoom = dungeonMap.getSpawnRoom();
             if (spawnRoom != null) {
-                this.playerX = spawnRoom.getCenterWorldX() - (playerSize / 2.0);
-                this.playerY = spawnRoom.getCenterWorldY() - (playerSize / 2.0);
+                player.reset(spawnRoom.getCenterWorldX() - (player.getSize() / 2.0),
+                             spawnRoom.getCenterWorldY() - (player.getSize() / 2.0));
             } else {
-                this.playerX = GameConfig.WORLD_WIDTH / 2.0;
-                this.playerY = GameConfig.WORLD_HEIGHT / 2.0;
+                player.reset(GameConfig.WORLD_WIDTH / 2.0, GameConfig.WORLD_HEIGHT / 2.0);
             }
         }
 
@@ -276,7 +272,7 @@ public class PlayingState extends GameState {
         showBanner("STAGE 4: BOSS ARENA", new Color(255, 60, 60), 2.0);
 
         // Center camera on operative immediately on mission start
-        camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
+        camera.update(player.getCenterX(), player.getCenterY());
     }
 
     /**
@@ -288,11 +284,10 @@ public class PlayingState extends GameState {
 
         Room spawnRoom = dungeonMap.getSpawnRoom();
         if (spawnRoom != null) {
-            this.playerX = spawnRoom.getCenterWorldX() - (playerSize / 2.0);
-            this.playerY = spawnRoom.getCenterWorldY() - (playerSize / 2.0);
+            player.setPosition(spawnRoom.getCenterWorldX() - (player.getSize() / 2.0),
+                               spawnRoom.getCenterWorldY() - (player.getSize() / 2.0));
         } else {
-            this.playerX = GameConfig.WORLD_WIDTH / 2.0;
-            this.playerY = GameConfig.WORLD_HEIGHT / 2.0;
+            player.setPosition(GameConfig.WORLD_WIDTH / 2.0, GameConfig.WORLD_HEIGHT / 2.0);
         }
 
         projectileManager.clear();
@@ -300,18 +295,19 @@ public class PlayingState extends GameState {
         bossDummy = null;
         activeExplosions.clear();
         activeCritVisuals.clear();
+        activeCorpses.clear();
         weaponChests.clear();
         ammoPickups.clear();
         healthPickups.clear();
         activeCombatRoom = null;
         isStandingOnExtract = false;
-        invulnerableTimer = 0.0;
+        player.setInvulnerableTimer(0.0);
         screenShakeTimer = 0.0;
 
         populateShopItems();
         populateResetStatStation();
 
-        camera.update(playerX + playerSize / 2.0, playerY + playerSize / 2.0);
+        camera.update(player.getCenterX(), player.getCenterY());
 
         if (currentStage == BOSS_STAGE) {
             showBanner("STAGE 4: BOSS ARENA", new Color(255, 70, 70), 2.0);
@@ -406,7 +402,7 @@ public class PlayingState extends GameState {
 
         // 3. Không sinh quá sát người chơi (bảo đảm khoảng cách an toàn ít nhất 130px để người chơi không bị quái spawn đè sát người)
         double minPlayerDist = Math.max(half + 115.0, 130.0);
-        double distToPlayer = Math.hypot(x - playerX, y - playerY);
+        double distToPlayer = Math.hypot(x - player.getCenterX(), y - player.getCenterY());
         if (distToPlayer < minPlayerDist) {
             return false;
         }
@@ -484,7 +480,7 @@ public class PlayingState extends GameState {
                 if (tile != null && tile.getType() == TileType.FLOOR) {
                     double testX = tile.getWorldX() + GameConfig.TILE_SIZE / 2.0;
                     double testY = tile.getWorldY() + GameConfig.TILE_SIZE / 2.0;
-                    double dist = Math.hypot(testX - playerX, testY - playerY);
+                    double dist = Math.hypot(testX - player.getCenterX(), testY - player.getCenterY());
                     if (dist > maxDist) {
                         maxDist = dist;
                         bestFallback = new Point2D.Double(testX, testY);
@@ -714,8 +710,30 @@ public class PlayingState extends GameState {
      */
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        // --- 0. Pause Menu Handling & Updates ---
+        // WHY: Khi tạm dừng, toàn bộ tiến trình chiến đấu bị đóng băng. Người chơi có 3 tùy chọn:
+        // TIẾP TỤC (Resume), CÀI ĐẶT (Settings - Keybinds), THOÁT RA MENU (Exit to Menu).
+        if (isPaused) {
+            if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+                PauseMenuUI.PauseAction escAction = pauseMenuUI.handleEsc();
+                if (escAction == PauseMenuUI.PauseAction.RESUME) {
+                    isPaused = false;
+                }
+                return;
+            }
+
+            PauseMenuUI.PauseAction action = pauseMenuUI.update(keyH, mouseH, deltaTime);
+            if (action == PauseMenuUI.PauseAction.RESUME) {
+                isPaused = false;
+            } else if (action == PauseMenuUI.PauseAction.EXIT_TO_MENU) {
+                isPaused = false;
+                gsm.setState(GameStateManager.StateType.MENU);
+            }
+            return; // Đóng băng toàn bộ hoạt động chiến trường khi đang tạm dừng
+        }
+
         // --- Handle Player Death (Game Over Sequence) ---
-        if (isPlayerDead) {
+        if (player.isDead()) {
             if (bannerTimer > 0) {
                 bannerTimer -= deltaTime;
             }
@@ -727,10 +745,8 @@ public class PlayingState extends GameState {
             return;
         }
 
-        // Đếm ngược thời gian bất tử i-frame và rung camera
-        if (invulnerableTimer > 0) {
-            invulnerableTimer -= deltaTime;
-        }
+        // Cập nhật bộ đếm bất tử của người chơi và rung camera
+        player.update(deltaTime);
         if (screenShakeTimer > 0) {
             screenShakeTimer -= deltaTime;
         }
@@ -745,20 +761,24 @@ public class PlayingState extends GameState {
                     || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
                     || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)
                     || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)
-                    || keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+                    || KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                 gsm.setState(GameStateManager.StateType.MENU);
             }
             return;
         }
 
-        // --- Handle Tactical Backpack (TAB / B) ---
+        // --- Handle Tactical Backpack (TAB) ---
         // WHY: Cho phép xem kho trang bị và hoán đổi vị trí vũ khí 1 và 2 trong không gian an toàn
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_TAB) || keyH.isKeyPressedOnce(KeyEvent.VK_B)) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.BACKPACK)) {
             isBackpackOpen = !isBackpackOpen;
             return;
         }
 
         if (isBackpackOpen) {
+            if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+                isBackpackOpen = false;
+                return;
+            }
             boolean closeRequested = backpackUI.update(keyH, mouseH, weaponManager, deltaTime);
             if (closeRequested) {
                 isBackpackOpen = false;
@@ -766,9 +786,11 @@ public class PlayingState extends GameState {
             return; // Đóng băng vòng lặp chiến đấu khi đang xem Balo
         }
 
-        // Handle pause request: returns to Main Menu
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
-            gsm.setState(GameStateManager.StateType.MENU);
+        // --- Handle Pause Request (PAUSE_MENU / ESC) ---
+        // WHY: Bấm phím Tạm dừng (mặc định ESC hoặc phím đã tùy chỉnh trong KeyBindings) để mở Menu Tạm Dừng
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            isPaused = true;
+            pauseMenuUI.open();
             return;
         }
 
@@ -783,65 +805,51 @@ public class PlayingState extends GameState {
         }
 
         // --- 1. Weapon Hotkey Switching & Reloading ---
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
-            weaponManager.selectSlot(1); // Trang bị Assault Rifle (Súng trường tấn công AR)
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_1)) {
+            weaponManager.selectSlot(1); // Trang bị vũ khí Slot 1
         }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
-            weaponManager.selectSlot(2); // Trang bị Shotgun (Súng săn cự ly gần)
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_2)) {
+            weaponManager.selectSlot(2); // Trang bị vũ khí Slot 2
         }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_3)) {
             weaponManager.selectSlot(3); // Trang bị Tactical Pistol (Súng lục)
         }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_4) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD4)) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_4)) {
             weaponManager.selectSlot(4); // Trang bị Combat Knife (Dao găm chiến thuật)
         }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_Q)) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.QUICK_SWAP)) {
             weaponManager.quickSwap(); // Quick swap between last 2 weapons
         }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_R)) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.RELOAD)) {
             weaponManager.reload(); // Manual magazine reload
         }
 
-        // --- 2. Compute Desired Locomotion Vector ---
-        double moveStep = GameConfig.PLAYER_DEFAULT_SPEED * deltaTime;
-        double moveX = 0;
-        double moveY = 0;
-
-        if (keyH.isKeyDown(KeyEvent.VK_W)) moveY -= moveStep;
-        if (keyH.isKeyDown(KeyEvent.VK_S)) moveY += moveStep;
-        if (keyH.isKeyDown(KeyEvent.VK_A)) moveX -= moveStep;
-        if (keyH.isKeyDown(KeyEvent.VK_D)) moveX += moveStep;
-
-        // Diagonal movement normalization
-        if (moveX != 0 && moveY != 0) {
-            double invSqrt = 1.0 / Math.sqrt(2.0);
-            moveX *= invSqrt;
-            moveY *= invSqrt;
+        // --- 1.5. Tactical Dodge Roll / Combat Dash [SPACE / DODGE] ---
+        // Cho phép lướt nhanh né đòn và kích hoạt i-frames miễn nhiễm 100% sát thương
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.DODGE)) {
+            player.triggerDodge(
+                    KeyBindings.isActionDown(keyH, GameAction.MOVE_UP),
+                    KeyBindings.isActionDown(keyH, GameAction.MOVE_DOWN),
+                    KeyBindings.isActionDown(keyH, GameAction.MOVE_LEFT),
+                    KeyBindings.isActionDown(keyH, GameAction.MOVE_RIGHT)
+            );
         }
 
-        // --- 3. Decoupled Axis Wall Collision (Wall & Closed Door Sliding) ---
-        // WHY: isAreaWalkable automatically blocks movement through DOOR_CLOSED tiles
-        if (moveX != 0) {
-            double nextX = playerX + moveX;
-            if (dungeonMap.isAreaWalkable(nextX, playerY, playerSize, playerSize)) {
-                playerX = nextX;
-            }
-        }
-        if (moveY != 0) {
-            double nextY = playerY + moveY;
-            if (dungeonMap.isAreaWalkable(playerX, nextY, playerSize, playerSize)) {
-                playerY = nextY;
-            }
-        }
-
-        double playerCenterX = playerX + (playerSize / 2.0);
-        double playerCenterY = playerY + (playerSize / 2.0);
+        // --- 2. Locomotion & Decoupled Axis Wall Collision ---
+        player.handleMovement(
+                KeyBindings.isActionDown(keyH, GameAction.MOVE_UP),
+                KeyBindings.isActionDown(keyH, GameAction.MOVE_DOWN),
+                KeyBindings.isActionDown(keyH, GameAction.MOVE_LEFT),
+                KeyBindings.isActionDown(keyH, GameAction.MOVE_RIGHT),
+                deltaTime,
+                dungeonMap
+        );
 
         // --- 4. Multi-Chamber Combat Lockdown & Detection ---
         if (activeCombatRoom == null) {
             for (Room cr : dungeonMap.getCombatRooms()) {
                 if (cr.getStatus() == Room.RoomStatus.UNVISITED
-                        && cr.hasEntityEntered(playerX, playerY, playerSize, playerSize)) {
+                        && cr.hasEntityEntered(player.getX(), player.getY(), player.getSize(), player.getSize())) {
 
                     activeCombatRoom = cr;
 
@@ -850,10 +858,10 @@ public class PlayingState extends GameState {
                     double minInteriorY = (cr.getGridY() + 1.0) * GameConfig.TILE_SIZE;
                     double maxInteriorY = (cr.getGridY() + cr.getHeightInTiles() - 1.0) * GameConfig.TILE_SIZE;
 
-                    if (playerX < minInteriorX) playerX = minInteriorX;
-                    if (playerX + playerSize > maxInteriorX) playerX = maxInteriorX - playerSize;
-                    if (playerY < minInteriorY) playerY = minInteriorY;
-                    if (playerY + playerSize > maxInteriorY) playerY = maxInteriorY - playerSize;
+                    if (player.getX() < minInteriorX) player.setX(minInteriorX);
+                    if (player.getX() + player.getSize() > maxInteriorX) player.setX(maxInteriorX - player.getSize());
+                    if (player.getY() < minInteriorY) player.setY(minInteriorY);
+                    if (player.getY() + player.getSize() > maxInteriorY) player.setY(maxInteriorY - player.getSize());
 
                     cr.setCurrentPhase(1);
                     cr.lockdown();
@@ -871,8 +879,8 @@ public class PlayingState extends GameState {
         }
 
         // --- 5. Smooth Camera Tracking with Screen Shake ---
-        double camCX = playerCenterX;
-        double camCY = playerCenterY;
+        double camCX = player.getCenterX();
+        double camCY = player.getCenterY();
         if (screenShakeTimer > 0) {
             camCX += ThreadLocalRandom.current().nextDouble(-3.0, 3.0);
             camCY += ThreadLocalRandom.current().nextDouble(-3.0, 3.0);
@@ -882,22 +890,35 @@ public class PlayingState extends GameState {
         // --- 6. 360-Degree Aim Angle Calculation ---
         double mouseWorldX = camera.screenToWorldX(mouseH.getScreenX());
         double mouseWorldY = camera.screenToWorldY(mouseH.getScreenY());
-        aimAngle = Math.atan2(mouseWorldY - playerCenterY, mouseWorldX - playerCenterX);
+        aimAngle = Math.atan2(mouseWorldY - player.getCenterY(), mouseWorldX - player.getCenterX());
+        player.setAimAngle(aimAngle);
 
         // --- 7. Weapon Attack Execution ---
-        // Súng tự động (AR) cho phép giữ chuột liên thanh (isLeftPressed)
-        // Súng bán tự động (Pistol/Shotgun/Dao) yêu cầu bấm chuột từng phát một (isLeftClickedOnce)
+        // Nút bắn (FIRE): Mặc định Chuột Trái (hoặc phím tùy chỉnh trong KeyBindings).
+        // Súng tự động (AR/SMG) cho phép giữ nút liên thanh (isActionDown).
+        // Súng bán tự động (Pistol/Shotgun/Dao) yêu cầu bấm từng phát một (isActionPressedOnce).
+        // ĐẶC BIỆT: Khi đang kích hoạt Quick-Melee (cận chiến nhanh), người chơi tập trung vung dao
+        // nên bắt buộc ngừng xả đạn súng (kể cả súng tự động đang giữ nút bắn).
+        boolean isQuickMeleeActive = KeyBindings.isActionDown(keyH, mouseH, GameAction.QUICK_MELEE);
         Weapon currentWeapon = weaponManager.getActiveWeapon();
         boolean shouldTriggerAttack = false;
-        if (currentWeapon != null) {
+        if (currentWeapon != null && !isQuickMeleeActive) {
             if (currentWeapon.isAutomatic()) {
-                shouldTriggerAttack = mouseH.isLeftPressed();
+                shouldTriggerAttack = KeyBindings.isActionDown(keyH, mouseH, GameAction.FIRE);
             } else {
-                shouldTriggerAttack = mouseH.isLeftClickedOnce();
+                shouldTriggerAttack = KeyBindings.isActionPressedOnce(keyH, mouseH, GameAction.FIRE);
             }
         }
         if (shouldTriggerAttack) {
-            weaponManager.attack(playerCenterX, playerCenterY, aimAngle, projectileManager);
+            weaponManager.attack(player.getCenterX(), player.getCenterY(), aimAngle, projectileManager);
+        }
+
+        // --- 7.1. Quick-Melee Strike ---
+        // Cho phép người chơi chém dao cận chiến tức thì khi bấm nút cận chiến nhanh (mặc định Chuột Phải)
+        // bất kể đang trang bị vũ khí nào (Slot 1, Slot 2, Pistol...).
+        // Tăng độ cơ động phản xạ nhanh khi bị quái cận chiến áp sát
+        if (isQuickMeleeActive) {
+            weaponManager.quickMelee(player.getCenterX(), player.getCenterY(), aimAngle, projectileManager);
         }
 
         // --- 8. Advance Weapons & Projectiles ---
@@ -915,6 +936,12 @@ public class PlayingState extends GameState {
             cv.update(deltaTime);
         }
         activeCritVisuals.removeIf(CriticalHitVisual::isFinished);
+
+        // --- 8.3. Advance Active Enemy Corpses (Knockback sliding & fade out) ---
+        for (EnemyCorpse corpse : activeCorpses) {
+            corpse.update(deltaTime, dungeonMap);
+        }
+        activeCorpses.removeIf(EnemyCorpse::isFinished);
 
         // --- 9. Check Projectile and Melee Hits on Hostile Targets ---
         updateCombatDamageResolution(deltaTime);
@@ -988,11 +1015,11 @@ public class PlayingState extends GameState {
         boolean chestInteracted = false;
         for (WeaponChest chest : weaponChests) {
             // Hòm tự động mở khi người chơi đi lại gần (bán kính ~58px) và lộ diện chiến lợi phẩm (Tiền hoặc Súng)
-            chest.update(deltaTime, playerX, playerY, playerSize);
+            chest.update(deltaTime, player.getX(), player.getY(), player.getSize());
 
             // Khi hòm đã mở và chưa thu thập, bấm phím tương tác chính [F] để nhận thưởng
-            if (chest.isPlayerInRange(playerX, playerY, playerSize) && chest.isOpened() && !chest.isCollected()) {
-                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+            if (chest.isPlayerInRange(player.getX(), player.getY(), player.getSize()) && chest.isOpened() && !chest.isCollected()) {
+                if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                     boolean collected = chest.collectReward(this);
                     if (collected) {
                         chestInteracted = true;
@@ -1003,7 +1030,7 @@ public class PlayingState extends GameState {
 
         // --- 11.2. Handle Ammo Pickups Proximity Auto-Collection ---
         for (AmmoPickup pickup : ammoPickups) {
-            pickup.update(deltaTime, playerX, playerY, playerSize, weaponManager.getAmmoInventory(), this);
+            pickup.update(deltaTime, player.getX(), player.getY(), player.getSize(), weaponManager.getAmmoInventory(), this);
         }
         ammoPickups.removeIf(AmmoPickup::isCollected);
 
@@ -1012,8 +1039,8 @@ public class PlayingState extends GameState {
         boolean healthInteracted = false;
         for (HealthPickup hp : healthPickups) {
             hp.update(deltaTime);
-            if (!healthInteracted && hp.isPlayerInRange(playerX, playerY, playerSize)) {
-                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+            if (!healthInteracted && hp.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
+                if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                     boolean used = hp.interact(this);
                     if (used) {
                         healthInteracted = true;
@@ -1028,8 +1055,8 @@ public class PlayingState extends GameState {
         boolean shopInteracted = false;
         for (ShopItem item : shopItems) {
             item.update(deltaTime);
-            if (item.isPlayerInRange(playerX, playerY, playerSize) && !item.isPurchased()) {
-                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+            if (item.isPlayerInRange(player.getX(), player.getY(), player.getSize()) && !item.isPurchased()) {
+                if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                     boolean bought = item.purchase(this);
                     if (bought) {
                         shopInteracted = true;
@@ -1043,8 +1070,8 @@ public class PlayingState extends GameState {
         boolean reforgeInteracted = false;
         if (statReforgeStation != null) {
             statReforgeStation.update(deltaTime);
-            if (statReforgeStation.isPlayerInRange(playerX, playerY, playerSize)) {
-                if (keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+            if (statReforgeStation.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
+                if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                     boolean reforged = statReforgeStation.interact(this);
                     if (reforged) {
                         reforgeInteracted = true;
@@ -1055,8 +1082,8 @@ public class PlayingState extends GameState {
 
         // --- 12. Check Extraction Zone Interaction [F] ---
         // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract or advance stage
-        isStandingOnExtract = dungeonMap.isIntersectsExtractZone(playerX, playerY, playerSize, playerSize);
-        if (!chestInteracted && !shopInteracted && !healthInteracted && !reforgeInteracted && isStandingOnExtract && keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+        isStandingOnExtract = dungeonMap.isIntersectsExtractZone(player.getX(), player.getY(), player.getSize(), player.getSize());
+        if (!chestInteracted && !shopInteracted && !healthInteracted && !reforgeInteracted && isStandingOnExtract && KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
             if (currentStage < MAX_STAGES) {
                 advanceToNextStage();
             } else {
@@ -1135,7 +1162,9 @@ public class PlayingState extends GameState {
                         }
                         p.deactivate(); // Bullet spent
                         if (!dummy.isAlive()) {
-                            onEnemyEliminated(dummy);
+                            double fatalAngle = p.getAngle();
+                            double fatalForce = p.isCritical() ? 480.0 : 360.0;
+                            onEnemyEliminated(dummy, fatalAngle, fatalForce);
                         }
                         break;
                     }
@@ -1143,7 +1172,7 @@ public class PlayingState extends GameState {
             } else {
                 // Đạn của Kẻ Địch trúng Operative
                 Rectangle playerBox = new Rectangle(
-                        (int) playerX, (int) playerY, (int) playerSize, (int) playerSize);
+                        (int) player.getX(), (int) player.getY(), (int) player.getSize(), (int) player.getSize());
                 if (p.getBounds().intersects(playerBox)) {
                     if (p instanceof BossCannonShell) {
                         ((BossCannonShell) p).explode(this, dungeonMap);
@@ -1172,7 +1201,9 @@ public class PlayingState extends GameState {
                         meleeEnemy.stagger(0.40); // Khựng đòn cắn của quái cận chiến, giải tỏa áp lực bị vây hãm
                     }
                     if (!dummy.isAlive()) {
-                        onEnemyEliminated(dummy);
+                        double fatalAngle = slash.getAngle();
+                        double fatalForce = slash.isCritical() ? 650.0 : 560.0;
+                        onEnemyEliminated(dummy, fatalAngle, fatalForce);
                     }
                 }
             }
@@ -1189,19 +1220,27 @@ public class PlayingState extends GameState {
         }
 
         // 3. Update targets AI (locomotion, kiting, melee attacks, pistol bursts)
-        double playerCenterX = playerX + (playerSize / 2.0);
-        double playerCenterY = playerY + (playerSize / 2.0);
+        double playerCenterX = player.getCenterX();
+        double playerCenterY = player.getCenterY();
         for (TargetDummy dummy : combatTargets) {
-            dummy.updateAI(deltaTime, playerCenterX, playerCenterY, playerSize, dungeonMap, projectileManager, this);
+            dummy.updateAI(deltaTime, playerCenterX, playerCenterY, player.getSize(), dungeonMap, projectileManager, this);
         }
         combatTargets.removeIf(d -> !d.isAlive());
     }
 
     /**
-     * Xử lý phần thưởng và phản hồi chiến thuật khi một mục tiêu bị tiêu diệt.
+     * Xử lý sinh xác đầu lâu nâu mờ và phần thưởng chiến thuật khi một mục tiêu bị tiêu diệt.
      * Khi Boss Dummy bị hạ gục: Thưởng lớn +50 Credits, rơi 3 stack đạn các loại, và hiển thị banner chiến tích.
+     *
+     * @param dummy      Mục tiêu bị tiêu diệt.
+     * @param fatalAngle Hướng văng đẩy lùi (radian) theo đòn kết liễu.
+     * @param fatalForce Xung lực đẩy lùi kết liễu (px/s).
      */
-    private void onEnemyEliminated(TargetDummy dummy) {
+    public void onEnemyEliminated(TargetDummy dummy, double fatalAngle, double fatalForce) {
+        // Sinh xác đầu lâu tông màu xám nâu mờ nhạt trượt văng do knockback
+        EnemyCorpse corpse = new EnemyCorpse(dummy.getX(), dummy.getY(), dummy.getSize(), fatalAngle, fatalForce, dummy.isBoss());
+        activeCorpses.add(corpse);
+
         if (dummy.isBoss()) {
             addCredits(50);
             showBanner("HẠ GỤC BOSS (+50 C)", new Color(255, 215, 60), 2.5);
@@ -1215,6 +1254,11 @@ public class PlayingState extends GameState {
         }
     }
 
+    public void onEnemyEliminated(TargetDummy dummy) {
+        double angle = Math.atan2(dummy.getY() - player.getY(), dummy.getX() - player.getX());
+        onEnemyEliminated(dummy, angle, 240.0);
+    }
+
     /**
      * Renders dungeon terrain, doors, flying bullets, melee slashes, operative, targets, and tactical HUDs.
      */
@@ -1222,6 +1266,11 @@ public class PlayingState extends GameState {
     public void render(Graphics2D g) {
         // 1. Render Visible Dungeon Map (with Viewport Culling & Door tiles)
         dungeonMap.render(g, camera);
+
+        // 1.5. Render Enemy Corpses on dungeon floor (Xác đầu lâu nâu mờ trượt trên sàn)
+        for (EnemyCorpse corpse : activeCorpses) {
+            corpse.render(g, camera);
+        }
 
         // 2. Render Hostile Combat Targets
         for (TargetDummy dummy : combatTargets) {
@@ -1238,7 +1287,7 @@ public class PlayingState extends GameState {
 
         // 3.3 Render Danh sách Hộp Cứu Thương rơi trên sàn (Health Pickups)
         for (HealthPickup hp : healthPickups) {
-            boolean inRange = hp.isPlayerInRange(playerX, playerY, playerSize);
+            boolean inRange = hp.isPlayerInRange(player.getX(), player.getY(), player.getSize());
             hp.render(g, camera, inRange);
         }
 
@@ -1249,80 +1298,28 @@ public class PlayingState extends GameState {
 
         // 3.5 Render Danh sách Hòm tiếp tế vũ khí (Weapon Chests)
         for (WeaponChest chest : weaponChests) {
-            boolean inRange = chest.isPlayerInRange(playerX, playerY, playerSize);
+            boolean inRange = chest.isPlayerInRange(player.getX(), player.getY(), player.getSize());
             chest.render(g, camera, inRange);
         }
 
         // 3.6 Render Danh sách Quầy hàng Shop (Tactical Field Shop)
         for (ShopItem item : shopItems) {
-            boolean inRange = item.isPlayerInRange(playerX, playerY, playerSize);
+            boolean inRange = item.isPlayerInRange(player.getX(), player.getY(), player.getSize());
             item.render(g, camera, inRange);
         }
 
         // 3.7 Render Trạm Tẩy Luyện Chỉ Số (Stat Reforge Station)
         if (statReforgeStation != null) {
-            statReforgeStation.render(g, camera, playerX, playerY, playerSize,
+            statReforgeStation.render(g, camera, player.getX(), player.getY(), player.getSize(),
                     weaponManager.getActiveWeapon(), playerCredits);
         }
 
         // 4. Render Player Operative (Screen Space)
-        double playerCenterX = playerX + (playerSize / 2.0);
-        double playerCenterY = playerY + (playerSize / 2.0);
-        int screenPX = camera.worldToScreenX(playerCenterX);
-        int screenPY = camera.worldToScreenY(playerCenterY);
-
-        // Operative shadow
-        g.setColor(new Color(0, 0, 0, 100));
-        g.fillOval(screenPX - 14, screenPY - 8, 28, 16);
-
-        // Operative body (Chiến binh đặc nhiệm tác chiến: Áo giáp Plate Carrier màu Sa Mạc / Coyote Tan)
-        // Khi bất tử (invulnerableTimer > 0): Nhấp nháy chớp đỏ / trong suốt phản hồi lực va chạm
-        Color operatorVest;
-        Color operatorBorder;
-        if (invulnerableTimer > 0 && ((int) (invulnerableTimer * 18)) % 2 == 0) {
-            operatorVest = new Color(255, 90, 90, 190);
-            operatorBorder = new Color(180, 40, 40);
-        } else {
-            operatorVest = new Color(195, 155, 95); // Coyote Tan / Desert Khaki dã chiến nổi bật
-            operatorBorder = new Color(130, 98, 55); // Viền đai vải chịu lực tác chiến
-        }
-        g.setColor(operatorVest);
-        g.fillOval(screenPX - 15, screenPY - 15, 30, 30);
-        g.setColor(operatorBorder);
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawOval(screenPX - 15, screenPY - 15, 30, 30);
-        g.setStroke(new BasicStroke(1.0f));
-
-        // Tấm đệm giáp ngực dã chiến (MOLLE Chest Rig Plate)
-        g.setColor(invulnerableTimer > 0 ? new Color(255, 130, 130) : new Color(165, 128, 75));
-        g.fillRoundRect(screenPX - 8, screenPY - 8, 16, 16, 4, 4);
-
-        // Mũ chống đạn Kevlar tác chiến Sa Mạc (Desert FAST Combat Helmet) bo tròn trên đầu
-        int helmetR = 10;
-        Color helmetColor = invulnerableTimer > 0 ? new Color(255, 120, 120) : new Color(225, 188, 125);
-        g.setColor(helmetColor);
-        g.fillOval(screenPX - helmetR, screenPY - helmetR, helmetR * 2, helmetR * 2);
-        g.setColor(new Color(145, 115, 75));
-        g.drawOval(screenPX - helmetR, screenPY - helmetR, helmetR * 2, helmetR * 2);
-
-        // Dải phản quang nhận diện đồng minh chiến thuật (IFF Squad Beacon) trên gáy mũ
-        g.setColor(new Color(0, 210, 255)); // Cyan nhận diện đặc nhiệm phe ta
-        g.fillRect(screenPX - 4, screenPY - helmetR - 1, 8, 3);
-
-        // Kính ngắm quang học tác chiến Xanh Lam Điện Tử (Electric Cyan HUD Visor) theo góc ngắm
-        // Tạo sự tương phản sắc nét, hoàn toàn khác biệt với kính màu hổ phách/đỏ của lính địch
-        int visorX = (int) (screenPX + Math.cos(aimAngle) * 7);
-        int visorY = (int) (screenPY + Math.sin(aimAngle) * 7);
-        g.setColor(new Color(0, 235, 255)); // Xanh lam neon / cyan rực rỡ
-        g.fillOval(visorX - 3, visorY - 3, 7, 7);
-        g.setColor(new Color(230, 255, 255)); // Tâm kính sáng hội tụ
-        g.fillOval(visorX - 1, visorY - 1, 3, 3);
-
-        // 4.5. Thanh đếm ngược tiến trình nạp đạn dưới chân người chơi khi đang reload
-        renderPlayerReloadIndicator(g, screenPX, screenPY);
+        player.render(g, camera);
+        player.renderReloadIndicator(g, camera, weaponManager.getActiveWeapon());
 
         // 5. Render Equipped Weapon & Melee Slash VFX
-        weaponManager.render(g, camera, playerCenterX, playerCenterY, aimAngle);
+        weaponManager.render(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
 
         // 5.1. Render Critical Hit Visual Effects (Expanding golden rings, starbursts, sparks, and floating CRIT! numbers)
         for (CriticalHitVisual cv : activeCritVisuals) {
@@ -1330,334 +1327,54 @@ public class PlayingState extends GameState {
         }
 
         // 6. Render Top Sector Information HUD, Player Health Bar HUD, Credits HUD, and Boss Health Bar
-        renderSectorHUD(g, playerCenterX, playerCenterY);
-        renderPlayerHealthHUD(g);
-        renderCreditsHUD(g);
-        renderBossHealthBar(g);
+        playingHUD.renderSectorHUD(g, currentStage, activeCombatRoom);
+        playingHUD.renderPlayerHealthHUD(g, player);
+        playingHUD.renderDodgeHUD(g, player);
+        playingHUD.renderCreditsHUD(g, playerCredits);
+        long activeMinions = combatTargets.stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+        playingHUD.renderBossHealthBar(g, bossDummy, activeMinions, bossMinionRespawnTimer);
 
         // 7. Render Bottom Weapon & Ammunition HUD
         weaponManager.renderHUD(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
 
         // 8. Render Tactical Announcement Banner if active
         if (bannerTimer > 0 && !bannerMessage.isEmpty()) {
-            renderBanner(g);
+            boolean hasBoss = (bossDummy != null && bossDummy.isAlive());
+            playingHUD.renderBanner(g, bannerMessage, bannerColor, hasBoss);
         }
 
         // 9. Floating Extract Interaction Prompt if standing on extract pad
         if (isStandingOnExtract && !isExtracting) {
-            renderExtractPrompt(g, screenPX, screenPY);
+            int screenPX = camera.worldToScreenX(player.getCenterX());
+            int screenPY = camera.worldToScreenY(player.getCenterY());
+            playingHUD.renderExtractPrompt(g, screenPX, screenPY, currentStage);
         }
 
         // 10. Extraction Victory Black Screen Overlay (Report Stage 0-1 Completed)
         if (isExtracting) {
-            renderExtractionVictoryScreen(g);
+            playingHUD.renderExtractionVictoryScreen(g);
         }
 
         // 10.4 Cảnh báo viền đỏ nguy hiểm khi máu thấp (<= 30%)
-        if (playerCurrentHealth <= 30 && !isPlayerDead) {
-            renderLowHealthVignette(g);
+        if (player.getCurrentHealth() <= 30 && !player.isDead()) {
+            playingHUD.renderLowHealthVignette(g);
         }
 
         // 10.6 Màn hình Game Over khi tử trận
-        if (isPlayerDead) {
-            renderGameOverScreen(g);
+        if (player.isDead()) {
+            long cleared = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
+            playingHUD.renderGameOverScreen(g, currentStage, MAX_STAGES, playerCredits, cleared, weaponManager.getWeaponSlots().size());
         }
 
         // 11. Giao diện Balo chiến thuật (TAB Overlay)
         if (isBackpackOpen) {
             backpackUI.render(g, weaponManager, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         }
-    }
 
-    /**
-     * Hiển thị nhãn Stage tinh gọn ở góc trên bên trái: "Stage [số biome]|[số stage của biome đó]".
-     * Toàn bộ thông số toạ độ/hướng dẫn cồng kềnh cũ được loại bỏ để giữ màn hình thông thoáng.
-     */
-    private void renderSectorHUD(Graphics2D g, double pcx, double pcy) {
-        int boxX = 20;
-        int boxY = 20;
-        int boxW = 125;
-        int boxH = 34;
-
-        boolean isLockedCombat = (activeCombatRoom != null && activeCombatRoom.isLocked());
-
-        // Khung nền xám đen viền công nghệ cao
-        g.setColor(new Color(15, 20, 30, 225));
-        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setColor(isLockedCombat ? new Color(255, 75, 75, 180) : new Color(60, 80, 110));
-        g.setStroke(new BasicStroke(1.2f));
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setStroke(new BasicStroke(1.0f));
-
-        // Text Stage: "Stage 1|1", "Stage 1|2", "Stage 1|3"
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        String stageText = String.format("Stage 1|%d", currentStage);
-        FontMetrics fm = g.getFontMetrics();
-        int textX = boxX + (boxW - fm.stringWidth(stageText)) / 2;
-        int textY = boxY + ((boxH - fm.getHeight()) / 2) + fm.getAscent();
-
-        g.setColor(isLockedCombat ? new Color(255, 90, 90) : new Color(255, 205, 55));
-        g.drawString(stageText, textX, textY);
-    }
-
-    /**
-     * Renders a large, imposing Boss Health Bar at the top-center of the screen during Boss encounters.
-     * Includes golden boss header title, gradient crimson fill, segment ticks, and exact HP counter.
-     */
-    private void renderBossHealthBar(Graphics2D g) {
-        if (bossDummy == null || !bossDummy.isAlive()) return;
-
-        int barW = 520;
-        int barH = 22;
-        int barX = (GameConfig.SCREEN_WIDTH - barW) / 2;
-        int barY = 44;
-
-        // Container card frame behind the Boss Bar
-        int cardPadX = 18;
-        int cardPadY = 26;
-        int cardX = barX - cardPadX;
-        int cardY = barY - cardPadY;
-        int cardW = barW + cardPadX * 2;
-        int cardH = barH + cardPadY + 24;
-
-        // Dark sci-fi backplate with gold trim
-        g.setColor(new Color(12, 14, 22, 235));
-        g.fillRoundRect(cardX, cardY, cardW, cardH, 12, 12);
-        g.setColor(new Color(212, 160, 23, 200));
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawRoundRect(cardX, cardY, cardW, cardH, 12, 12);
-        g.setStroke(new BasicStroke(1.0f));
-
-        // Decorative corner cyber notches
-        g.setColor(new Color(255, 215, 60));
-        g.fillRect(cardX + 2, cardY + 2, 8, 2);
-        g.fillRect(cardX + 2, cardY + 2, 2, 8);
-        g.fillRect(cardX + cardW - 10, cardY + 2, 8, 2);
-        g.fillRect(cardX + cardW - 4, cardY + 2, 2, 8);
-
-        // Header Title: Boss Name & Hazard Skull
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        String title = "☠ " + bossDummy.getName().toUpperCase() + " ☠";
-        FontMetrics fm = g.getFontMetrics();
-        int titleW = fm.stringWidth(title);
-        g.setColor(new Color(255, 220, 80));
-        g.drawString(title, (GameConfig.SCREEN_WIDTH - titleW) / 2, barY - 8);
-
-        // Bar Track Background
-        g.setColor(new Color(30, 25, 32));
-        g.fillRoundRect(barX, barY, barW, barH, 6, 6);
-
-        // Bar Fill (Gradient Crimson to Fiery Orange)
-        float hpPercent = Math.max(0f, (float) bossDummy.getCurrentHealth() / bossDummy.getMaxHealth());
-        int fillW = (int) (barW * hpPercent);
-
-        if (fillW > 0) {
-            GradientPaint hpGrad = new GradientPaint(
-                    barX, barY, new Color(255, 55, 55),
-                    barX + barW, barY, new Color(190, 15, 25)
-            );
-            Paint oldPaint = g.getPaint();
-            g.setPaint(hpGrad);
-            g.fillRoundRect(barX, barY, fillW, barH, 6, 6);
-            g.setPaint(oldPaint);
-
-            // Top highlight line for 3D metallic feel
-            g.setColor(new Color(255, 140, 140, 180));
-            g.fillRect(barX + 2, barY + 2, Math.max(0, fillW - 4), 3);
+        // 12. Giao diện Menu Tạm dừng (Pause Menu UI Overlay)
+        if (isPaused) {
+            pauseMenuUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         }
-
-        // Inner Segment Tick Marks (every 20%: 20%, 40%, 60%, 80%)
-        g.setColor(new Color(20, 20, 28, 180));
-        for (int i = 1; i <= 4; i++) {
-            int tickX = barX + (barW * i) / 5;
-            g.fillRect(tickX - 1, barY, 2, barH);
-        }
-
-        // Outer border
-        g.setColor(new Color(255, 215, 60, 220));
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawRoundRect(barX, barY, barW, barH, 6, 6);
-        g.setStroke(new BasicStroke(1.0f));
-
-        // Exact Health Text centered on the bar
-        int percentInt = (int) (hpPercent * 100);
-        String hpText = String.format("%d / %d HP (%d%%)", bossDummy.getCurrentHealth(), bossDummy.getMaxHealth(), percentInt);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
-        FontMetrics hpfm = g.getFontMetrics();
-        int hpTextW = hpfm.stringWidth(hpText);
-        int hpTextX = (GameConfig.SCREEN_WIDTH - hpTextW) / 2;
-        int hpTextY = barY + 16;
-
-        // Shadow text for high contrast readability
-        g.setColor(Color.BLACK);
-        g.drawString(hpText, hpTextX + 1, hpTextY + 1);
-        g.setColor(Color.WHITE);
-        g.drawString(hpText, hpTextX, hpTextY);
-
-        // Minion Guardian Status / Reinforcement Countdown indicator
-        long activeMinions = combatTargets.stream().filter(d -> d.isAlive() && !d.isBoss()).count();
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
-        FontMetrics statusFm = g.getFontMetrics();
-        String statusText;
-        Color statusColor;
-
-        if (activeMinions > 0) {
-            statusText = "HỘ VỆ: " + activeMinions;
-            statusColor = new Color(175, 195, 220, 210);
-        } else {
-            statusText = String.format("TIẾP VIỆN: %.0fs", Math.max(0.0, bossMinionRespawnTimer));
-            if (bossMinionRespawnTimer <= 3.0) {
-                statusColor = new Color(255, 80, 80, 240);
-            } else if (bossMinionRespawnTimer <= 7.0) {
-                statusColor = new Color(255, 180, 50, 230);
-            } else {
-                statusColor = new Color(255, 220, 90, 210);
-            }
-        }
-
-        int statusW = statusFm.stringWidth(statusText);
-        int statusX = (GameConfig.SCREEN_WIDTH - statusW) / 2;
-        int statusY = barY + barH + 16;
-
-        g.setColor(Color.BLACK);
-        g.drawString(statusText, statusX + 1, statusY + 1);
-        g.setColor(statusColor);
-        g.drawString(statusText, statusX, statusY);
-    }
-
-    /**
-     * Renders a glowing centered banner when doors lock or unlock.
-     */
-    private void renderBanner(Graphics2D g) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(bannerMessage);
-        int pad = 18;
-
-        int boxW = textW + pad * 2;
-        int boxH = 36;
-        int boxX = (GameConfig.SCREEN_WIDTH - boxW) / 2;
-        int boxY = (bossDummy != null && bossDummy.isAlive()) ? 96 : 115;
-
-        g.setColor(new Color(15, 18, 28, 215));
-        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setColor(bannerColor);
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-
-        g.setColor(bannerColor);
-        g.drawString(bannerMessage, boxX + pad, boxY + 23);
-    }
-
-    /**
-     * Displays a tactical prompt prompting the operative to press [F] to extract.
-     */
-    private void renderExtractPrompt(Graphics2D g, int screenPX, int screenPY) {
-        String prompt;
-        if (currentStage == 1) {
-            prompt = "[F] LÊN TRỰC THĂNG TIẾN VÀO SECTOR 2";
-        } else if (currentStage == 2) {
-            prompt = "[F] LÊN TRỰC THĂNG TIẾN VÀO SECTOR 3";
-        } else if (currentStage == 3) {
-            prompt = "[F] LÊN TRỰC THĂNG TIẾN VÀO VÙNG CHIẾN SỰ TRÙM (SECTOR 4)";
-        } else {
-            prompt = "[F] LÊN TRỰC THĂNG SƠ TÁN (HOÀN THÀNH CHIẾN DỊCH)";
-        }
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
-        FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(prompt);
-        int pad = 12;
-
-        int boxW = textW + pad * 2;
-        int boxH = 32;
-        int boxX = screenPX - boxW / 2;
-        int boxY = screenPY - 50;
-
-        // Background box with glowing border
-        g.setColor(new Color(22, 26, 24, 235));
-        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setColor(new Color(235, 190, 35)); // Helipad amber gold
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-
-        // Keycap [F] indicator
-        g.setColor(new Color(255, 220, 60));
-        g.drawString("[F]", boxX + pad, boxY + 21);
-
-        g.setColor(Color.WHITE);
-        g.drawString(prompt.substring(3), boxX + pad + fm.stringWidth("[F] "), boxY + 21);
-    }
-
-    /**
-     * Renders a solid black screen with tactical debriefing reporting Stage 0-1 completion.
-     */
-    private void renderExtractionVictoryScreen(Graphics2D g) {
-        int width = GameConfig.SCREEN_WIDTH;
-        int height = GameConfig.SCREEN_HEIGHT;
-
-        // 1. Solid Black Screen
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, width, height);
-
-        // 2. Cyber grid decorative border
-        g.setColor(new Color(30, 45, 60));
-        g.drawRect(40, 40, width - 80, height - 80);
-        g.drawRect(44, 44, width - 88, height - 88);
-
-        // Corner accents
-        g.setColor(new Color(60, 220, 160));
-        int cSize = 24;
-        g.drawLine(40, 40, 40 + cSize, 40);
-        g.drawLine(40, 40, 40, 40 + cSize);
-        g.drawLine(width - 40, 40, width - 40 - cSize, 40);
-        g.drawLine(width - 40, 40, width - 40, 40 + cSize);
-        g.drawLine(40, height - 40, 40 + cSize, height - 40);
-        g.drawLine(40, height - 40, 40, height - 40 - cSize);
-        g.drawLine(width - 40, height - 40, width - 40 - cSize, height - 40);
-        g.drawLine(width - 40, height - 40, width - 40, height - 40 - cSize);
-
-        // 3. Victory Title: ★ BIOME 1 HOÀN THÀNH ★
-        g.setFont(new Font("SansSerif", Font.BOLD, 42));
-        FontMetrics fmTitle = g.getFontMetrics();
-        String title = "★ BIOME 1 HOÀN THÀNH ★";
-        int titleX = (width - fmTitle.stringWidth(title)) / 2;
-        int titleY = 210;
-
-        g.setColor(new Color(20, 60, 40));
-        g.drawString(title, titleX + 2, titleY + 2);
-        g.setColor(new Color(60, 240, 140));
-        g.drawString(title, titleX, titleY);
-
-        // Subtitle
-        g.setFont(new Font("SansSerif", Font.BOLD, 22));
-        FontMetrics fmSub = g.getFontMetrics();
-        String subtitle = "CHIẾN DỊCH TOÀN THẮNG - SƠ TÁN THÀNH CÔNG";
-        int subX = (width - fmSub.stringWidth(subtitle)) / 2;
-        g.setColor(new Color(255, 215, 60));
-        g.drawString(subtitle, subX, 260);
-
-        // 4. Mission Debriefing Tactical Card
-        int cardW = 660;
-        int cardH = 180;
-        int cardX = (width - cardW) / 2;
-        int cardY = 310;
-        g.setColor(new Color(15, 20, 30, 220));
-        g.fillRoundRect(cardX, cardY, cardW, cardH, 12, 12);
-        g.setColor(new Color(60, 80, 110));
-        g.drawRoundRect(cardX, cardY, cardW, cardH, 12, 12);
-
-        g.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        g.setColor(new Color(200, 220, 245));
-        g.drawString("• Khu vực: Biome 1 (Alpha Sector) - Hoàn thành xuất sắc 3/3 Stages", cardX + 30, cardY + 45);
-        g.drawString("• Stage 1 & 2: Dọn sạch toàn bộ các phòng chiến đấu liên kết", cardX + 30, cardY + 80);
-        g.drawString("• Stage 3: Chinh phục Grand Boss Arena & kích hoạt sơ tán", cardX + 30, cardY + 115);
-        g.drawString("• Trang bị & Balo: Giữ nguyên toàn bộ vũ khí và chiến lợi phẩm", cardX + 30, cardY + 150);
-
-        // 5. User prompt at bottom
-        g.setFont(new Font("SansSerif", Font.ITALIC, 16));
-        FontMetrics fmPrompt = g.getFontMetrics();
-        String prompt = "[ Nhấn ENTER hoặc F để quay về Menu ngay ]";
-        int promptX = (width - fmPrompt.stringWidth(prompt)) / 2;
-        g.setColor(new Color(160, 180, 210));
-        g.drawString(prompt, promptX, 550);
     }
 
     public boolean isStandingOnExtract() {
@@ -1669,8 +1386,7 @@ public class PlayingState extends GameState {
     }
 
     public void setPlayerPosition(double x, double y) {
-        this.playerX = x;
-        this.playerY = y;
+        player.setPosition(x, y);
     }
 
     public DungeonMap getDungeonMap() {
@@ -1728,33 +1444,8 @@ public class PlayingState extends GameState {
         this.currentStage = stage;
     }
 
-    /**
-     * Hiển thị bảng HUD số dư tiền tệ Credits ở góc trên bên phải màn hình.
-     */
-    private void renderCreditsHUD(Graphics2D g) {
-        int boxW = 160;
-        int boxH = 36;
-        int boxX = GameConfig.SCREEN_WIDTH - boxW - 20;
-        int boxY = 20;
-
-        g.setColor(new Color(15, 20, 30, 210));
-        g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setColor(new Color(255, 215, 60, 200));
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-
-        // Icon đồng tiền vàng
-        g.setColor(new Color(255, 215, 60));
-        g.fillOval(boxX + 10, boxY + 8, 20, 20);
-        g.setColor(new Color(180, 140, 20));
-        g.drawOval(boxX + 10, boxY + 8, 20, 20);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
-        g.setColor(new Color(30, 20, 5));
-        g.drawString("C", boxX + 16, boxY + 23);
-
-        // Chữ số Credits
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        g.setColor(new Color(255, 230, 90));
-        g.drawString(playerCredits + " CREDITS", boxX + 38, boxY + 24);
+    public PlayingHUD getPlayingHUD() {
+        return playingHUD;
     }
 
     public int getPlayerCredits() {
@@ -1786,6 +1477,21 @@ public class PlayingState extends GameState {
         return statReforgeStation;
     }
 
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    public void setPaused(boolean paused) {
+        this.isPaused = paused;
+        if (paused) {
+            pauseMenuUI.open();
+        }
+    }
+
+    public PauseMenuUI getPauseMenuUI() {
+        return pauseMenuUI;
+    }
+
     /**
      * Thả vũ khí xuống mặt đất dưới dạng hòm tiếp tế đã mở sẵn (phục vụ việc thay thế vũ khí phòng bấm nhầm).
      */
@@ -1797,11 +1503,11 @@ public class PlayingState extends GameState {
     }
 
     public double getPlayerX() {
-        return playerX;
+        return player.getX();
     }
 
     public double getPlayerY() {
-        return playerY;
+        return player.getY();
     }
 
     public void showTacticalBanner(String message, Color color, double duration) {
@@ -1825,189 +1531,18 @@ public class PlayingState extends GameState {
         this.combatTargets.add(boss);
     }
 
-    /**
-     * Hiển thị thanh máu của người chơi trên giao diện HUD màn hình (ngay dưới Sector HUD).
-     * Tuyệt đối không hiển thị trên đầu người chơi theo đúng yêu cầu thiết kế.
-     */
-    private void renderPlayerHealthHUD(Graphics2D g) {
-        int barX = 20;
-        int barY = 60;
-        int barW = 210;
-        int barH = 22;
 
-        // Khung nền xám đen viền kim loại công nghệ cao
-        g.setColor(new Color(12, 16, 24, 230));
-        g.fillRoundRect(barX, barY, barW, barH, 6, 6);
-        g.setColor(new Color(55, 75, 105));
-        g.setStroke(new BasicStroke(1.2f));
-        g.drawRoundRect(barX, barY, barW, barH, 6, 6);
-        g.setStroke(new BasicStroke(1.0f));
-
-        // Thanh tiến trình máu
-        float hpPercent = Math.max(0f, (float) playerCurrentHealth / playerMaxHealth);
-        int fillW = (int) ((barW - 4) * hpPercent);
-
-        Color hpColor;
-        if (playerCurrentHealth > 50) {
-            hpColor = new Color(50, 220, 100); // Xanh ngọc tươi
-        } else if (playerCurrentHealth > 25) {
-            hpColor = new Color(255, 180, 40); // Vàng hổ phách cảnh báo
-        } else {
-            hpColor = new Color(255, 55, 55);  // Đỏ tươi nguy cấp
-        }
-
-        if (fillW > 0) {
-            g.setColor(hpColor);
-            g.fillRoundRect(barX + 2, barY + 2, fillW, barH - 4, 4, 4);
-
-            // Dải highlight 3D mép trên
-            g.setColor(new Color(255, 255, 255, 80));
-            g.fillRect(barX + 2, barY + 2, fillW, 3);
-        }
-
-        // Chữ số hiển thị máu rõ nét ở giữa thanh
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
-        FontMetrics fm = g.getFontMetrics();
-        String hpText = "✚ HP: " + playerCurrentHealth + " / " + playerMaxHealth;
-        int textW = fm.stringWidth(hpText);
-        int textX = barX + (barW - textW) / 2;
-        int textY = barY + 16;
-
-        // Shadow chữ tăng độ tương phản
-        g.setColor(new Color(0, 0, 0, 220));
-        g.drawString(hpText, textX + 1, textY + 1);
-        g.setColor(Color.WHITE);
-        g.drawString(hpText, textX, textY);
-    }
-
-    /**
-     * Hiển thị thanh đếm ngược tiến trình nạp đạn (Reload Progress Bar & Countdown) ngay dưới chân người chơi.
-     * Tự động xuất hiện khi súng đang nạp đạn và biến mất khi hoàn tất nạp đạn.
-     */
-    private void renderPlayerReloadIndicator(Graphics2D g, int screenPX, int screenPY) {
-        com.groupproject.game.entity.weapon.Weapon active = weaponManager.getActiveWeapon();
-        if (active == null || !active.isReloading()) return;
-
-        int barW = 38;
-        int barH = 5;
-        int barX = screenPX - (barW / 2);
-        int barY = screenPY + 20;
-
-        // Khung nền tối sci-fi bo góc
-        g.setColor(new Color(15, 20, 30, 220));
-        g.fillRoundRect(barX - 1, barY - 1, barW + 2, barH + 2, 4, 4);
-        g.setColor(new Color(65, 85, 115));
-        g.setStroke(new BasicStroke(1.0f));
-        g.drawRoundRect(barX - 1, barY - 1, barW + 2, barH + 2, 4, 4);
-
-        // Dải tiến trình nạp đạn
-        double progress = Math.max(0.0, Math.min(1.0, active.getReloadProgress()));
-        int fillW = (int) Math.round(barW * progress);
-        if (fillW > 0) {
-            g.setColor(new Color(255, 150, 40)); // Vàng cam ấm áp rực rỡ
-            g.fillRoundRect(barX, barY, fillW, barH, 2, 2);
-            // Highlight mép trên
-            g.setColor(new Color(255, 255, 255, 120));
-            g.fillRect(barX, barY, fillW, 1);
-        }
-
-        // Chữ số đếm ngược thời gian nạp đạn còn lại (ví dụ "1.2s", "0.6s")
-        double remainingSec = Math.max(0.0, active.getReloadTimer());
-        String timeText = String.format("%.1fs", remainingSec);
-        g.setFont(new Font("SansSerif", Font.BOLD, 9));
-        FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(timeText);
-        int textX = screenPX - (textW / 2);
-        int textY = barY + barH + 9;
-
-        g.setColor(new Color(10, 15, 22, 190));
-        g.fillRoundRect(textX - 3, textY - 8, textW + 6, 10, 3, 3);
-        g.setColor(new Color(255, 210, 75));
-        g.drawString(timeText, textX, textY);
-    }
-
-    /**
-     * Hiển thị hiệu ứng viền đỏ nhấp nháy quanh 4 cạnh màn hình khi máu xuống mức nguy cấp (<= 30%).
-     */
-    private void renderLowHealthVignette(Graphics2D g) {
-        float pulse = (float) (Math.sin(System.currentTimeMillis() * 0.008) * 0.4 + 0.6);
-        int alpha = (int) (65 * pulse);
-        g.setColor(new Color(255, 0, 0, alpha));
-        int thickness = 32;
-        g.fillRect(0, 0, GameConfig.SCREEN_WIDTH, thickness);
-        g.fillRect(0, GameConfig.SCREEN_HEIGHT - thickness, GameConfig.SCREEN_WIDTH, thickness);
-        g.fillRect(0, 0, thickness, GameConfig.SCREEN_HEIGHT);
-        g.fillRect(GameConfig.SCREEN_WIDTH - thickness, 0, thickness, GameConfig.SCREEN_HEIGHT);
-    }
-
-    /**
-     * Hiển thị màn hình Game Over phong cách quân sự viễn tưởng khi chiến binh tử trận (HP = 0).
-     */
-    private void renderGameOverScreen(Graphics2D g) {
-        // Phủ màn mờ đỏ đen kịch tính
-        g.setColor(new Color(15, 5, 8, 235));
-        g.fillRect(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
-
-        int cx = GameConfig.SCREEN_WIDTH / 2;
-
-        // Biểu tượng & Tiêu đề Tử trận
-        g.setFont(new Font("SansSerif", Font.BOLD, 36));
-        FontMetrics fm = g.getFontMetrics();
-        String title = "☠ CHIẾN BINH TỬ TRẬN ☠";
-        int titleW = fm.stringWidth(title);
-        g.setColor(new Color(255, 60, 60));
-        g.drawString(title, cx - titleW / 2, 220);
-
-        g.setFont(new Font("SansSerif", Font.BOLD, 16));
-        fm = g.getFontMetrics();
-        String sub = "OPERATIVE KIA - TÍN HIỆU SINH TỒN ĐÃ MẤT";
-        g.setColor(new Color(255, 170, 170));
-        g.drawString(sub, cx - fm.stringWidth(sub) / 2, 260);
-
-        // Bảng thống kê chiến dịch
-        int cardW = 440;
-        int cardH = 150;
-        int cardX = cx - cardW / 2;
-        int cardY = 300;
-
-        g.setColor(new Color(25, 18, 22, 220));
-        g.fillRoundRect(cardX, cardY, cardW, cardH, 10, 10);
-        g.setColor(new Color(255, 80, 80));
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawRoundRect(cardX, cardY, cardW, cardH, 10, 10);
-        g.setStroke(new BasicStroke(1.0f));
-
-        g.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        g.setColor(new Color(220, 225, 235));
-        g.drawString("• Giai đoạn chiến dịch: Stage " + currentStage + " / " + MAX_STAGES, cardX + 30, cardY + 40);
-        g.drawString("• Ngân sách thu thập: " + playerCredits + " CREDITS", cardX + 30, cardY + 70);
-        long cleared = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
-        g.drawString("• Tiến độ dọn phòng: " + cleared + " phòng combat", cardX + 30, cardY + 100);
-        g.drawString("• Trang bị hiện có: " + weaponManager.getWeaponSlots().size() + " vũ khí trong kho", cardX + 30, cardY + 130);
-
-        // Hướng dẫn tương tác
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        fm = g.getFontMetrics();
-        String prompt = "Bấm [ENTER] hoặc [R] để tái xuất phát | [ESC] Về Menu chính";
-        g.setColor(new Color(255, 225, 75));
-        g.drawString(prompt, cx - fm.stringWidth(prompt) / 2, 510);
-    }
 
     /**
      * Gây sát thương cho chiến binh Operative.
      * Tự động kiểm tra thời gian bất tử (i-frames: 0.8s) để bảo vệ người chơi khỏi sát thương liên hoàn.
      */
     public void damagePlayer(int damage) {
-        if (isPlayerDead || invulnerableTimer > 0 || damage <= 0) return;
-
-        playerCurrentHealth = Math.max(0, playerCurrentHealth - damage);
-        invulnerableTimer = 0.8; // 0.8 giây bất tử i-frame
-        screenShakeTimer = 0.2;  // 0.2 giây rung màn hình
-
-        if (playerCurrentHealth <= 0) {
-            playerCurrentHealth = 0;
-            isPlayerDead = true;
-            showBanner("☠ CHIẾN BINH ĐÃ TỬ TRẬN (OPERATIVE KIA) ☠", new Color(255, 50, 50), 5.0);
+        if (player.takeDamage(damage)) {
+            screenShakeTimer = 0.2; // 0.2 giây rung màn hình phản hồi va chạm
+            if (player.isDead()) {
+                showBanner("☠ CHIẾN BINH ĐÃ TỬ TRẬN (OPERATIVE KIA) ☠", new Color(255, 50, 50), 5.0);
+            }
         }
     }
 
@@ -2015,40 +1550,63 @@ public class PlayingState extends GameState {
      * Hồi phục máu cho chiến binh Operative, giới hạn tối đa bởi playerMaxHealth.
      */
     public void healPlayer(int amount) {
-        if (isPlayerDead || amount <= 0) return;
-        playerCurrentHealth = Math.min(playerMaxHealth, playerCurrentHealth + amount);
+        player.heal(amount);
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public double getPlayerSize() {
+        return player.getSize();
     }
 
     public int getPlayerMaxHealth() {
-        return playerMaxHealth;
+        return player.getMaxHealth();
     }
 
     public void setPlayerMaxHealth(int maxHealth) {
-        this.playerMaxHealth = Math.max(1, maxHealth);
+        player.setMaxHealth(maxHealth);
     }
 
     public int getPlayerCurrentHealth() {
-        return playerCurrentHealth;
+        return player.getCurrentHealth();
     }
 
     public void setPlayerCurrentHealth(int health) {
-        this.playerCurrentHealth = Math.max(0, Math.min(playerMaxHealth, health));
+        player.setCurrentHealth(health);
     }
 
     public boolean isPlayerDead() {
-        return isPlayerDead;
+        return player.isDead();
     }
 
     public void setPlayerDead(boolean dead) {
-        this.isPlayerDead = dead;
+        player.setDead(dead);
     }
 
     public double getInvulnerableTimer() {
-        return invulnerableTimer;
+        return player.getInvulnerableTimer();
     }
 
     public void setInvulnerableTimer(double timer) {
-        this.invulnerableTimer = timer;
+        player.setInvulnerableTimer(timer);
+    }
+
+    public boolean triggerPlayerDodge(boolean up, boolean down, boolean left, boolean right) {
+        return player.triggerDodge(up, down, left, right);
+    }
+
+    public boolean isPlayerDodging() {
+        return player.isDodging();
+    }
+
+    public double getPlayerDodgeCooldownTimer() {
+        return player.getDodgeCooldownTimer();
+    }
+
+    public double getAimAngle() {
+        return aimAngle;
     }
 
     public List<HealthPickup> getHealthPickups() {
@@ -2067,6 +1625,10 @@ public class PlayingState extends GameState {
         return activeCritVisuals;
     }
 
+    public List<EnemyCorpse> getActiveCorpses() {
+        return activeCorpses;
+    }
+
     /**
      * Kích hoạt một vụ nổ bộc phá diện rộng (AoE Explosion) tại tọa độ thế giới (x, y).
      * Gây sát thương xuyên vật cản lên Operative nếu đứng trong bán kính nổ,
@@ -2078,14 +1640,15 @@ public class PlayingState extends GameState {
      * @param damage  Lượng sát thương bộc phá.
      */
     public void triggerAreaExplosion(double x, double y, double radius, int damage) {
-        activeExplosions.add(new ExplosionVisual(x, y, radius, 0.45));
-        triggerScreenShake(0.35);
+        double duration = radius >= 120.0 ? 0.58 : 0.45;
+        activeExplosions.add(new ExplosionVisual(x, y, radius, duration));
+        triggerScreenShake(radius >= 120.0 ? 0.48 : 0.35);
 
         // 1. Kiểm tra sát thương lên người chơi (xuyên cover/địa hình)
-        double playerCenterX = playerX + (playerSize / 2.0);
-        double playerCenterY = playerY + (playerSize / 2.0);
+        double playerCenterX = player.getCenterX();
+        double playerCenterY = player.getCenterY();
         double distSq = (playerCenterX - x) * (playerCenterX - x) + (playerCenterY - y) * (playerCenterY - y);
-        if (distSq <= (radius + playerSize / 2.0) * (radius + playerSize / 2.0)) {
+        if (distSq <= (radius + player.getSize() / 2.0) * (radius + player.getSize() / 2.0)) {
             damagePlayer(damage);
         }
 
@@ -2098,7 +1661,8 @@ public class PlayingState extends GameState {
                 if (dDistSq <= radius * radius) {
                     dummy.takeDamage(damage / 2, Math.atan2(dummyCenterY - y, dummyCenterX - x), 150.0);
                     if (!dummy.isAlive()) {
-                        onEnemyEliminated(dummy);
+                        double fatalAngle = Math.atan2(dummyCenterY - y, dummyCenterX - x);
+                        onEnemyEliminated(dummy, fatalAngle, 440.0);
                     }
                 }
             }

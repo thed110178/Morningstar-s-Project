@@ -21,7 +21,7 @@ public class CombatKnife extends Weapon {
     private static final double REACH_OFFSET = 36.0;   // Distance in front of player
     private static final double HITBOX_SIZE = 48.0;    // ~1 tile size
     private static final double SLASH_DURATION = 0.12; // Duration of visual arc
-    private static final double KNOCKBACK_FORCE = 520.0; // High knockback impulse (px/s) to push rushing enemies away
+    private static final double KNOCKBACK_FORCE = 600.0; // Tăng xung lực đẩy lùi từ 520 lên 650 px/s để đẩy lùi quái cận chiến áp sát dũng mãnh hơn
 
     public CombatKnife() {
         super("Combat Knife", 4, DEFAULT_DAMAGE, SWING_COOLDOWN, 0, 0.0);

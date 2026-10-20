@@ -30,7 +30,9 @@ Cập nhật mới nhất vào ngày: 06/10/2026
 * `public void addWeapon(Weapon weapon)`: Bổ sung một vũ khí mới vào kho đồ.
 * `public void selectSlot(int slotIndex)`: Chọn trang bị theo phím slot.
 * `public void quickSwap()`: Đổi nhanh 2 vũ khí gần nhất (phím Q).
-* `public boolean attack(double ox, double oy, double angle, ProjectileManager pm)`: Bắn hoặc chém.
+* `public boolean attack(double ox, double oy, double angle, ProjectileManager pm)`: Bắn hoặc chém bằng vũ khí đang cầm.
+* `public boolean quickMelee(double ox, double oy, double angle, ProjectileManager pm)`: Chém dao cận chiến tức thì bằng chuột phải bất kể đang cầm vũ khí nào.
+* `public Weapon getMeleeWeapon()`: Lấy vũ khí cận chiến (Slot 4 hoặc dao dự phòng).
 * `public void reload()`: Nạp lại băng đạn.
 * `public void renderHUD(Graphics2D g, int screenW, int screenH)`: Vẽ thanh đạn và trạng thái vũ khí.
 
@@ -45,6 +47,9 @@ Cập nhật mới nhất vào ngày: 06/10/2026
 ## 5. Sửa đổi / Cập nhật
 * **03/10/2026**: Khởi tạo ban đầu với hỗ trợ phím 3, 4, Q, R và giao diện HUD trực quan.
 * **06/10/2026**: Mở rộng hỗ trợ toàn diện 4 slot: Bổ sung Slot 1 (Assault Rifle 30 viên, 700 RPM) và Slot 2 (Shotgun 8 viên cự ly gần). Mặc định kích hoạt Slot 1.
+* **19/10/2026**:
+  - Bổ sung phương thức `quickMelee(...)` cho phép vung dao chém tức thì khi nhấn chuột phải mà không cần đổi slot.
+  - Bổ sung chỉ báo `[4 | R-Clk]` trên thanh HUD vũ khí giúp người chơi dễ dàng nhận biết chức năng chém nhanh.
 
 ---
 

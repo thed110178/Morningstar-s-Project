@@ -209,7 +209,7 @@ public class WeaponSystemTest {
         assertTrue(slash.isActive(), "Slash hitbox must be initially active");
         assertEquals(45, knife.getDamage(), "Knife base damage must be buffed to 45 HP");
         assertEquals(45, slash.getDamage(), "Slash payload must match buffed damage of 45 HP");
-        assertEquals(520.0, slash.getKnockbackForce(), 0.001, "Knife slash must have high knockback impulse of 520 px/s");
+        assertEquals(600.0, slash.getKnockbackForce(), 0.001, "Knife slash must have buffed knockback impulse of 600 px/s");
 
         // Verify anti-multi-hit tracking
         Object targetA = new Object();
@@ -1070,5 +1070,66 @@ public class WeaponSystemTest {
 
         Projectile normalProj = new Projectile(100, 100, 0.0, 700.0, baseDmg, 1.0, true, false);
         assertFalse(normalProj.isCritical(), "Normal projectile must report isCritical == false");
+    }
+
+    @Test
+    @DisplayName("Verify WeaponManager quickMelee performs instant knife slash while holding a primary firearm")
+    void testQuickMeleeExecutionWhileHoldingFirearm() {
+        WeaponManager wm = new WeaponManager();
+        AssaultRifle ar = new AssaultRifle();
+        wm.equipWeapon(ar);
+        assertEquals(ar, wm.getActiveWeapon(), "Assault Rifle must be active weapon");
+
+        // Execute quickMelee via right mouse click logic
+        boolean slashed = wm.quickMelee(150, 150, 0.0, new ProjectileManager());
+        assertTrue(slashed, "Quick melee slash should succeed");
+        assertEquals(ar, wm.getActiveWeapon(), "Active weapon must remain Assault Rifle (no clunky weapon swap)");
+        assertEquals(1, wm.getActiveSlashes().size(), "Active slashes must contain 1 newly spawned slash");
+
+        MeleeSlash slash = wm.getActiveSlashes().get(0);
+        int expectedDmg = slash.isCritical() ? 90 : 45;
+        assertEquals(expectedDmg, slash.getDamage(), "Quick melee slash must deal full knife damage (45 HP or 90 on crit)");
+        assertEquals(600.0, slash.getKnockbackForce(), 0.001, "Quick melee slash must have 600 px/s knockback impulse");
+    }
+
+    @Test
+    @DisplayName("Verify auto-fire halts immediately when right mouse button (quick-melee) is pressed")
+    void testAutoFireHaltsWhenRightMouseQuickMeleeIsPressed() {
+        com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+        com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+        state.init();
+
+        AssaultRifle ar = new AssaultRifle();
+        state.getWeaponManager().equipWeapon(ar);
+        assertEquals(ar, state.getWeaponManager().getActiveWeapon());
+
+        com.groupproject.game.input.KeyboardHandler kh = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mh = new com.groupproject.game.input.MouseHandler();
+
+        // 1. Holding ONLY left-click fires auto bullets
+        java.awt.Component dummyComp = new java.awt.Canvas();
+        mh.mousePressed(new java.awt.event.MouseEvent(dummyComp, java.awt.event.MouseEvent.MOUSE_PRESSED,
+                System.currentTimeMillis(), 0, 100, 100, 1, false, java.awt.event.MouseEvent.BUTTON1));
+        assertTrue(mh.isLeftPressed());
+        assertFalse(mh.isRightPressed());
+
+        state.update(0.016, kh, mh);
+        assertEquals(1, state.getProjectileManager().getActiveProjectiles().size(),
+                "Holding left-click must fire assault rifle projectile");
+        assertEquals(0, state.getWeaponManager().getActiveSlashes().size(),
+                "No melee slash should be spawned on pure left-click");
+
+        // 2. Now press right-click while STILL holding left-click:
+        // Gun firing must halt (no additional bullets) and quick-melee must execute!
+        mh.mousePressed(new java.awt.event.MouseEvent(dummyComp, java.awt.event.MouseEvent.MOUSE_PRESSED,
+                System.currentTimeMillis(), 0, 100, 100, 1, false, java.awt.event.MouseEvent.BUTTON3));
+        assertTrue(mh.isLeftPressed());
+        assertTrue(mh.isRightPressed());
+
+        state.update(0.016, kh, mh);
+        assertEquals(1, state.getProjectileManager().getActiveProjectiles().size(),
+                "Gun auto-fire must halt when right-click is pressed (projectile count unchanged at 1)");
+        assertEquals(1, state.getWeaponManager().getActiveSlashes().size(),
+                "Quick-melee slash must be spawned on right-click");
     }
 }

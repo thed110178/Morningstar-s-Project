@@ -54,16 +54,20 @@ Hệ thống hỗ trợ 2 biến thể thực thể:
 * Được kiểm tra va chạm bởi `ProjectileManager` và `WeaponManager` trong `PlayingState`.
 * `PlayingState` quản lý tham chiếu `bossDummy` để render thanh máu Boss cỡ lớn (`renderBossHealthBar`).
 * Điều kiện hoàn thành phòng và kích hoạt bệ sơ tán `ExtractZone` của `DungeonMap`.
+* Khi tử trận: Sinh thực thể `EnemyCorpse` (đầu lâu tông màu xám nâu mờ nhạt) trượt văng trên sàn theo góc knockback của đòn kết liễu.
 
 ---
 
 ## 5. Sửa đổi / Cập nhật
-* **03/10/2026**: Khởi tạo ban đầu phục vụ kiểm tra cơ chế chiến đấu và mở cửa phòng.
+* **20/10/2026**:
+  - Tích hợp sinh xác kẻ địch (`EnemyCorpse`) hình đầu lâu nâu mờ nhạt (faded sepia-brown skull) khi mục tiêu bị tiêu diệt.
+  - Xác nhận lực knockback từ đòn kết liễu (đạn, dao chém, bộc phá), trượt văng trên sàn gạch theo ma sát địa hình, không xuyên tường, và mờ dần trong 4.0s.
 * **18/10/2026**: 
   - Nâng cấp Boss Dummy thành **Titan Mecha Dummy**: Tăng kích thước lên 64px, tăng lượng máu lên 1000 HP.
   - Thiết kế đồ họa chi tiết cho Boss: Giáp titan đỏ sẫm, tấm đệm hắc diện thạch, viền cyber vàng, giáp vai pauldrons với đèn cảnh báo, lò phản ứng hạt nhân phát xung nhịp tim, và vòng hazard aura.
   - Tích hợp thanh máu lớn cố định ở cạnh trên màn hình (Top-Center Boss Health Bar) rộng 520px, có phân vạch 20%, hiển thị tỷ lệ % và chỉ số máu cụ thể.
   - Tích hợp cơ chế thưởng hạ gục Boss: +50 Credits, văng 3 stack đạn các loại, thông báo biểu ngữ vinh quang.
+* **03/10/2026**: Khởi tạo ban đầu phục vụ kiểm tra cơ chế chiến đấu và mở cửa phòng.
 
 ---
 

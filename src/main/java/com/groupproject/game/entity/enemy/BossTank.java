@@ -16,27 +16,33 @@ import java.awt.geom.AffineTransform;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Stage 4 Climax Titan Mecha Battle Tank Boss featuring a 3-layer decoupled mechanical structure:
+ * Stage 4 Climax Titan Mecha Battle Tank Boss featuring a 3-layer decoupled
+ * mechanical structure:
  * <ul>
- *   <li><b>Layer 1 (Topmost)</b>: Autonomous Machine Gun Turret that continuously tracks the player
- *       and fires 5-round barrages (stationary or strafing).</li>
- *   <li><b>Layer 2 (Middle)</b>: Heavy Artillery Cannon Turret activated only when <b>HP &lt; 50%</b>.
- *       Projects a targeting laser, locks on, and fires cover-penetrating AoE explosive shells.</li>
- *   <li><b>Layer 3 (Bottom)</b>: Heavy Armored Chassis &amp; Dual Caterpillar Treads. The chassis angle
- *       strictly aligns with the physical locomotion vector of the tank.</li>
+ * <li><b>Layer 1 (Topmost)</b>: Autonomous Machine Gun Turret that continuously
+ * tracks the player
+ * and fires 5-round barrages (stationary or strafing).</li>
+ * <li><b>Layer 2 (Middle)</b>: Heavy Artillery Cannon Turret activated only
+ * when <b>HP &lt; 50%</b>.
+ * Projects a targeting laser, locks on, and fires cover-penetrating AoE
+ * explosive shells.</li>
+ * <li><b>Layer 3 (Bottom)</b>: Heavy Armored Chassis &amp; Dual Caterpillar
+ * Treads. The chassis angle
+ * strictly aligns with the physical locomotion vector of the tank.</li>
  * </ul>
  */
 public class BossTank extends TargetDummy {
 
     public enum TankState {
         PATROL_REPOSITION, // Chạy quanh buồng đấu tìm góc chiến thuật (0.20s - 0.55s)
-        RAM_WINDUP,        // Lấy đà bẻ lái cực nhanh (0.22s - 0.25s)
-        RAM_RUSH,          // Lao vọt tới tốc độ cực đại (950 px/s) gây 40 HP va chạm
-        RAM_STUN,          // Khựng lại 0.38s - 0.45s sau khi đâm sầm vào tường/cột cover cứng
-        MG_BURST,          // Xả loạt đạn súng máy 6-8 viên (bắn tại chỗ hoặc vừa chạy ngang vừa bắn)
-        CANNON_AIMING,     // Tháp pháo chính xoay nòng, chiếu laser bám theo người chơi (0.65s, chỉ khi HP < 50%)
-        CANNON_LOCKED,     // Khóa laser cố định hướng, nạp năng lượng (0.38s, chỉ khi HP < 50%)
-        COOLDOWN           // Nghỉ ngắn giữa các đợt ra chiêu (0.18s - 0.35s)
+        RAM_WINDUP, // Lấy đà bẻ lái cực nhanh (0.22s - 0.25s)
+        RAM_RUSH, // Lao vọt tới tốc độ cực đại (950 px/s) gây 40 HP va chạm
+        RAM_STUN, // Khựng lại 0.38s - 0.45s sau khi đâm sầm vào tường/cột cover cứng
+        MG_BURST, // Xả loạt đạn súng máy 6-8 viên (bắn tại chỗ hoặc vừa chạy ngang vừa bắn)
+        CANNON_AIMING, // Tháp pháo chính xoay nòng, chiếu laser bám theo người chơi (0.65s, chỉ khi HP
+                       // < 50%)
+        CANNON_LOCKED, // Khóa laser cố định hướng, nạp năng lượng (0.38s, chỉ khi HP < 50%)
+        COOLDOWN // Nghỉ ngắn giữa các đợt ra chiêu (0.18s - 0.35s)
     }
 
     private TankState state = TankState.PATROL_REPOSITION;
@@ -44,9 +50,9 @@ public class BossTank extends TargetDummy {
     private double actionCooldown = 0.35;
 
     // --- 3-Layer Decoupled Rotations ---
-    private double chassisAngle = 0.0;    // Layer 3: Góc xoay khung gầm & xích xe (đồng nhất hướng di chuyển)
-    private double cannonAngle = 0.0;     // Layer 2: Góc xoay tháp pháo chính cỡ đại
-    private double machineGunAngle = 0.0;  // Layer 1: Góc xoay ụ súng máy nóc xe
+    private double chassisAngle = 0.0; // Layer 3: Góc xoay khung gầm & xích xe (đồng nhất hướng di chuyển)
+    private double cannonAngle = 0.0; // Layer 2: Góc xoay tháp pháo chính cỡ đại
+    private double machineGunAngle = 0.0; // Layer 1: Góc xoay ụ súng máy nóc xe
 
     // --- Locomotion Parameters ---
     private final double roamSpeed = 110.0; // Tăng tính cơ động khi lượn tìm góc bắn (110 px/s)
@@ -96,6 +102,17 @@ public class BossTank extends TargetDummy {
 
     public void setState(TankState state) {
         this.state = state;
+        if (state == TankState.RAM_RUSH && this.chargeDistRemaining <= 0) {
+            this.chargeDistRemaining = 800.0;
+        }
+    }
+
+    public double getChargeDistRemaining() {
+        return chargeDistRemaining;
+    }
+
+    public void setChargeDistRemaining(double dist) {
+        this.chargeDistRemaining = dist;
     }
 
     public double getStateTimer() {
@@ -168,8 +185,9 @@ public class BossTank extends TargetDummy {
 
     @Override
     public void updateAI(double deltaTime, double playerCenterX, double playerCenterY, double playerSize,
-                         DungeonMap dungeonMap, ProjectileManager projectileManager, PlayingState playingState) {
-        if (!alive) return;
+            DungeonMap dungeonMap, ProjectileManager projectileManager, PlayingState playingState) {
+        if (!alive)
+            return;
 
         update(deltaTime);
         updateKnockback(deltaTime, dungeonMap);
@@ -181,7 +199,8 @@ public class BossTank extends TargetDummy {
             crashEffectTimer -= deltaTime;
         }
 
-        // Trong thời gian xuất hiện (spawn portal telegraph), đứng yên và không hành động
+        // Trong thời gian xuất hiện (spawn portal telegraph), đứng yên và không hành
+        // động
         if (isSpawning()) {
             return;
         }
@@ -194,16 +213,19 @@ public class BossTank extends TargetDummy {
         // Layer 1: Ụ súng máy trên cùng LUÔN LUÔN xoay ngắm bám theo người chơi
         machineGunAngle = angleToPlayer;
 
-        // Layer 2: Tháp pháo chính: nếu HP >= 50% thì khóa nòng theo thân xe; nếu HP < 50% thì xoay ngắm tự do
+        // Layer 2: Tháp pháo chính: nếu HP >= 50% thì khóa nòng theo thân xe; nếu HP <
+        // 50% thì xoay ngắm tự do
         if (!isCannonAwakened()) {
             cannonAngle = chassisAngle;
         }
 
         // Cập nhật State Machine
         switch (state) {
-            case PATROL_REPOSITION -> handlePatrolState(deltaTime, playerCenterX, playerCenterY, angleToPlayer, distToPlayer, dungeonMap);
+            case PATROL_REPOSITION ->
+                handlePatrolState(deltaTime, playerCenterX, playerCenterY, angleToPlayer, distToPlayer, dungeonMap);
             case RAM_WINDUP -> handleRamWindupState(deltaTime, angleToPlayer);
-            case RAM_RUSH -> handleRamRushState(deltaTime, playerCenterX, playerCenterY, playerSize, dungeonMap, playingState);
+            case RAM_RUSH ->
+                handleRamRushState(deltaTime, playerCenterX, playerCenterY, playerSize, dungeonMap, playingState);
             case RAM_STUN -> handleRamStunState(deltaTime);
             case MG_BURST -> handleMgBurstState(deltaTime, playerCenterX, playerCenterY, dungeonMap, projectileManager);
             case CANNON_AIMING -> handleCannonAimingState(deltaTime, playerCenterX, playerCenterY, angleToPlayer);
@@ -211,7 +233,8 @@ public class BossTank extends TargetDummy {
             case COOLDOWN -> handleCooldownState(deltaTime, angleToPlayer);
         }
 
-        // Layer 2: Nếu HP >= 50%, tháp pháo chính tuyệt đối khóa chặt theo góc xoay thân xe
+        // Layer 2: Nếu HP >= 50%, tháp pháo chính tuyệt đối khóa chặt theo góc xoay
+        // thân xe
         if (!isCannonAwakened()) {
             cannonAngle = chassisAngle;
         }
@@ -219,10 +242,11 @@ public class BossTank extends TargetDummy {
 
     /**
      * Trạng thái tuần tra điều động vị trí (Patrol / Reposition).
-     * Xe tăng di chuyển nhẹ nhàng tìm góc thoáng, góc xích và thân xe đồng nhất với hướng chạy.
+     * Xe tăng di chuyển nhẹ nhàng tìm góc thoáng, góc xích và thân xe đồng nhất với
+     * hướng chạy.
      */
     private void handlePatrolState(double deltaTime, double playerCX, double playerCY,
-                                   double angleToPlayer, double distToPlayer, DungeonMap map) {
+            double angleToPlayer, double distToPlayer, DungeonMap map) {
         stateTimer -= deltaTime;
         treadAnimTimer += deltaTime * 8.0;
 
@@ -256,20 +280,23 @@ public class BossTank extends TargetDummy {
 
     /**
      * Quyết định chiêu thức tiếp theo dựa trên cự ly và lượng máu còn lại.
-     * Cân bằng Phase 1 (nửa thanh máu đầu): Giảm spam đâm bằng cách kết hợp với bắn súng máy.
+     * Cân bằng Phase 1 (nửa thanh máu đầu): Giảm spam đâm bằng cách kết hợp với bắn
+     * súng máy.
      * Nếu đòn trước vừa đâm thì đòn tiếp theo bắt buộc dùng súng máy.
      */
     private void chooseNextAction(double distToPlayer) {
         int roll = ThreadLocalRandom.current().nextInt(100);
 
-        // Nếu vừa mới thực hiện đòn đâm trước đó: BẮT BUỘC dùng súng máy để tránh spam đâm liên tục
+        // Nếu vừa mới thực hiện đòn đâm trước đó: BẮT BUỘC dùng súng máy để tránh spam
+        // đâm liên tục
         if (lastAttackWasRam) {
             triggerMachineGunBurst();
             lastAttackWasRam = false;
             return;
         }
 
-        // Khi HP < 50%, tháp pháo chính thức tỉnh: có 45% cơ hội dùng Chiêu 3 (Đại pháo nổ)
+        // Khi HP < 50%, tháp pháo chính thức tỉnh: có 45% cơ hội dùng Chiêu 3 (Đại pháo
+        // nổ)
         if (isCannonAwakened() && roll < 45) {
             state = TankState.CANNON_AIMING;
             stateTimer = 0.65; // 0.65s (rút ngắn từ 0.90s) chiếu laser dính chặt theo người chơi
@@ -280,7 +307,8 @@ public class BossTank extends TargetDummy {
             return;
         }
 
-        // Khi HP >= 50% (nửa thanh máu đầu): Cân bằng kết hợp súng máy (50%) và đâm húc (50%)
+        // Khi HP >= 50% (nửa thanh máu đầu): Cân bằng kết hợp súng máy (50%) và đâm húc
+        // (50%)
         if (!isCannonAwakened()) {
             if (roll < 50) {
                 triggerMachineGunBurst();
@@ -306,7 +334,8 @@ public class BossTank extends TargetDummy {
     }
 
     /**
-     * Kích hoạt Chiêu 2: Bắn loạt đạn súng máy (6-8 viên), 65% cơ hội vừa chạy ngang (strafe) vừa xả đạn để khó né hơn.
+     * Kích hoạt Chiêu 2: Bắn loạt đạn súng máy (6-8 viên), 65% cơ hội vừa chạy
+     * ngang (strafe) vừa xả đạn để khó né hơn.
      */
     private void triggerMachineGunBurst() {
         state = TankState.MG_BURST;
@@ -319,7 +348,8 @@ public class BossTank extends TargetDummy {
 
     /**
      * Chiêu 1: Giai đoạn lấy đà đâm húc (Wind-up).
-     * Bẻ lái cực nhanh thẳng hướng người chơi và lao vút tới mà không hiện vệt cảnh báo hướng đâm.
+     * Bẻ lái cực nhanh thẳng hướng người chơi và lao vút tới mà không hiện vệt cảnh
+     * báo hướng đâm.
      */
     private void handleRamWindupState(double deltaTime, double angleToPlayer) {
         stateTimer -= deltaTime;
@@ -337,11 +367,13 @@ public class BossTank extends TargetDummy {
 
     /**
      * Chiêu 1: Giai đoạn lao vọt tốc độ cao (Rush - 950 px/s).
-     * Thân xe và bánh xích giữ nguyên hướng lao. Đâm trúng người chơi gây 40 HP sát thương cực mạnh.
-     * Khi chạm vào vật cản (tường cứng, cột đá, hoặc thùng gỗ) thì DỪNG ĐÂM LẠI và tạo hiệu ứng đâm trúng vật cản!
+     * Thân xe và bánh xích giữ nguyên hướng lao. Đâm trúng người chơi gây 40 HP sát
+     * thương cực mạnh.
+     * Khi chạm vào vật cản (tường cứng, cột đá, hoặc thùng gỗ) thì DỪNG ĐÂM LẠI và
+     * tạo hiệu ứng đâm trúng vật cản!
      */
     private void handleRamRushState(double deltaTime, double playerCX, double playerCY, double playerSize,
-                                   DungeonMap map, PlayingState playingState) {
+            DungeonMap map, PlayingState playingState) {
         stateTimer -= deltaTime;
         treadAnimTimer += deltaTime * 40.0;
 
@@ -366,18 +398,31 @@ public class BossTank extends TargetDummy {
             return;
         }
 
-        // 2. Kiểm tra va chạm với vật cản phía trước (Tường, Cột, Cover cứng, hoặc Thùng gỗ)
-        boolean forwardBlocked = false;
+        // 2. Cày nát và đâm xuyên qua các ô cover tạm thời (thùng gỗ) nằm trên đường
+        // đâm
+        // Cỗ xe tăng bọc thép hạng nặng nghiền nát thùng gỗ thành mảnh vụn mà KHÔNG bị
+        // dừng lại
         if (map != null) {
-            forwardBlocked = !map.isAreaWalkable(x + stepX - half, y + stepY - half, size, size);
-            if (forwardBlocked) {
-                // Nghiền nát thùng cover gỗ tại vị trí va chạm
-                map.damageDestructibleCoverInArea(x + stepX - half - 4, y + stepY - half - 4, size + 8, size + 8, 120);
+            boolean crushedAny = map.damageDestructibleCoverInArea(x + stepX - half - 4, y + stepY - half - 4, size + 8,
+                    size + 8, 120);
+            if (crushedAny && playingState != null) {
+                playingState.triggerScreenShake(0.20);
+                double impactX = x + Math.cos(chassisAngle) * (half + 4.0);
+                double impactY = y + Math.sin(chassisAngle) * (half + 4.0);
+                playingState.getActiveExplosions().add(new ExplosionVisual(impactX, impactY, 40.0, 0.25));
             }
         }
 
-        // 3. Khi chạm vào bất kỳ vật cản nào: DỪNG ĐÂM LẠI NGAY LẬP TỨC và kích hoạt hiệu ứng đâm trúng vật cản
-        if (forwardBlocked) {
+        // 3. Kiểm tra va chạm với các vật cản kiên cố vĩnh viễn (Tường cứng, Cột đá) -
+        // BỎ QUA cover tạm thời
+        boolean solidBlocked = false;
+        if (map != null) {
+            solidBlocked = !map.isAreaWalkableIgnoringDestructible(x + stepX - half, y + stepY - half, size, size);
+        }
+
+        // 4. CHỈ KHI chạm vào vật cản kiên cố không thể phá hủy (Tường, Cột): DỪNG ĐÂM
+        // LẠI và bị Stun
+        if (solidBlocked) {
             state = TankState.RAM_STUN;
             stateTimer = isCannonAwakened() ? 0.38 : 0.45; // 0.38s - 0.45s Stun khựng lại
             crashEffectTimer = 0.40; // Kích hoạt hiệu ứng tóe lửa chấn động đâm trúng vật cản
@@ -414,10 +459,11 @@ public class BossTank extends TargetDummy {
     }
 
     /**
-     * Chiêu 2: Bắn loạt 6-8 viên đạn súng máy (kèm biến thể vừa chạy ngang vừa bắn).
+     * Chiêu 2: Bắn loạt 6-8 viên đạn súng máy (kèm biến thể vừa chạy ngang vừa
+     * bắn).
      */
     private void handleMgBurstState(double deltaTime, double playerCX, double playerCY,
-                                   DungeonMap map, ProjectileManager projectileManager) {
+            DungeonMap map, ProjectileManager projectileManager) {
         stateTimer -= deltaTime;
 
         // Nếu chọn biến thể chạy ngang (Strafe Run)
@@ -458,7 +504,8 @@ public class BossTank extends TargetDummy {
             }
         }
 
-        // Ngay khi xả hết đạn hoặc hết thời gian timeout, lập tức chuyển sang Cooldown ngắn
+        // Ngay khi xả hết đạn hoặc hết thời gian timeout, lập tức chuyển sang Cooldown
+        // ngắn
         if (mgBulletsLeft <= 0 || stateTimer <= 0) {
             state = TankState.COOLDOWN;
             stateTimer = isCannonAwakened() ? 0.22 : 0.32;
@@ -467,11 +514,13 @@ public class BossTank extends TargetDummy {
 
     /**
      * Chiêu 3: Giai đoạn tháp pháo chính chiếu Laser bám theo người chơi (0.65s).
-     * Laser HOÀN TOÀN LOCK ON vào vị trí người chơi theo thời gian thực (không trễ, không chậm chạp bám đuôi).
+     * Laser HOÀN TOÀN LOCK ON vào vị trí người chơi theo thời gian thực (không trễ,
+     * không chậm chạp bám đuôi).
      */
     private void handleCannonAimingState(double deltaTime, double playerCX, double playerCY, double angleToPlayer) {
         stateTimer -= deltaTime;
-        // Khóa mục tiêu tuyệt đối: nòng pháo, góc laser và tọa độ ngắm dính chặt 100% vào người chơi
+        // Khóa mục tiêu tuyệt đối: nòng pháo, góc laser và tọa độ ngắm dính chặt 100%
+        // vào người chơi
         cannonAngle = angleToPlayer;
         cannonLaserAngle = angleToPlayer;
         laserTargetWorldX = playerCX;
@@ -479,16 +528,18 @@ public class BossTank extends TargetDummy {
 
         if (stateTimer <= 0) {
             state = TankState.CANNON_LOCKED;
-            stateTimer = 0.38; // Laser dừng lại khóa góc cố định trong 0.38s - thời gian duy nhất để người chơi né đòn!
+            stateTimer = 0.38; // Laser dừng lại khóa góc cố định trong 0.38s - thời gian duy nhất để người
+                               // chơi né đòn!
         }
     }
 
     /**
      * Chiêu 3: Giai đoạn tia laser đã bị khóa cố định (0.38s).
-     * Laser dừng lại, đây là khoảng thời gian DUY NHẤT để người chơi né đòn trước khi phát đại pháo siêu tốc nổ bộc phá!
+     * Laser dừng lại, đây là khoảng thời gian DUY NHẤT để người chơi né đòn trước
+     * khi phát đại pháo siêu tốc nổ bộc phá!
      */
     private void handleCannonLockedState(double deltaTime, ProjectileManager projectileManager,
-                                         PlayingState playingState, DungeonMap dungeonMap) {
+            PlayingState playingState, DungeonMap dungeonMap) {
         stateTimer -= deltaTime;
         // cannonLaserAngle giữ nguyên không đổi để tạo cửa sổ né đòn duy nhất
 
@@ -500,13 +551,14 @@ public class BossTank extends TargetDummy {
             double by = y + Math.sin(cannonLaserAngle) * barrelLen;
 
             if (projectileManager != null) {
-                // Đạn pháo siêu tốc: 1350 px/s (bắn 1 phát tới nơi luôn), sát thương 35 HP, nổ bán kính 85px
-                BossCannonShell shell = new BossCannonShell(bx, by, cannonLaserAngle, 1350.0, 35, 2.0, 85.0);
+                // Đạn pháo bộc phá hạng nặng siêu thanh: 1350 px/s, sát thương 60 HP, nổ bán
+                // kính cực đại 165px (quét rộng 330px)
+                BossCannonShell shell = new BossCannonShell(bx, by, cannonLaserAngle, 1350.0, 60, 2.0, 165.0);
                 projectileManager.spawn(shell);
             }
 
             if (playingState != null) {
-                playingState.triggerScreenShake(0.35);
+                playingState.triggerScreenShake(0.45);
             }
 
             state = TankState.COOLDOWN;
@@ -534,8 +586,10 @@ public class BossTank extends TargetDummy {
      */
     private double smoothRotate(double current, double target, double rate) {
         double diff = target - current;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI)
+            diff += 2 * Math.PI;
+        while (diff > Math.PI)
+            diff -= 2 * Math.PI;
         return current + diff * Math.min(1.0, rate);
     }
 
@@ -545,7 +599,8 @@ public class BossTank extends TargetDummy {
 
     @Override
     public void render(Graphics2D g, Camera camera) {
-        if (!alive) return;
+        if (!alive)
+            return;
         if (isSpawning()) {
             renderSpawnTelegraph(g, camera);
             return;
@@ -574,7 +629,8 @@ public class BossTank extends TargetDummy {
     }
 
     /**
-     * Vẽ các đường dẫn cảnh báo chiến thuật (Tia laser ngắm bắn đại pháo lock on hoặc khóa góc cố định).
+     * Vẽ các đường dẫn cảnh báo chiến thuật (Tia laser ngắm bắn đại pháo lock on
+     * hoặc khóa góc cố định).
      * Tuyệt đối không vẽ vệt cảnh báo hướng đâm theo đúng yêu cầu thiết kế.
      */
     private void renderWarningTelegraphs(Graphics2D g, Camera camera, int screenCX, int screenCY) {
@@ -617,7 +673,8 @@ public class BossTank extends TargetDummy {
                 g2.setColor(Color.RED);
                 g2.fillOval(targetScreenX - 2, targetScreenY - 2, 5, 5);
             } else {
-                // Laser ĐÃ KHÓA CỐ ĐỊNH (cửa sổ né duy nhất): Chùm tia năng lượng đỏ thẫm viền vàng phát quang cực mạnh
+                // Laser ĐÃ KHÓA CỐ ĐỊNH (cửa sổ né duy nhất): Chùm tia năng lượng đỏ thẫm viền
+                // vàng phát quang cực mạnh
                 g2.setColor(new Color(255, 30, 20, 245));
                 g2.setStroke(new BasicStroke(4.5f));
                 g2.drawLine(startX, startY, beamEndX, beamEndY);
@@ -640,10 +697,12 @@ public class BossTank extends TargetDummy {
     }
 
     /**
-     * Hiển thị dấu "!" cảnh báo nguy hiểm trên đầu Boss khi chuẩn bị đâm (RAM_WINDUP).
+     * Hiển thị dấu "!" cảnh báo nguy hiểm trên đầu Boss khi chuẩn bị đâm
+     * (RAM_WINDUP).
      */
     private void renderWarningExclamation(Graphics2D g, int screenCX, int screenCY) {
-        if (state != TankState.RAM_WINDUP) return;
+        if (state != TankState.RAM_WINDUP)
+            return;
 
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
@@ -803,14 +862,14 @@ public class BossTank extends TargetDummy {
 
         // 2. Tháp pháo chính hình lục giác (Hexagonal Turret)
         int r = 28;
-        int[] hexX = new int[]{r, r / 2, -r / 2, -r, -r / 2, r / 2};
-        int[] hexY = new int[]{0, (int) (r * 0.86), (int) (r * 0.86), 0, (int) (-r * 0.86), (int) (-r * 0.86)};
+        int[] hexX = new int[] { r, r / 2, -r / 2, -r, -r / 2, r / 2 };
+        int[] hexY = new int[] { 0, (int) (r * 0.86), (int) (r * 0.86), 0, (int) (-r * 0.86), (int) (-r * 0.86) };
 
         Color turretBase = (critFlashTimer > 0)
                 ? new Color(235, 45, 45) // Chớp đỏ khi chịu đòn chí mạng
                 : (awakened
-                    ? ((hitFlashTimer > 0) ? Color.WHITE : new Color(130, 35, 30))
-                    : ((hitFlashTimer > 0) ? Color.WHITE : new Color(60, 72, 65)));
+                        ? ((hitFlashTimer > 0) ? Color.WHITE : new Color(130, 35, 30))
+                        : ((hitFlashTimer > 0) ? Color.WHITE : new Color(60, 72, 65)));
 
         g2.setColor(turretBase);
         g2.fillPolygon(hexX, hexY, 6);
@@ -872,7 +931,8 @@ public class BossTank extends TargetDummy {
     }
 
     /**
-     * Hiển thị thanh máu Boss Titan hùng vĩ trên đầu kèm trạng thái kích hoạt đại pháo.
+     * Hiển thị thanh máu Boss Titan hùng vĩ trên đầu kèm trạng thái kích hoạt đại
+     * pháo.
      */
     private void renderOverheadBossUI(Graphics2D g, int screenCX, int screenCY) {
         int half = (int) (size / 2.0);

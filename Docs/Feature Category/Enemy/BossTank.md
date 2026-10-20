@@ -42,21 +42,23 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
 
 ### 3.1. Chiêu 1: Đâm Húc Thần Tốc Kinh Hoàng (Ram / Charge - 950 px/s, Biển Cảnh Báo "!" & Dừng Va Chạm)
 * **Quy trình hoạt động**:
-  1. *Lấy đà chớp nhoáng (RAM_WINDUP - 0.30s)*: Khung gầm bẻ lái thần tốc ($18.0\text{ rad/s}$) ngắm thẳng về phía người chơi. **Hiển thị biển cảnh báo nhấp nháy dấu "!" màu vàng viền đỏ rực rỡ** ngay phía trên đầu xe tăng để báo hiệu hiểm họa lao tới cấp kỳ (không hiện vệt hướng đâm trên sàn).
+  1. *Lấy đà (RAM_WINDUP - 0.55s ở Phase 1, 0.45s ở Phase 2)*: Khung gầm bẻ lái thần tốc ($18.0\text{ rad/s}$) ngắm thẳng về phía người chơi. **Hiển thị biển cảnh báo nhấp nháy dấu "!" màu vàng viền đỏ rực rỡ** ngay phía trên đầu xe tăng để báo hiệu hiểm họa lao tới cấp kỳ (không hiện vệt hướng đâm trên sàn). Thời gian wind up được kéo dài hơn (tăng từ 0.25s lên 0.55s / 0.45s) để người chơi có cửa sổ phản xạ né tránh hoặc tìm cover che chắn kịp thời.
   2. *Lao vọt thần tốc (RAM_RUSH - 950 px/s)*: Cả cỗ xe tăng thiết giáp $84\text{px}$ phóng vụt đi như một quả tên lửa mặt đất với vận tốc kinh hoàng $950.0\text{ px/s}$.
 * **Cơ chế chống spam đâm ở nửa thanh máu đầu (Phase 1 Anti-Ram Spam)**:
   - Ở nửa thanh máu đầu ($\text{HP} \ge 50\%$), tỉ lệ ra chiêu được tái cân bằng: $55\%$ Bắn súng máy và $45\%$ Đâm húc.
   - Sau khi vừa tung ra một đòn đâm húc, boss **tuyệt đối bị cấm đâm liên tiếp đòn tiếp theo** (`lastAttackWasRam = true`), bắt buộc phải chuyển sang bắn súng máy (`MG_BURST`), giúp nhịp độ trận đấu cân bằng, kịch tính và không gây ức chế.
-* **Tương tác va chạm & Dừng đâm khi gặp vật cản**:
-  - **Trúng người chơi**: Gây $40\text{ HP}$ sát thương va chạm, kích hoạt sóng chấn động $50\text{px}$, rung màn hình $0.35\text{s}$, đẩy lùi người chơi và kết thúc đòn lao chuyển sang `COOLDOWN`.
-  - **Chạm vào vật cản (Tường cứng, Cột đá, hoặc Thùng gỗ tạm thời `TileType.DESTRUCTIBLE_COVER`)**:
-    - **DỪNG ĐÂM LẠI NGAY LẬP TỨC**: Xe tăng bị chặn đứng lại hoàn toàn.
-    - **Nghiền nát thùng gỗ**: Gây $120\text{ DMG}$ phá hủy ngay thùng cover tại điểm va chạm biến thành sàn vỡ vụn (`FLOOR`).
-    - **Hiệu ứng đâm trúng vật cản**:
+* **Tương tác va chạm & Quy tắc cày nát / đâm xuyên qua vật cản**:
+  - **Trúng người chơi**: Gây $40\text{ HP}$ sát thương va chạm cực mạnh, kích hoạt sóng chấn động $50\text{px}$, rung màn hình $0.35\text{s}$, đẩy lùi người chơi và kết thúc đòn lao chuyển sang `COOLDOWN`.
+  - **Va chạm với Thùng gỗ tạm thời (`TileType.DESTRUCTIBLE_COVER`)**:
+    - **CÀY NÁT & ĐÂM XUYÊN QUA (PLOW THROUGH)**: Cỗ xe tăng bọc thép hạng nặng nghiền nát ngay lập tức mọi khối thùng gỗ trên quỹ đạo đâm ($120\text{ DMG}$ lập tức phá hủy thành sàn `FLOOR`).
+    - **KHÔNG BỊ DỪNG LẠI**: Xe tăng tiếp tục duy trì vận tốc $950\text{ px/s}$ phóng xuyên qua các hàng thùng gỗ vỡ vụn, nghiền nát người chơi nếu họ tưởng rằng đứng sau thùng gỗ là an toàn!
+  - **Va chạm với Vật cản kiên cố (Tường cứng `WALL`, Cột đá `COVER`)**:
+    - **DỪNG ĐÂM LẠI NGAY LẬP TỨC**: Xe tăng bị chặn đứng lại hoàn toàn bởi vật cản không thể phá hủy.
+    - **Hiệu ứng va đập chấn động**:
       * Spawns sóng chấn động bộc phá quầng lửa khổng lồ (`ExplosionVisual` bán kính $65\text{px}$) ngay tại mũi cản trước xe.
       * Rung chấn màn hình dữ dội ($0.45\text{s}$ screen shake).
       * Mũi cản trước xe tóe ra chùm tia lửa vàng cam rực rỡ và các đám khói bụi đen trắng cuồn cuộn bốc lên.
-      * Rơi vào trạng thái choáng váng (`RAM_STUN`) bất động trong $0.8\text{s}$, mở ra cơ hội phản công quý giá.
+      * Rơi vào trạng thái choáng váng (`RAM_STUN`) bất động trong $0.38\text{s} - 0.45\text{s}$, mở ra cơ hội phản công quý giá.
 
 ### 3.2. Chiêu 2: Xả Loạt Đạn Súng Máy (Machine Gun Burst)
 * **Quy trình hoạt động**:
@@ -73,9 +75,9 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
   2. *Laser dừng lại & Khóa cố định (CANNON_LOCKED - 0.40s)*: Tia laser và tâm ngắm **dừng lại hoàn toàn tại vị trí vừa khóa**, chuyển sang chùm năng lượng đỏ thẫm viền vàng phát quang cực mạnh. **Khoảng thời gian 0.40s dừng lại này là thời gian DUY NHẤT để người chơi né đòn** (di chuyển hoặc lướt né ra khỏi đường ngắm).
   3. *Khai hỏa Siêu Tốc tức thời*: Ngay khi hết $0.40\text{s}$, pháo chính bắn ra đầu đạn cỡ đại `BossCannonShell` với sơ tốc $1350.0\text{ px/s}$ ("bắn 1 phát tới nơi luôn").
 * **Hiệu ứng sát thương diện rộng (AoE Explosion)**:
-  - Khi đầu đạn chạm đích, phát nổ thành một quầng lửa và sóng xung kích bộc phá (`ExplosionVisual`) bán kính rộng $85\text{px}$.
-  - Gây $35\text{ HP}$ sát thương **xuyên qua toàn bộ địa hình và cover** cho bất kỳ ai đứng trong bán kính nổ.
-  - Phá hủy toàn bộ các ô cover tạm thời lân cận và gây sát thương lan diện rộng.
+  - Khi đầu đạn chạm đích, phát nổ thành một quầng lửa bộc phá khổng lồ và sóng xung kích kép (`ExplosionVisual`) bán kính cực đại phục hồi về **$165.0\text{px}$** (đường kính quét rộng $330\text{px}$, tương đương hơn $5$ ô gạch).
+  - Gây **$40\text{ HP}$ sát thương bộc phá** (trừ $40\%$ lượng máu tối đa) **xuyên qua toàn bộ địa hình và cover** cho bất kỳ ai đứng trong bán kính nổ.
+  - Phá hủy toàn bộ các ô cover tạm thời lân cận và gây chấn động rung lắc màn hình dữ dội ($0.48\text{s}$).
 
 ---
 
@@ -135,4 +137,8 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
        - Rút ngắn thời gian Stun đâm tường `RAM_STUN` từ $0.80\text{s}$ xuống **$0.38\text{s} - 0.45\text{s}$**.
        - Tăng tốc độ di chuyển cơ động `roamSpeed` từ $90.0\text{ px/s}$ lên **$110.0\text{ px/s}$**.
        - Tổng thời gian nghỉ giữa các chiêu thức giảm mạnh từ $\sim 3.0\text{s} - 3.5\text{s}$ xuống chỉ còn **$0.5\text{s} - 0.9\text{s}$**, biến Boss thành một cỗ máy chiến tranh dồn dập, liên tục gây áp lực nghẹt thở lên Operative.
-  - Hoàn thiện bộ 116 test tự động trong test suite đạt 100% Passed.
+    11. **Cân Bằng & Nerf Chỉ Số Boss (Balanced Boss Nerf)**:
+        - Tăng thời gian lấy đà đòn đâm húc `RAM_WINDUP`: Phase 1 ($\text{HP} \ge 50\%$) tăng từ $0.25\text{s}$ lên **$0.55\text{s}$**; Phase 2 ($\text{HP} < 50\%$) tăng từ $0.22\text{s}$ lên **$0.45\text{s}$**, giúp người chơi có cửa sổ quan sát và lướt né đòn đâm hiệu quả.
+        - Khôi phục bán kính nổ đại pháo: Bán kính nổ bộc phá `BossCannonShell` được phục hồi về **$165.0\text{px}$** (đường kính quét $330\text{px}$, quét rộng hơn 5 ô gạch) theo phản hồi trải nghiệm thực chiến của người dùng, đảm bảo uy lực chấn động của cỗ chiến xa hạng nặng.
+        - Giảm sát thương vụ nổ pháo: Từ $60\text{ HP}$ xuống **$40\text{ HP}$**, giảm nguy cơ người chơi bị sốc sát thương tức thì trong buồng giao tranh.
+  - Hoàn thiện toàn bộ 124 test tự động trong test suite đạt 100% Passed.

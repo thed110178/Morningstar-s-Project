@@ -20,13 +20,16 @@
 - [W, A, S, D]       : Di chuyển nhân vật 8 hướng.
 - [Di chuột]         : Ngắm bắn 360 độ quanh nhân vật.
 - [Chuột trái]       : Bắn vũ khí đang cầm (nhấp phát một hoặc giữ để xả đạn).
+- [Chuột phải]       : CẬN CHIẾN NHANH (Vung dao chém lập tức khi đang cầm súng, tăng đẩy lùi).
+- [Space] (Phím cách): LƯỚT NÉ ĐÒN CHIẾN THUẬT (Bất tử i-frames trong tích tắc).
 - [R]                : Nạp lại băng đạn (Reload magazine).
 - [1, 2, Q]          : Chọn slot vũ khí chính 1, slot 2 hoặc đổi nhanh 2 vũ khí.
+- [3, 4]             : Chọn súng lục phụ (Slot 3) hoặc dao găm cận chiến (Slot 4).
 - [F]                : Tương tác nhặt đồ / Dùng hộp cứu thương / Mua đồ ở Shop.
 - [Tab] hoặc [B]     : Mở/Đóng Balo chiến thuật (Xem vũ khí và trữ lượng đạn).
-- [Space] (Phím cách): Lướt né đòn chiến thuật (Bất tử trong tích tắc).
-- [F2]               : Vào thẳng / Hồi sinh ngay tại phòng Boss Titan Tank (Kèm full vũ khí).
-- [Esc]              : Tạm dừng / Quay về Menu.
+- [Esc]              : TẠM DỪNG TRÒ CHƠI / Menu Tùy chọn (Tiếp tục, Cài đặt phím, Thoát).
+- [F11 / Alt+Enter]  : Bật / Tắt chế độ Toàn màn hình (Full Screen).
+- [Cài đặt phím]     : Tùy biến toàn bộ 16 phím điều khiển ngay tại Menu chính hoặc trong trận.
 - [Enter] hoặc [R]   : Chơi lại từ đầu khi tử trận (Game Over).
 
 

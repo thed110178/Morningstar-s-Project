@@ -18,7 +18,7 @@ import java.util.Set;
  */
 public class MeleeSlash {
 
-    public static final double DEFAULT_KNOCKBACK = 520.0;
+    public static final double DEFAULT_KNOCKBACK = 600.0;
 
     private final double centerX;
     private final double centerY;

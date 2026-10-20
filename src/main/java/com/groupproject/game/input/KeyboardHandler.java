@@ -84,6 +84,21 @@ public class KeyboardHandler implements KeyListener {
         return false;
     }
 
+    /**
+     * Trả về mã keyCode của phím đầu tiên được nhấn xuống trong khung hình này (nếu có).
+     * Phục vụ tính năng bắt phím để cài đặt phím tùy chỉnh (Keybind Rebinding).
+     *
+     * @return Mã keyCode nếu có phím được nhấn một lần, hoặc -1 nếu không có phím nào.
+     */
+    public int getAnyKeyPressedOnce() {
+        for (int i = 0; i < keysJustPressed.length; i++) {
+            if (keysJustPressed[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     @Override
     public void keyTyped(KeyEvent e) {
         // Unused - we rely on raw key codes rather than typed characters

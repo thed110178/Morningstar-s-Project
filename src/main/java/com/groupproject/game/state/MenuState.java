@@ -3,6 +3,7 @@ package com.groupproject.game.state;
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
+import com.groupproject.game.ui.PauseMenuUI;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -25,16 +26,19 @@ public class MenuState extends GameState {
     private final String[] options = {
         "BOSS FIGHT: TITAN TANK",
         "START CAMPAIGN (STAGE 1)",
+        "CÀI ĐẶT PHÍM (SETTINGS)",
         "HOW TO PLAY",
         "EXIT"
     };
     private int selectedOption = 0;
     private boolean showHowToPlay = false;
+    private boolean showSettings = false;
+    private final PauseMenuUI settingsUI = new PauseMenuUI();
 
     /**
      * Cached bounding boxes for mouse hover/click collision detection.
      */
-    private final Rectangle[] optionBounds = new Rectangle[4];
+    private final Rectangle[] optionBounds = new Rectangle[5];
 
     // Typography styling
     private final Font titleFont = new Font("SansSerif", Font.BOLD, 54);
@@ -50,10 +54,28 @@ public class MenuState extends GameState {
     public void init() {
         selectedOption = 0;
         showHowToPlay = false;
+        showSettings = false;
     }
 
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        // Xử lý màn hình Cài đặt phím (Keybind Settings)
+        if (showSettings) {
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+                settingsUI.handleEsc();
+                if (settingsUI.getCurrentSubMenu() == PauseMenuUI.SubMenu.MAIN) {
+                    showSettings = false;
+                }
+                return;
+            }
+
+            settingsUI.update(keyH, mouseH, deltaTime);
+            if (settingsUI.getCurrentSubMenu() == PauseMenuUI.SubMenu.MAIN) {
+                showSettings = false;
+            }
+            return;
+        }
+
         // Handle Dismissal of the 'How To Play' briefing overlay
         if (showHowToPlay) {
             if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE) || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
@@ -109,8 +131,12 @@ public class MenuState extends GameState {
                 PlayingState.setSpawnDirectlyInBossRoom(false);
                 gsm.setState(GameStateManager.StateType.PLAYING);
             }
-            case 2 -> showHowToPlay = true;
-            case 3 -> System.exit(0);
+            case 2 -> {
+                showSettings = true;
+                settingsUI.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+            }
+            case 3 -> showHowToPlay = true;
+            case 4 -> System.exit(0);
         }
     }
 
@@ -129,6 +155,12 @@ public class MenuState extends GameState {
             g.drawLine(0, y, GameConfig.SCREEN_WIDTH, y);
         }
 
+        // If settings screen is active, render it and skip main menu
+        if (showSettings) {
+            settingsUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
+            return;
+        }
+
         // If briefing popup is visible, render it on top and skip main options
         if (showHowToPlay) {
             renderHowToPlay(g);
@@ -140,7 +172,7 @@ public class MenuState extends GameState {
         FontMetrics fmTitle = g.getFontMetrics();
         String title = "DontKnow";
         int titleX = (GameConfig.SCREEN_WIDTH - fmTitle.stringWidth(title)) / 2;
-        int titleY = 180;
+        int titleY = 175;
 
         // Shadow / Glow effect
         g.setColor(new Color(255, 75, 43, 80));
@@ -154,13 +186,13 @@ public class MenuState extends GameState {
         FontMetrics fmSub = g.getFontMetrics();
         String subtitle = "An unplanned top-down roguelite shooter";
         g.setColor(new Color(160, 180, 210));
-        g.drawString(subtitle, (GameConfig.SCREEN_WIDTH - fmSub.stringWidth(subtitle)) / 2, titleY + 40);
+        g.drawString(subtitle, (GameConfig.SCREEN_WIDTH - fmSub.stringWidth(subtitle)) / 2, titleY + 38);
 
         // --- 3. Interactive Menu Buttons ---
         g.setFont(menuFont);
         FontMetrics fmMenu = g.getFontMetrics();
-        int startY = 325;
-        int spacing = 58;
+        int startY = 295;
+        int spacing = 52;
 
         for (int i = 0; i < options.length; i++) {
             String opt = options[i];
@@ -235,5 +267,24 @@ public class MenuState extends GameState {
 
         g.setColor(new Color(255, 120, 50));
         g.drawString("Click anywhere or press [ENTER] / [ESC] to return to Main Menu", boxX + 50, boxY + boxH - 24);
+    }
+
+    public boolean isShowSettings() {
+        return showSettings;
+    }
+
+    public void setShowSettings(boolean showSettings) {
+        this.showSettings = showSettings;
+        if (showSettings) {
+            settingsUI.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+        }
+    }
+
+    public PauseMenuUI getSettingsUI() {
+        return settingsUI;
+    }
+
+    public int getSelectedOption() {
+        return selectedOption;
     }
 }

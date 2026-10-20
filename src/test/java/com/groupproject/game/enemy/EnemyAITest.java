@@ -3,6 +3,7 @@ package com.groupproject.game.enemy;
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.enemy.BossTank;
+import com.groupproject.game.entity.enemy.EnemyCorpse;
 import com.groupproject.game.entity.enemy.MeleeEnemy;
 import com.groupproject.game.entity.enemy.RangedPistolEnemy;
 import com.groupproject.game.entity.enemy.TargetDummy;
@@ -448,7 +449,7 @@ class EnemyAITest {
     }
 
     @Test
-    @DisplayName("Verify melee knife slash applies massive knockback (520 px/s) and staggers rushing melee enemy")
+    @DisplayName("Verify melee knife slash applies massive knockback (600 px/s) and staggers rushing melee enemy")
     void testMeleeSlashAppliesHighKnockbackAndStaggersMeleeEnemy() {
         GameStateManager gsm = new GameStateManager();
         PlayingState state = new PlayingState(gsm);
@@ -463,13 +464,14 @@ class EnemyAITest {
 
         // Player operative at (cx, cy) slashes knife towards the enemy (aimAngle = 0.0)
         com.groupproject.game.entity.weapon.CombatKnife knife = new com.groupproject.game.entity.weapon.CombatKnife();
+        knife.setCritChance(0.0); // Khóa tỉ lệ chí mạng ở 0% để kết quả kiểm thử sát thương 45 HP luôn tất định
         state.getWeaponManager().equipWeapon(knife);
         state.getWeaponManager().selectSlot(4);
         state.getWeaponManager().attack(cx, cy, 0.0, state.getProjectileManager());
 
         assertEquals(1, state.getWeaponManager().getActiveSlashes().size(), "1 slash must be spawned");
         MeleeSlash slash = state.getWeaponManager().getActiveSlashes().get(0);
-        assertEquals(520.0, slash.getKnockbackForce(), 0.001);
+        assertEquals(600.0, slash.getKnockbackForce(), 0.001);
 
         com.groupproject.game.input.KeyboardHandler kh = new com.groupproject.game.input.KeyboardHandler();
         com.groupproject.game.input.MouseHandler mh = new com.groupproject.game.input.MouseHandler();
@@ -735,11 +737,13 @@ class EnemyAITest {
         // Destructible cover tile should have been crushed by 120 damage and turned to FLOOR
         assertEquals(com.groupproject.game.dungeon.TileType.FLOOR, coverTile.getType(),
                 "Ramming tank must crush and destroy destructible cover in its trajectory");
-        // Tank must stop immediately upon striking the obstacle and enter RAM_STUN
-        assertEquals(BossTank.TankState.RAM_STUN, tank.getState(),
-                "Ramming tank must stop and enter RAM_STUN upon striking an obstacle");
+        // Tank plows through the destructible cover and continues charging in RAM_RUSH (does NOT get stunned)
+        assertEquals(BossTank.TankState.RAM_RUSH, tank.getState(),
+                "Ramming tank must plow through destructible cover and continue RAM_RUSH without stopping");
+        assertTrue(tank.getY() > tankY,
+                "Tank must have advanced forward along its charge vector after plowing through cover");
         assertFalse(state.getActiveExplosions().isEmpty(),
-                "Tank crashing into obstacle must spawn an impact ExplosionVisual");
+                "Crushing cover must spawn an impact crunch ExplosionVisual");
     }
 
     @Test
@@ -778,7 +782,7 @@ class EnemyAITest {
     }
 
     @Test
-    @DisplayName("Verify BossCannonShell AoE explosion damages player and spawns ExplosionVisual")
+    @DisplayName("Verify BossCannonShell AoE explosion damages player with 40 DMG across restored 165px radius")
     void testBossCannonShellAoEDetonation() {
         GameStateManager gsm = new GameStateManager();
         PlayingState state = new PlayingState(gsm);
@@ -789,16 +793,23 @@ class EnemyAITest {
         double px = state.getPlayerX() + 14.0;
         double py = state.getPlayerY() + 14.0;
 
-        // Shell lands 40px away from player (well within 85px explosion radius)
-        BossCannonShell shell = new BossCannonShell(px + 40.0, py, 0, 1350.0, 35, 2.0, 85.0);
+        // Shell lands 120px away from player (well within restored 165px explosion radius)
+        BossCannonShell shell = new BossCannonShell(px + 120.0, py, 0, 1350.0, 40, 2.0, 165.0);
         shell.explode(state, state.getDungeonMap());
 
         assertTrue(shell.hasExploded(), "Shell must be marked as exploded");
         assertFalse(shell.isActive(), "Shell must be deactivated upon detonation");
-        assertEquals(65, state.getPlayerCurrentHealth(),
-                "Player within 85px explosion radius must take 35 damage (100 -> 65 HP)");
+        assertEquals(60, state.getPlayerCurrentHealth(),
+                "Player within 165px explosion radius must take 40 damage (100 -> 60 HP)");
         assertFalse(state.getActiveExplosions().isEmpty(),
                 "Detonating shell must spawn an active ExplosionVisual in PlayingState");
+
+        // Another shell landing at 200px (outside 165px radius) does not damage player further
+        state.setInvulnerableTimer(0.0);
+        BossCannonShell shellMiss = new BossCannonShell(px + 200.0, py, 0, 1350.0, 40, 2.0, 165.0);
+        shellMiss.explode(state, state.getDungeonMap());
+        assertEquals(60, state.getPlayerCurrentHealth(),
+                "Player outside 165px explosion radius must not take damage");
     }
 
     @Test
@@ -1062,5 +1073,94 @@ class EnemyAITest {
         assertTrue(target.getCritFlashTimer() > 0.10, "Target must enter crit flash state");
         assertFalse(state.getActiveCritVisuals().isEmpty(), "PlayingState must spawn a CriticalHitVisual on crit impact");
         assertEquals(40, state.getActiveCritVisuals().get(0).getDamage());
+    }
+
+    @Test
+    @DisplayName("Verify enemy death spawns faded brown skull corpse inheriting fatal knockback impulse")
+    void testEnemyCorpseSpawnOnElimination() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        state.getCombatTargets().clear();
+        state.getActiveCorpses().clear();
+
+        double enemyX = state.getPlayerX() + 10.0;
+        double enemyY = state.getPlayerY() + 10.0;
+        TargetDummy enemy = new TargetDummy(enemyX, enemyY, 30);
+        state.getCombatTargets().add(enemy);
+
+        // Bắn đạn gây 40 sát thương kết liễu (fatal damage) theo góc 0 rad (sang phải)
+        Projectile fatalBullet = new Projectile(enemyX, enemyY, 0.0, 0.0, 40, 1.0, true);
+        state.getProjectileManager().spawn(fatalBullet);
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        state.update(0.016, keyH, mouseH);
+
+        assertFalse(enemy.isAlive(), "Enemy should be eliminated by fatal bullet");
+        assertEquals(1, state.getActiveCorpses().size(), "PlayingState must spawn an EnemyCorpse on target death");
+
+        EnemyCorpse corpse = state.getActiveCorpses().get(0);
+        assertNotNull(corpse);
+        assertFalse(corpse.isBoss());
+        assertTrue(corpse.getVx() > 100.0, "Corpse must have positive X velocity from knockback angle 0");
+        assertEquals(0.0, corpse.getVy(), 0.01, "Corpse must have 0 Y velocity from knockback angle 0");
+        assertTrue(corpse.getAlpha() > 0.70f, "Corpse must have initial faded alpha (~0.80f)");
+    }
+
+    @Test
+    @DisplayName("Verify enemy corpse slides across floor with friction deceleration and stops")
+    void testEnemyCorpseSlidingAndFriction() {
+        DungeonMap dungeonMap = new DungeonMap();
+        dungeonMap.generateStage(1);
+        double spawnX = dungeonMap.getSpawnRoom().getCenterWorldX();
+        double spawnY = dungeonMap.getSpawnRoom().getCenterWorldY();
+
+        EnemyCorpse corpse = new EnemyCorpse(spawnX, spawnY, 30.0, 0.0, 400.0, false);
+        double startX = corpse.getX();
+        double startVx = corpse.getVx();
+        assertEquals(400.0, startVx, 0.01);
+
+        // 1. Cập nhật trượt trong 0.1s
+        corpse.update(0.1, dungeonMap);
+        assertTrue(corpse.getX() > startX, "Corpse must slide forward along X axis");
+        assertTrue(corpse.getVx() < startVx, "Velocity must decrease due to ground friction");
+
+        // 2. Cập nhật thêm 1.5s -> Vận tốc dừng hẳn về 0
+        corpse.update(1.5, dungeonMap);
+        assertEquals(0.0, corpse.getVx(), 0.001, "Corpse must come to a complete stop");
+        assertEquals(0.0, corpse.getVy(), 0.001);
+    }
+
+    @Test
+    @DisplayName("Verify enemy corpse fades out over lifetime and gets cleaned up when finished")
+    void testEnemyCorpseLifetimeAndFade() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+        state.getActiveCorpses().clear();
+
+        EnemyCorpse corpse = new EnemyCorpse(200.0, 200.0, 30.0, Math.PI / 4.0, 250.0, false);
+        state.getActiveCorpses().add(corpse);
+
+        // 1. Giai đoạn đầu: Alpha rõ nét mờ nhẹ ~0.80
+        assertEquals(0.80f, corpse.getAlpha(), 0.01f);
+        assertFalse(corpse.isFinished());
+
+        // 2. Sau 2.8s: Đang trong giai đoạn mờ dần (1.6s cuối)
+        corpse.update(2.8, state.getDungeonMap());
+        assertTrue(corpse.getAlpha() < 0.70f, "Alpha should be fading out");
+        assertTrue(corpse.getAlpha() > 0.10f);
+
+        // 3. Sau 4.5s: Hết thời gian sống -> isFinished == true
+        corpse.update(1.7, state.getDungeonMap());
+        assertTrue(corpse.isFinished(), "Corpse must be finished after 4.5s");
+        assertEquals(0.0f, corpse.getAlpha(), 0.001f);
+
+        // 4. PlayingState update loop loại bỏ xác đã hoàn tất
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        state.update(0.016, keyH, mouseH);
+        assertTrue(state.getActiveCorpses().isEmpty(), "Finished corpse must be removed from activeCorpses list");
     }
 }

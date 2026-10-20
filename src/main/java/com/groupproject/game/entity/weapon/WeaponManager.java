@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Manages the operative's firearm arsenal, hotkey cycling, and ammunition HUD rendering.
@@ -21,7 +22,7 @@ import java.util.Map;
 public class WeaponManager {
 
     private final Map<Integer, Weapon> weaponSlots = new HashMap<>();
-    private final List<MeleeSlash> activeSlashes = new ArrayList<>();
+    private final List<MeleeSlash> activeSlashes = new CopyOnWriteArrayList<>();
     private final com.groupproject.game.entity.item.AmmoInventory ammoInventory = new com.groupproject.game.entity.item.AmmoInventory();
 
     private Weapon activeWeapon;
@@ -155,6 +156,35 @@ public class WeaponManager {
             previousWeapon = temp;
         }
     }
+    private final CombatKnife fallbackKnife = new CombatKnife();
+
+    /**
+     * Lấy vũ khí cận chiến (thường là Dao găm ở Slot 4).
+     */
+    public Weapon getMeleeWeapon() {
+        Weapon knife = weaponSlots.get(4);
+        if (knife != null && knife.isMelee()) {
+            return knife;
+        }
+        for (Weapon w : weaponSlots.values()) {
+            if (w.isMelee()) {
+                return w;
+            }
+        }
+        return fallbackKnife;
+    }
+
+    /**
+     * Thực hiện đòn chém dao cận chiến tức thì (Quick-Melee Slash) bằng chuột phải,
+     * độc lập với vũ khí hiện đang cầm trên tay (súng trường, shotgun, súng ngắn...).
+     * Giúp người chơi phản xạ nhanh và đẩy lùi kẻ địch cận chiến áp sát.
+     *
+     * @return true nếu thực hiện chém thành công, false nếu dao đang trong thời gian hồi (cooldown).
+     */
+    public boolean quickMelee(double originX, double originY, double aimAngle, ProjectileManager pm) {
+        Weapon knife = getMeleeWeapon();
+        return knife.attack(originX, originY, aimAngle, pm, activeSlashes);
+    }
 
     /**
      * Triggers attack on the currently active weapon.
@@ -183,6 +213,7 @@ public class WeaponManager {
         for (Weapon w : weaponSlots.values()) {
             w.update(deltaTime);
         }
+        fallbackKnife.update(deltaTime);
 
         // Update active melee slashes
         for (MeleeSlash slash : activeSlashes) {
@@ -334,7 +365,7 @@ public class WeaponManager {
             }
 
             // Tên ngắn gọn trang bị
-            String keycap = "[" + i + "]";
+            String keycap = (i == 4) ? "[4 | R-Clk]" : ("[" + i + "]");
             String label;
             if (w == null) {
                 label = "Trống";
@@ -347,7 +378,7 @@ public class WeaponManager {
             } else if (w instanceof Pistol) {
                 label = "Pistol";
             } else if (w instanceof CombatKnife) {
-                label = "Dao";
+                label = "Dao Găm";
             } else {
                 label = w.getShortDisplayName();
             }
