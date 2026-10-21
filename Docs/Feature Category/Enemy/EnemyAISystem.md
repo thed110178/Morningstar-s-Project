@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 18/10/2026
+Cập nhật mới nhất vào ngày: 22/10/2026
 
 # Hệ Thống AI Kẻ Địch (Enemy AI System)
 
@@ -6,6 +6,8 @@ Cập nhật mới nhất vào ngày: 18/10/2026
 Hệ thống AI cho kẻ địch quản lý hành vi chiến thuật, di chuyển và tấn công của các đơn vị thù địch trong phòng chiến đấu (Combat Rooms) và phòng Boss. Hệ thống chuyển đổi các bia tập bắn tĩnh (`TargetDummy`) thành các thực thể chiến thuật tự động có phản xạ theo thời gian thực:
 * **Kẻ địch Cận Chiến (`MeleeEnemy`)**: Di chuyển tốc độ cao, bám đuổi áp sát Operative, trượt dọc theo tường địa hình và thực hiện đòn đánh cận chiến khi vào cự ly.
 * **Kẻ địch Tầm Xa dùng Súng Lục (`RangedPistolEnemy`)**: Giữ khoảng cách an toàn (kiting), chủ động lùi lại khi người chơi áp sát và tiến lên khi người chơi ra xa; bắn loạt $1 - 3$ viên đạn súng lục có sơ tốc chậm để người chơi có thể phản xạ né tránh.
+* **Kẻ địch Hỗ Trợ Quân Y (`MedicEnemy`)**: Không mang vũ khí chiến đấu, sở hữu hào quang hồi máu (Healing Aura) bán kính $135\text{px}$ để sơ cứu đồng đội mất máu trong vùng, đồng thời tự động né tránh Operative khi bị áp sát. (Xuất hiện từ Stage 2).
+* **Kẻ địch Ném Lựu Đạn Ép Góc (`GrenadierEnemy`)**: Lính công binh hạng nặng ném lựu đạn hẹn giờ (`EnemyGrenade`) nổ sau đúng $2.0\text{s}$ gây sát thương $24\text{ HP}$ và phá hủy cover trong bán kính $78\text{px}$, ép góc người chơi. (Xuất hiện từ Stage 3).
 
 ---
 
@@ -57,6 +59,34 @@ Mỗi khung hình trong `PlayingState`, phương thức `updateCombatDamageResol
   - Sát thương đạn: $10\text{ HP}$.
 * **Hiệu ứng đồ họa**: Thân giáp xanh coban quân sự, nòng súng lục nhô ra hướng về mục tiêu, chớp lửa đầu nòng màu vàng cam rực rỡ khi bắn, đạn đỏ phát quang nguy hiểm.
 
+### 3.3. Kẻ địch Hỗ Trợ Quân Y (`MedicEnemy` - Combat Field Medic)
+* **Kích thước**: $30 \times 30\text{px}$.
+* **Máu (HP)**: $50 - 65\text{ HP}$.
+* **Tốc độ di chuyển**: $110.0\text{ px/s}$.
+* **Hào quang Hồi Máu (Healing Aura)**:
+  - Bán kính: $135.0\text{px}$ lấy tâm Medic làm tâm.
+  - Lượng máu hồi: $6\text{ HP}$ mỗi nhịp xung $0.8\text{s}$.
+  - Hồi cho toàn bộ kẻ địch/đồng minh nằm trong vùng khi máu chưa đầy.
+* **Hành vi AI**:
+  - Không tấn công hay gây sát thương.
+  - Né tránh người chơi khi bị áp sát ($< 210\text{px}$).
+  - Quét tìm và tiếp cận đồng đội bị mất máu nhiều nhất để hỗ trợ.
+* **Xuất hiện**: Từ **Stage 2** trở lên và tham gia phòng Boss Stage 4.
+
+### 3.4. Kẻ địch Ném Lựu Đạn Ép Góc (`GrenadierEnemy` - Heavy Grenadier)
+* **Kích thước**: $32 \times 32\text{px}$.
+* **Máu (HP)**: $55 - 75\text{ HP}$.
+* **Tốc độ di chuyển**: $95.0\text{ px/s}$.
+* **Khoảng cách chiến thuật**:
+  - Cự ly lý tưởng: $175\text{px} - 400\text{px}$ (lùi lại khi $< 175\text{px}$, tiến lên khi $> 400\text{px}$).
+  - Tầm ném: $90\text{px} - 460\text{px}$.
+* **Hỏa lực Lựu Đạn Hẹn Giờ (`EnemyGrenade`)**:
+  - Tần suất ném: Mỗi $3.0\text{s}$ ném 1 quả lựu đạn về phía người chơi.
+  - Ngòi nổ hẹn giờ: Chuẩn xác **2.0 giây**.
+  - Vòng tròn cảnh báo nguy hiểm: Bán kính $78\text{px}$ nhấp nháy đỏ báo động dồn dập.
+  - Sát thương nổ: $24\text{ HP}$ và phá hủy mọi vật cản trong bán kính nổ.
+* **Xuất hiện**: Từ **Stage 3** trở lên và tham gia phòng Boss Stage 4.
+
 ---
 
 ## 4. API & Phương thức cốt lõi
@@ -91,6 +121,25 @@ public double getMaxRange();
 public int getBulletDamage();
 ```
 
+### `MedicEnemy.java`
+```java
+public MedicEnemy(double x, double y, int maxHealth);
+public MedicEnemy(double x, double y, int maxHealth, double speed, double healAuraRadius, int healAmount, double healInterval, double fleeRadius, String name);
+public double getHealAuraRadius();
+public int getHealAmount();
+public double getHealInterval();
+public double getFleeRadius();
+```
+
+### `GrenadierEnemy.java`
+```java
+public GrenadierEnemy(double x, double y, int maxHealth);
+public GrenadierEnemy(double x, double y, int maxHealth, double speed, int grenadeDamage, double blastRadius, double grenadeInterval, double preferredMinDist, double preferredMaxDist, String name);
+public double getGrenadeInterval();
+public double getBlastRadius();
+public int getGrenadeDamage();
+```
+
 ### `DungeonMap.java`
 ```java
 public boolean hasLineOfSight(double x1, double y1, double x2, double y2);
@@ -101,8 +150,8 @@ public boolean hasLineOfSight(double x1, double y1, double x2, double y2);
 ## 5. Quan hệ với hệ thống khác
 * **`PlayingState`**: Khởi tạo phân bổ kẻ địch cận chiến và súng lục trong phòng chiến đấu; giải quyết va chạm đạn kẻ địch trúng người chơi (`damagePlayer(int)`) và gọi cập nhật AI.
 * **`DungeonMap`**: Cung cấp lưới va chạm `isAreaWalkable` cho AI trượt vật lý và `hasLineOfSight` cho kiểm tra đường bắn.
-* **`ProjectileManager`**: Tiếp nhận các viên đạn kẻ địch (`isPlayerBullet = false`) và kết xuất tracer màu đỏ.
-* **`PlayerHealth`**: Nhận sát thương khi bị đạn kẻ địch bắn trúng hoặc bị quái cận chiến áp sát cào trúng.
+* **`ProjectileManager`**: Tiếp nhận các viên đạn kẻ địch (`isPlayerBullet = false`) và lựu đạn hẹn giờ (`EnemyGrenade`).
+* **`PlayerHealth`**: Nhận sát thương khi bị đạn kẻ địch bắn trúng, bị quái cận chiến cào trúng hoặc trong bán kính nổ của lựu đạn.
 
 ---
 
@@ -141,6 +190,13 @@ Khi trúng đạn hoặc nhát chém dao găm của người chơi, kẻ địch
 ---
 
 ## 8. Sửa đổi / Cập nhật
+* **22/10/2026**:
+  - Triển khai 2 Archetype kẻ địch mới:
+    + `MedicEnemy`: Kẻ địch hỗ trợ quân y, không tấn công, có hào quang hồi máu $135\text{px}$ hồi $6\text{ HP}$ mỗi $0.8\text{s}$, chủ động né tránh người chơi và ưu tiên tiếp cận đồng đội bị thương nặng nhất. Xuất hiện từ Stage 2.
+    + `GrenadierEnemy`: Kẻ địch công binh hạng nặng ném lựu đạn hẹn giờ `EnemyGrenade` nổ sau đúng $2.0\text{s}$ gây sát thương diện rộng $24\text{ HP}$ bán kính $78\text{px}$, ép góc người chơi và phá hủy cover. Xuất hiện từ Stage 3.
+  - Tích hợp hiệu ứng hào quang phát quang xanh lục và vòng cảnh báo nổ nguy hiểm chớp đỏ chuẩn 100% Java `Graphics2D`.
+  - Phân tầng xuất hiện tại Stage 2, Stage 3 và Stage 4 Boss Arena trong `PlayingState`.
+  - Bổ sung 14 bài kiểm thử chuyên sâu trong `MedicAndGrenadierEnemyTest`, đạt $100\%$ độ bao phủ nghiệp vụ và tất cả test đều đỗ.
 * **18/10/2026**:
   - Triển khai hoàn thiện `MeleeEnemy` và `RangedPistolEnemy`.
   - Bổ sung kiểm tra tầm nhìn `hasLineOfSight` trên `DungeonMap`.

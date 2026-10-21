@@ -6,6 +6,8 @@ import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.dungeon.Room;
 import com.groupproject.game.entity.enemy.BossTank;
 import com.groupproject.game.entity.enemy.EnemyCorpse;
+import com.groupproject.game.entity.enemy.MedicEnemy;
+import com.groupproject.game.entity.enemy.GrenadierEnemy;
 import com.groupproject.game.entity.enemy.MeleeEnemy;
 import com.groupproject.game.entity.enemy.RangedPistolEnemy;
 import com.groupproject.game.entity.enemy.TargetDummy;
@@ -681,6 +683,46 @@ public class PlayingState extends GameState {
     }
 
     /**
+     * Sinh một kẻ địch hỗ trợ hồi máu (Combat Field Medic) an toàn vào danh sách.
+     * Xuất hiện từ Stage 2 trở đi:
+     * - Máu: 40 HP (tăng +10 HP mỗi Stage sau Stage 2).
+     * - Tốc độ: 115 px/s (tăng +5 px/s mỗi Stage sau Stage 2).
+     * - Hào quang hồi máu (Healing Aura): Bán kính 135px, hồi 6 HP (+1 HP/Stage) mỗi 0.8s cho đồng đội.
+     */
+    private void spawnMedicEnemySafely(Room arena, double preferredX, double preferredY, int baseHealth) {
+        Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, 30.0, combatTargets);
+        int stageBonus = Math.max(0, currentStage - 2);
+        int scaledHealth = baseHealth + stageBonus * 10;
+        double scaledSpeed = 115.0 + stageBonus * 5.0;
+        int scaledHeal = 6 + stageBonus * 1;
+        String name = stageBonus == 0 ? "Combat Field Medic [Support]" : String.format("Combat Field Medic MK-%d [Support]", currentStage);
+
+        MedicEnemy enemy = new MedicEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, 135.0, scaledHeal, 0.80, 210.0, name);
+        enemy.setSpawnTelegraph(0.40);
+        combatTargets.add(enemy);
+    }
+
+    /**
+     * Sinh một kẻ địch ném lựu đạn hẹn giờ (Heavy Grenadier) an toàn vào danh sách.
+     * Xuất hiện từ Stage 3 trở đi:
+     * - Máu: 55 HP (tăng +12 HP mỗi Stage sau Stage 3).
+     * - Tốc độ: 95 px/s.
+     * - Lựu đạn bộc phá hẹn giờ: Đúng 2.0 giây phát nổ, sát thương 24 HP (+2 DMG/Stage), bán kính 78px.
+     */
+    private void spawnGrenadierEnemySafely(Room arena, double preferredX, double preferredY, int baseHealth) {
+        Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, 30.0, combatTargets);
+        int stageBonus = Math.max(0, currentStage - 3);
+        int scaledHealth = baseHealth + stageBonus * 12;
+        double scaledSpeed = 95.0 + stageBonus * 4.0;
+        int scaledDamage = 24 + stageBonus * 2;
+        String name = stageBonus == 0 ? "Heavy Grenadier [Demolitions]" : String.format("Heavy Grenadier MK-%d [Demolitions]", currentStage);
+
+        GrenadierEnemy enemy = new GrenadierEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, scaledDamage, 78.0, 3.0, 175.0, 400.0, name);
+        enemy.setSpawnTelegraph(0.40);
+        combatTargets.add(enemy);
+    }
+
+    /**
      * Sinh một kẻ địch tiêu chuẩn một cách an toàn vào danh sách (xen kẽ Cận chiến và Tầm xa).
      */
     @SuppressWarnings("unused")
@@ -718,6 +760,7 @@ public class PlayingState extends GameState {
 
         if (currentStage == BOSS_STAGE) {
             // Stage Boss (Stage 4) Grand Boss Arena: Xe tăng chiến đấu hạng nặng (size 96px, 1250 HP) và 8 AI hộ tống
+            // Đội hình tinh nhuệ đa dạng: 3 Cận chiến + 3 Súng lục + 1 Combat Medic hồi máu + 1 Heavy Grenadier ép góc
             spawnBossSafely(arena, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
             spawnMeleeEnemySafely(arena, cx + 220, cy, 80);
             spawnMeleeEnemySafely(arena, cx - 220, cy, 80);
@@ -725,18 +768,29 @@ public class PlayingState extends GameState {
             spawnRangedPistolEnemySafely(arena, cx, cy - 180, 60);
             spawnMeleeEnemySafely(arena, cx + 160, cy + 130, 70);
             spawnRangedPistolEnemySafely(arena, cx - 160, cy + 130, 60);
-            spawnMeleeEnemySafely(arena, cx + 160, cy - 130, 70);
-            spawnRangedPistolEnemySafely(arena, cx - 160, cy - 130, 60);
+            spawnMedicEnemySafely(arena, cx + 160, cy - 130, 60);
+            spawnGrenadierEnemySafely(arena, cx - 160, cy - 130, 70);
             this.bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
             this.bossMinionWaveCount = 0;
         } else {
             if (arena.getTotalPhases() <= 1) {
-                // Phòng 1 Phase: Số lượng quái tiêu chuẩn kết hợp cận chiến và súng lục
+                // Phòng 1 Phase: Phân bổ kẻ địch theo từng Stage
                 spawnMeleeEnemySafely(arena, cx - 120, cy - 60, 50);
                 spawnRangedPistolEnemySafely(arena, cx + 120, cy + 60, 45);
-                spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
-                if (arena.getWidthInTiles() >= 13) {
-                    spawnRangedPistolEnemySafely(arena, cx - 140, cy + 70, 45);
+
+                if (currentStage == 1) {
+                    spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
+                    if (arena.getWidthInTiles() >= 13) {
+                        spawnRangedPistolEnemySafely(arena, cx - 140, cy + 70, 45);
+                    }
+                } else if (currentStage == 2) {
+                    // Stage 2: Bổ sung Combat Field Medic hỗ trợ đồng đội
+                    spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
+                    spawnMedicEnemySafely(arena, cx - 140, cy + 70, 40);
+                } else {
+                    // Stage 3+: Xuất hiện cả Combat Field Medic và Heavy Grenadier ném lựu đạn ép góc
+                    spawnMedicEnemySafely(arena, cx + 120, cy - 80, 40);
+                    spawnGrenadierEnemySafely(arena, cx - 140, cy + 70, 55);
                 }
             } else {
                 // Phòng 2 Phase:
@@ -744,16 +798,36 @@ public class PlayingState extends GameState {
                     // Phase 1: Đợt quái tiền trạm mở màn
                     spawnMeleeEnemySafely(arena, cx - 120, cy - 60, 50);
                     spawnRangedPistolEnemySafely(arena, cx + 120, cy + 60, 45);
-                    if (arena.getWidthInTiles() >= 13) {
-                        spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
+
+                    if (currentStage == 1) {
+                        if (arena.getWidthInTiles() >= 13) {
+                            spawnMeleeEnemySafely(arena, cx + 120, cy - 80, 50);
+                        }
+                    } else if (currentStage == 2) {
+                        // Stage 2 Phase 1: Bổ sung Medic hỗ trợ
+                        spawnMedicEnemySafely(arena, cx + 120, cy - 80, 40);
+                    } else {
+                        // Stage 3+ Phase 1: Bổ sung Grenadier ép góc
+                        spawnGrenadierEnemySafely(arena, cx + 120, cy - 80, 55);
                     }
                 } else {
                     // Phase 2: Đợt quái tiếp viện bất ngờ từ các góc phòng
                     spawnMeleeEnemySafely(arena, cx - 140, cy + 70, 55);
                     spawnRangedPistolEnemySafely(arena, cx + 140, cy - 70, 45);
-                    spawnMeleeEnemySafely(arena, cx, cy - 90, 55);
-                    if (arena.getWidthInTiles() >= 13) {
-                        spawnRangedPistolEnemySafely(arena, cx, cy + 90, 45);
+
+                    if (currentStage == 1) {
+                        spawnMeleeEnemySafely(arena, cx, cy - 90, 55);
+                        if (arena.getWidthInTiles() >= 13) {
+                            spawnRangedPistolEnemySafely(arena, cx, cy + 90, 45);
+                        }
+                    } else if (currentStage == 2) {
+                        // Stage 2 Phase 2: Bổ sung thêm cận chiến và Medic
+                        spawnMeleeEnemySafely(arena, cx, cy - 90, 55);
+                        spawnMedicEnemySafely(arena, cx, cy + 90, 40);
+                    } else {
+                        // Stage 3+ Phase 2: Tiếp viện cả Medic và Grenadier
+                        spawnMedicEnemySafely(arena, cx, cy - 90, 40);
+                        spawnGrenadierEnemySafely(arena, cx, cy + 90, 55);
                     }
                 }
             }
@@ -797,7 +871,7 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Sinh thêm 5-6 lính tiếp viện bảo vệ Boss (kết hợp cận chiến Cyber Swarmer và tầm xa Rogue Pistol Scout)
+     * Sinh thêm 5-6 lính tiếp viện bảo vệ Boss (kết hợp cận chiến, súng lục, medic và grenadier)
      * sau 15 giây kể từ khi các lính con trước đó bị dọn sạch.
      */
     public void spawnBossMinionReinforcements() {
@@ -826,12 +900,15 @@ public class PlayingState extends GameState {
         for (int i = 0; i < count; i++) {
             double ox = spawnOffsets[i][0];
             double oy = spawnOffsets[i][1];
-            if (i % 2 == 0) {
-                // Lính cận chiến Mercenary Raider
+            int type = i % 4;
+            if (type == 0) {
                 spawnMeleeEnemySafely(arena, cx + ox, cy + oy, 75);
-            } else {
-                // Lính bắn tầm xa Recon Scout
+            } else if (type == 1) {
                 spawnRangedPistolEnemySafely(arena, cx + ox, cy + oy, 60);
+            } else if (type == 2) {
+                spawnMedicEnemySafely(arena, cx + ox, cy + oy, 55);
+            } else {
+                spawnGrenadierEnemySafely(arena, cx + ox, cy + oy, 65);
             }
         }
 
@@ -1394,7 +1471,9 @@ public class PlayingState extends GameState {
                 Rectangle playerBox = new Rectangle(
                         (int) player.getX(), (int) player.getY(), (int) player.getSize(), (int) player.getSize());
                 if (p.getBounds().intersects(playerBox)) {
-                    if (p instanceof BossCannonShell) {
+                    if (p instanceof com.groupproject.game.entity.projectile.EnemyGrenade) {
+                        // Lựu đạn hẹn giờ không phát nổ ngay khi chạm người chơi; nó đếm ngược 2s để nổ ép góc!
+                    } else if (p instanceof BossCannonShell) {
                         ((BossCannonShell) p).explode(this, dungeonMap);
                     } else {
                         damagePlayer(p.getDamage());
@@ -1497,6 +1576,13 @@ public class PlayingState extends GameState {
         // 1.5. Render Enemy Corpses on dungeon floor (Xác đầu lâu nâu mờ trượt trên sàn)
         for (EnemyCorpse corpse : activeCorpses) {
             corpse.render(g, camera);
+        }
+
+        // 1.8. Render Hostile Ground Auras UNDER entities (Vùng hồi phục nano đỏ của Medic trải trên mặt sàn)
+        for (TargetDummy dummy : combatTargets) {
+            if (dummy instanceof com.groupproject.game.entity.enemy.MedicEnemy) {
+                ((com.groupproject.game.entity.enemy.MedicEnemy) dummy).renderAura(g, camera);
+            }
         }
 
         // 2. Render Hostile Combat Targets

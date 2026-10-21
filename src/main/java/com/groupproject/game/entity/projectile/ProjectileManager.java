@@ -69,7 +69,9 @@ public class ProjectileManager {
                 // WHY: isAreaBlockingProjectiles absorbs bullets on walls, cover, closed doors,
                 // and open doors (DOOR_OPEN) to prevent cheesing encounters from corridors.
                 if (dungeonMap.isAreaBlockingProjectiles(p.getX() - 2, p.getY() - 2, 4, 4)) {
-                    if (p instanceof BossCannonShell) {
+                    if (p instanceof EnemyGrenade) {
+                        ((EnemyGrenade) p).handleWallCollision(dungeonMap);
+                    } else if (p instanceof BossCannonShell) {
                         ((BossCannonShell) p).explode(playingState, dungeonMap);
                     } else {
                         // Kiểm tra nếu có vật cản cứng không thể xuyên phá (tường cứng, void, cửa đóng)
@@ -86,9 +88,13 @@ public class ProjectileManager {
                 }
             }
 
-            // In case lifetime expired on BossCannonShell without impact, trigger detonation payload
-            if (!p.isActive() && p instanceof BossCannonShell) {
-                ((BossCannonShell) p).explode(playingState, dungeonMap);
+            // In case lifetime / fuse expired on explosive ordnance without impact, trigger detonation payload
+            if (!p.isActive()) {
+                if (p instanceof BossCannonShell) {
+                    ((BossCannonShell) p).explode(playingState, dungeonMap);
+                } else if (p instanceof EnemyGrenade) {
+                    ((EnemyGrenade) p).explode(playingState, dungeonMap);
+                }
             }
         }
 

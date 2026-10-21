@@ -362,7 +362,7 @@ public class RangedPistolEnemy extends TargetDummy {
         g.setColor(new Color(30, 30, 40));
         g.fillRect(barX, barY, barW, barH);
         float hpPercent = Math.max(0f, (float) currentHealth / maxHealth);
-        g.setColor(hpPercent > 0.4f ? new Color(70, 180, 255) : new Color(255, 70, 70));
+        g.setColor(new Color(230, 45, 45)); // Luôn luôn là màu đỏ
         g.fillRect(barX, barY, (int) (barW * hpPercent), barH);
         g.setColor(Color.DARK_GRAY);
         g.drawRect(barX, barY, barW, barH);

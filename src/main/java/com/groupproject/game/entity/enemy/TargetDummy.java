@@ -35,6 +35,7 @@ public class TargetDummy {
     // Flash white when hit, or radiant gold when struck critically
     protected double hitFlashTimer = 0.0;
     protected double critFlashTimer = 0.0;
+    protected double healFlashTimer = 0.0;
     // Animation timer for boss pulsing core
     protected double animTimer = 0.0;
     // Directional knockback impulse velocity
@@ -109,6 +110,23 @@ public class TargetDummy {
         if (currentHealth <= 0) {
             currentHealth = 0;
             alive = false;
+        }
+    }
+
+    /**
+     * Hồi phục lượng sinh lực cho thực thể mục tiêu, không vượt quá maxHealth.
+     * Kích hoạt hiệu ứng chớp sáng hồi máu màu xanh ngọc lục bảo (emerald green).
+     *
+     * <p>WHY: Cho phép các đơn vị hỗ trợ (như Combat Medic) cung cấp khả năng hồi phục sinh lực
+     * cho đồng minh trong vùng ảnh hưởng, tăng tính phối hợp và chiến thuật của kẻ địch.
+     *
+     * @param amount Lượng máu hồi phục.
+     */
+    public void heal(int amount) {
+        if (!alive || isSpawning() || amount <= 0) return;
+        if (currentHealth < maxHealth) {
+            currentHealth = Math.min(maxHealth, currentHealth + amount);
+            healFlashTimer = 0.22; // 220ms hiệu ứng chớp sáng phát quang hồi máu
         }
     }
 
@@ -199,6 +217,10 @@ public class TargetDummy {
             critFlashTimer -= deltaTime;
             if (critFlashTimer < 0) critFlashTimer = 0.0;
         }
+        if (healFlashTimer > 0) {
+            healFlashTimer -= deltaTime;
+            if (healFlashTimer < 0) healFlashTimer = 0.0;
+        }
         if (spawnTelegraphTimer > 0) {
             spawnTelegraphTimer -= deltaTime;
             if (spawnTelegraphTimer < 0) {
@@ -213,6 +235,10 @@ public class TargetDummy {
 
     public double getCritFlashTimer() {
         return critFlashTimer;
+    }
+
+    public double getHealFlashTimer() {
+        return healFlashTimer;
     }
 
     /**
@@ -330,6 +356,12 @@ public class TargetDummy {
                 g.setStroke(new BasicStroke(2.0f));
                 g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
                 g.setStroke(new BasicStroke(1.0f));
+            } else if (healFlashTimer > 0) {
+                // Hiệu ứng viền phát quang đỏ thẫm cảnh báo khi được Combat Medic hồi máu
+                g.setColor(new Color(255, 60, 60));
+                g.setStroke(new BasicStroke(2.0f));
+                g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+                g.setStroke(new BasicStroke(1.0f));
             } else {
                 g.setColor(new Color(255, 120, 120));
                 g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
@@ -339,7 +371,7 @@ public class TargetDummy {
             g.setColor(new Color(255, 240, 60));
             g.fillOval(screenCX - 4, screenCY - 4, 8, 8);
 
-            // Overhead health bar
+            // Overhead health bar - luôn luôn hiển thị màu đỏ của phe địch
             int barW = 34;
             int barH = 5;
             int barX = screenCX - barW / 2;
@@ -348,7 +380,7 @@ public class TargetDummy {
             g.setColor(new Color(30, 30, 40));
             g.fillRect(barX, barY, barW, barH);
             float hpPercent = (float) currentHealth / maxHealth;
-            g.setColor(hpPercent > 0.4f ? new Color(50, 220, 90) : new Color(255, 60, 60));
+            g.setColor(new Color(230, 45, 45));
             g.fillRect(barX, barY, (int) (barW * hpPercent), barH);
             g.setColor(Color.DARK_GRAY);
             g.drawRect(barX, barY, barW, barH);

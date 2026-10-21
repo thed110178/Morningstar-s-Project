@@ -947,8 +947,8 @@ public class BossTank extends TargetDummy {
         double hpRatio = Math.max(0.0, (double) currentHealth / maxHealth);
         int fillW = (int) (barW * hpRatio);
 
-        // Màu thanh máu chuyển từ Vàng cam -> Đỏ thẫm khi thức tỉnh tháp pháo
-        Color hpColor = isCannonAwakened() ? new Color(255, 55, 45) : new Color(255, 180, 30);
+        // Màu thanh máu trên đầu kẻ địch luôn luôn là màu đỏ
+        Color hpColor = isCannonAwakened() ? new Color(255, 45, 40) : new Color(225, 45, 45);
         g.setColor(hpColor);
         g.fillRoundRect(barX, barY, fillW, barH, 3, 3);
 
