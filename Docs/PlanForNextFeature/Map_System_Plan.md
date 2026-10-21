@@ -3,7 +3,7 @@ Cập nhật mới nhất vào ngày: 03/10/2026
 # KẾ HOẠCH TRIỂN KHAI: HỆ THỐNG BẢN ĐỒ 3 PHÒNG (SPAWN - COMBAT - EXTRACT)
 
 ## 1. Mục tiêu tính năng
-Xây dựng hệ thống bản đồ dạng lưới gạch (**Tile-based Dungeon Map**) cho game theo kiến trúc Roguelite Soul Knight / POBG. Bản đồ demo sẽ bao gồm 3 khu vực phòng chuyên biệt kết nối qua hành lang:
+Xây dựng hệ thống bản đồ dạng lưới gạch (**Tile-based Dungeon Map**) cho game theo kiến trúc Roguelite Soul Knight / Surviv.io. Bản đồ demo sẽ bao gồm 3 khu vực phòng chuyên biệt kết nối qua hành lang:
 1. **Phòng Xuất phát (Spawn Room)**: Khu vực an toàn ban đầu để người chơi xuất hiện và chuẩn bị.
 2. **Phòng Chiến đấu (Combat Room)**: Đấu trường trung tâm với diện tích lớn, có các cột trụ/chướng ngại vật làm vật che chắn (cover) phục vụ giao tranh né đạn.
 3. **Phòng Sơ tán (Extract Room)**: Khu vực kết thúc màn chơi với Cổng dịch chuyển (Extraction Portal) để người chơi hoàn thành nhiệm vụ và chuyển tầng.

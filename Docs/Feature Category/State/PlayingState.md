@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 20/10/2026
+﻿Cập nhật mới nhất vào ngày: 21/10/2026
 
 # PlayingState.java - Màn Chơi Chiến Đấu Chính (Core Combat State)
 
@@ -60,8 +60,14 @@ Cập nhật mới nhất vào ngày: 20/10/2026
 ## 5. Sửa đổi / Cập nhật
 * **02/10/2026**: Khởi tạo ban đầu với cơ chế di chuyển WASD, nòng súng xoay 360 độ và Camera Lerp.
 * **20/10/2026**: Bổ sung kỹ năng né đòn [SPACE] i-frames, xác kẻ địch đầu lâu nâu mờ, tích hợp Menu Tạm Dừng [ESC] với 3 tùy chọn (Tiếp tục, Cài đặt, Thoát ra menu) và kết nối toàn diện hệ thống gán phím linh hoạt `KeyBindings`.
+* **21/10/2026**: Thêm hiệu ứng chuyển màn & giới thiệu Boss (xem [ScreenTransition.md](ScreenTransition.md)):
+  * Bấm [F] tại bệ extract giờ gọi `requestAdvanceToNextStage()`: màn hình Fade đen + banner tên tầng, map chỉ được dựng lại (`advanceToNextStage()`) khi màn hình tối hẳn. `advanceToNextStage()` vẫn đồng bộ để test/code cũ dùng.
+  * `tryStartBossIntro()` phát `BossIntroCinematic` đúng 1 lần mỗi stage Boss (khi vào phòng Boss, hoặc khi `loadBossStageDirectly()`), lia camera Player → Boss → Player, Letterbox + banner tên Boss. KHÔNG thể bỏ qua bằng bất kỳ phím/chuột nào (kể cả ESC).
+  * Trong lúc Fade hoặc intro Boss đang chạy, `update()` return sớm => đóng băng toàn bộ gameplay (Boss không tấn công khi camera đang lia).
+  * API mới: `skipBossIntro()`, `isBossIntroActive()`, `isStageTransitionActive()`.
 
 ---
 
 ## 6. Lỗi đã sửa
 Chưa ghi nhận lỗi.
+

@@ -62,6 +62,7 @@ public class GamePanel extends JPanel {
 
         // Register foundational application states (State Pattern)
         stateManager.registerState(GameStateManager.StateType.MENU, new MenuState(stateManager));
+        stateManager.registerState(GameStateManager.StateType.THE_RANGE, new com.groupproject.game.hub.HubRangeState(stateManager));
         stateManager.registerState(GameStateManager.StateType.PLAYING, new PlayingState(stateManager));
 
         // Mặc định kích hoạt cờ spawn trực tiếp vào phòng Boss cho chế độ kiểm thử

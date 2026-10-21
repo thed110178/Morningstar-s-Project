@@ -9,9 +9,9 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Thực thể Chiến binh Đặc nhiệm (Operative Player Entity).
@@ -41,6 +41,7 @@ public class Player {
     public static final double DODGE_SPEED = 560.0; // Vận tốc lướt né (px/s) (~2.6x tốc độ chạy 210 px/s)
     public static final double DODGE_COOLDOWN = 0.80; // Thời gian hồi chiêu né (giây)
     private static final double GHOST_INTERVAL = 0.04; // Chu kỳ sinh tàn ảnh bóng ma (giây)
+    private static final double MAX_PHASE_EXTENSION = 0.20; // Thời gian tối đa kéo dài cú lướt né để thoát khỏi vật cản tạm thời (giây)
 
     private boolean dodging = false;
     private double dodgeTimer = 0.0;
@@ -48,7 +49,57 @@ public class Player {
     private double dodgeDirX = 0.0;
     private double dodgeDirY = 0.0;
     private double ghostSpawnTimer = 0.0;
+    private double phaseExtensionTimer = 0.0;
     private final List<DodgeGhost> dodgeGhosts = new CopyOnWriteArrayList<>();
+    private final com.groupproject.game.entity.buff.PlayerBuffManager buffManager = new com.groupproject.game.entity.buff.PlayerBuffManager();
+
+    // --- Hoạt cảnh tử trận: Đầu lâu trượt ma sát trên sàn (Death Slide Sequence) ---
+    public static final double DEATH_SLIDE_DURATION = 2.0; // Thời lượng quan sát đầu lâu trượt (2.0 giây)
+    private double deathTimer = 0.0;
+    private double deathSlideVx = 0.0;
+    private double deathSlideVy = 0.0;
+    private double deathRotation = 0.0;
+    private double skidSpawnTimer = 0.0;
+    private double lastMoveDirX = 0.0;
+    private double lastMoveDirY = 0.0;
+    private final List<SkidParticle> deathSkidParticles = new CopyOnWriteArrayList<>();
+
+    /**
+     * Hạt khói bụi / vệt ma sát cọ xát trên mặt đất khi đầu lâu trượt.
+     */
+    public static class SkidParticle {
+        public double x, y;
+        public double radius;
+        public double life;
+        public double maxLife;
+        public Color color;
+
+        public SkidParticle(double x, double y, double radius, double maxLife, Color color) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.life = maxLife;
+            this.maxLife = maxLife;
+            this.color = color;
+        }
+
+        public boolean update(double deltaTime) {
+            life -= deltaTime;
+            return life <= 0;
+        }
+
+        public void render(Graphics2D g, Camera camera) {
+            if (life <= 0) return;
+            int sx = camera.worldToScreenX(x);
+            int sy = camera.worldToScreenY(y);
+            float ratio = (float) Math.max(0.0, life / maxLife);
+            int alpha = (int) (color.getAlpha() * ratio);
+            if (alpha <= 0) return;
+            g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+            int r = (int) Math.round(radius);
+            g.fillOval(sx - r, sy - r, r * 2, r * 2);
+        }
+    }
 
     /**
      * Khởi tạo chiến binh với tọa độ ban đầu.
@@ -64,11 +115,42 @@ public class Player {
     }
 
     /**
+     * Kiểm tra xem hitbox của chiến binh có đang giao cắt/chồng lấn với ít nhất một ô vật cản tạm thời
+     * có thể phá hủy (DESTRUCTIBLE_COVER) hay không.
+     *
+     * <p>WHY: Dùng cho cơ chế phòng ngừa khi hết thời gian lướt né (i-frames) mà người chơi chưa kịp
+     * thoát ra khỏi hàng thùng gỗ dã chiến, ngăn chặn hoàn toàn việc bị kẹt (stuck) hoặc mất i-frame
+     * giữa chừng trong vật cản.
+     */
+    public boolean isOverlappingDestructibleCover(DungeonMap dungeonMap) {
+        if (dungeonMap == null) return false;
+        double curSize = getSize();
+        return !dungeonMap.isAreaWalkable(x, y, curSize, curSize)
+                && dungeonMap.isAreaWalkableIgnoringDestructible(x, y, curSize, curSize);
+    }
+
+    /**
      * Cập nhật đếm ngược bộ đếm thời gian bất tử (i-frames), hồi chiêu né và tàn ảnh bóng ma.
      *
      * @param deltaTime Khoảng thời gian trôi qua giữa 2 khung hình (giây).
      */
     public void update(double deltaTime) {
+        update(deltaTime, null);
+    }
+
+    /**
+     * Cập nhật đếm ngược bộ đếm thời gian bất tử (i-frames), hồi chiêu né, tàn ảnh bóng ma
+     * và cơ chế phòng ngừa an toàn khi lướt né xuyên qua vật cản tạm thời.
+     *
+     * @param deltaTime  Khoảng thời gian trôi qua giữa 2 khung hình (giây).
+     * @param dungeonMap Bản đồ hầm ngục kiểm tra va chạm chướng ngại vật tạm thời.
+     */
+    public void update(double deltaTime, DungeonMap dungeonMap) {
+        if (isDead) {
+            updateDeathSlide(deltaTime, dungeonMap);
+            return;
+        }
+
         if (invulnerableTimer > 0) {
             invulnerableTimer -= deltaTime;
         }
@@ -80,16 +162,46 @@ public class Player {
 
         // Cập nhật trạng thái né và chu kỳ sinh tàn ảnh bóng ma
         if (dodging) {
-            dodgeTimer -= deltaTime;
             ghostSpawnTimer += deltaTime;
             if (ghostSpawnTimer >= GHOST_INTERVAL) {
                 ghostSpawnTimer = 0.0;
                 spawnGhost();
             }
-            if (dodgeTimer <= 0) {
-                dodging = false;
-                dodgeTimer = 0.0;
+
+            if (dodgeTimer > 0) {
+                dodgeTimer -= deltaTime;
             }
+
+            if (dodgeTimer <= 0) {
+                // Kiểm tra xem có đang ở giữa vật cản tạm thời với buff Phase Dodge hay không
+                boolean insideDestructible = (dungeonMap != null && buffManager.hasPhaseDodge())
+                        && isOverlappingDestructibleCover(dungeonMap);
+
+                if (insideDestructible) {
+                    // PHÒNG NGỪA 1: Tiếp tục duy trì cú lướt và bất tử 100% (I-frame) để thoát ra ngoài
+                    phaseExtensionTimer += deltaTime;
+                    if (phaseExtensionTimer >= MAX_PHASE_EXTENSION) {
+                        // PHÒNG NGỪA 2 (Tối hậu): Sau thời gian gia hạn tối đa vẫn chưa thoát ra (ví dụ kẹt góc tường),
+                        // lập tức kích hoạt sóng xung kích nghiền nát vật cản tạm thời tại vị trí này thành ô FLOOR trống.
+                        dungeonMap.damageDestructibleCoverInArea(x, y, getSize(), getSize(), 999);
+                        dodging = false;
+                        dodgeTimer = 0.0;
+                        phaseExtensionTimer = 0.0;
+                        invulnerableTimer = Math.max(invulnerableTimer, 0.30); // Cấp đệm an toàn I-frame 0.3s
+                    }
+                } else {
+                    // Đã ra khỏi vật cản an toàn hoặc không có buff Phase Dodge
+                    if (phaseExtensionTimer > 0) {
+                        // Vừa thoát ra khỏi vật cản tạm thời nhờ pha gia hạn: cấp đệm I-frame an toàn 0.25s
+                        invulnerableTimer = Math.max(invulnerableTimer, 0.25);
+                    }
+                    dodging = false;
+                    dodgeTimer = 0.0;
+                    phaseExtensionTimer = 0.0;
+                }
+            }
+        } else {
+            phaseExtensionTimer = 0.0;
         }
 
         // Cập nhật và dọn dẹp các tàn ảnh bóng ma đã hết hạn
@@ -120,12 +232,21 @@ public class Player {
             moveStep = DODGE_SPEED * deltaTime;
             moveX = dodgeDirX * moveStep;
             moveY = dodgeDirY * moveStep;
+            lastMoveDirX = dodgeDirX;
+            lastMoveDirY = dodgeDirY;
         } else {
-            moveStep = speed * deltaTime;
+            double effectiveSpeed = speed * buffManager.getSpeedMultiplier();
+            moveStep = effectiveSpeed * deltaTime;
             if (up) moveY -= moveStep;
             if (down) moveY += moveStep;
             if (left) moveX -= moveStep;
             if (right) moveX += moveStep;
+
+            if (moveX != 0 || moveY != 0) {
+                double len = Math.hypot(moveX, moveY);
+                lastMoveDirX = moveX / len;
+                lastMoveDirY = moveY / len;
+            }
 
             // Chuẩn hóa di chuyển chéo (Diagonal movement normalization)
             if (moveX != 0 && moveY != 0) {
@@ -136,16 +257,55 @@ public class Player {
         }
 
         // Trượt va chạm 2 trục độc lập (Decoupled axis wall sliding)
+        // Nếu có buff Né xuyên vật cản (PHASE_DODGE) và đang lướt né:
+        // CHỈ cho phép đi xuyên qua vật cản tạm thời (DESTRUCTIBLE_COVER),
+        // vẫn bị cản và trượt bởi tường kiên cố (WALL, Cột COVER vĩnh viễn, Cửa khóa DOOR_CLOSED, Vực VOID).
+        double curSize = getSize();
+        boolean phaseDodgeActive = dodging && buffManager.hasPhaseDodge();
+
+        double prevX = x;
+        double prevY = y;
+
         if (moveX != 0) {
             double nextX = x + moveX;
-            if (dungeonMap.isAreaWalkable(nextX, y, size, size)) {
+            boolean canMoveX;
+            if (dungeonMap == null) {
+                canMoveX = true;
+            } else if (phaseDodgeActive) {
+                canMoveX = dungeonMap.isAreaWalkableIgnoringDestructible(nextX, y, curSize, curSize);
+            } else {
+                canMoveX = dungeonMap.isAreaWalkable(nextX, y, curSize, curSize);
+            }
+            if (canMoveX) {
                 x = nextX;
             }
         }
         if (moveY != 0) {
             double nextY = y + moveY;
-            if (dungeonMap.isAreaWalkable(x, nextY, size, size)) {
+            boolean canMoveY;
+            if (dungeonMap == null) {
+                canMoveY = true;
+            } else if (phaseDodgeActive) {
+                canMoveY = dungeonMap.isAreaWalkableIgnoringDestructible(x, nextY, curSize, curSize);
+            } else {
+                canMoveY = dungeonMap.isAreaWalkable(x, nextY, curSize, curSize);
+            }
+            if (canMoveY) {
                 y = nextY;
+            }
+        }
+
+        // PHÒNG NGỪA BỔ SUNG: Nếu đang trong pha gia hạn an toàn (dodgeTimer <= 0) bên trong vật cản tạm thời,
+        // nhưng bị tường cứng/cửa khóa chặn lại khiến nhân vật không thể di chuyển tiếp (prevX == x && prevY == y):
+        // Lập tức phá hủy vật cản tạm thời tại chỗ để giải phóng không gian ngay, không để người chơi bị đứng hình.
+        if (dungeonMap != null && phaseDodgeActive && dodgeTimer <= 0 && isOverlappingDestructibleCover(dungeonMap)) {
+            boolean blockedBySolid = (moveX != 0 && prevX == x) || (moveY != 0 && prevY == y);
+            if (blockedBySolid) {
+                dungeonMap.damageDestructibleCoverInArea(x, y, curSize, curSize, 999);
+                dodging = false;
+                dodgeTimer = 0.0;
+                phaseExtensionTimer = 0.0;
+                invulnerableTimer = Math.max(invulnerableTimer, 0.30);
             }
         }
     }
@@ -190,7 +350,7 @@ public class Player {
 
         this.dodging = true;
         this.dodgeTimer = DODGE_DURATION;
-        this.dodgeCooldownTimer = DODGE_COOLDOWN;
+        this.dodgeCooldownTimer = DODGE_COOLDOWN / buffManager.getDodgeCooldownFactor();
         this.ghostSpawnTimer = 0.0;
         spawnGhost();
         return true;
@@ -212,12 +372,21 @@ public class Player {
             return false;
         }
 
-        currentHealth = Math.max(0, currentHealth - damage);
+        // 1. Kiểm tra Khiên Chặn Đòn 1 Lần (ONE_HIT_BARRIER)
+        if (buffManager.checkAndConsumeBarrier()) {
+            return false; // Chặn đứng 100% sát thương đòn này!
+        }
+
+        // 2. Áp dụng giảm % sát thương phòng thủ (DEFENSE - tối đa 30%)
+        double defenseReduction = buffManager.getDamageReduction();
+        int finalDamage = Math.max(1, (int) Math.round(damage * (1.0 - defenseReduction)));
+
+        currentHealth = Math.max(0, currentHealth - finalDamage);
         invulnerableTimer = 0.8; // 0.8s thời gian bất tử i-frames sau khi trúng đòn
 
         if (currentHealth <= 0) {
             currentHealth = 0;
-            isDead = true;
+            initiateDeathSequence();
         }
         return true;
     }
@@ -255,8 +424,18 @@ public class Player {
         this.isDead = false;
         this.dodging = false;
         this.dodgeTimer = 0.0;
+        this.phaseExtensionTimer = 0.0;
         this.dodgeCooldownTimer = 0.0;
         this.dodgeGhosts.clear();
+        this.buffManager.reset();
+        this.deathTimer = 0.0;
+        this.deathSlideVx = 0.0;
+        this.deathSlideVy = 0.0;
+        this.deathRotation = 0.0;
+        this.skidSpawnTimer = 0.0;
+        this.lastMoveDirX = 0.0;
+        this.lastMoveDirY = 0.0;
+        this.deathSkidParticles.clear();
     }
 
     /**
@@ -272,6 +451,11 @@ public class Player {
      * @param camera Camera chuyển đổi thế giới sang màn hình.
      */
     public void render(Graphics2D g, Camera camera) {
+        if (isDead) {
+            renderDeathSkull(g, camera);
+            return;
+        }
+
         // 0. Render các tàn ảnh bóng ma (Dodge Ghost Trail) khi đang né đòn
         for (DodgeGhost ghost : dodgeGhosts) {
             renderGhost(g, camera, ghost);
@@ -393,6 +577,54 @@ public class Player {
         g.drawString(timeText, textX, textY);
     }
 
+    /**
+     * Hiển thị thông báo nhỏ cảnh báo "HẾT SẠCH ĐẠN" ở ngay dưới chân nhân vật
+     * khi vũ khí hiện tại hết cả đạn trong băng lẫn đạn dự trữ.
+     * Cảnh báo có viền đỏ phát sáng nhấp nháy (pulsing) để người chơi dễ dàng nhận biết.
+     *
+     * @param g           Đối tượng đồ họa Graphics2D.
+     * @param camera      Camera quan sát.
+     * @param isOutOfAmmo Trạng thái cạn kiệt toàn bộ đạn của vũ khí đang cầm.
+     */
+    public void renderOutOfAmmoWarning(Graphics2D g, Camera camera, boolean isOutOfAmmo) {
+        if (!isOutOfAmmo || isDead) return;
+
+        double centerX = getCenterX();
+        double centerY = getCenterY();
+        int screenPX = camera.worldToScreenX(centerX);
+        int screenPY = camera.worldToScreenY(centerY);
+
+        // Hiệu ứng nhấp nháy phát sáng nhẹ (pulsing cảnh báo)
+        double pulse = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() * 0.009);
+        int alphaBox = (int) (185 + 40 * pulse);
+        int alphaBorder = (int) (160 + 95 * pulse);
+
+        String warningText = "⚠ HẾT SẠCH ĐẠN!";
+        Font font = new Font("SansSerif", Font.BOLD, 10);
+        g.setFont(font);
+        FontMetrics fm = g.getFontMetrics();
+        int textW = fm.stringWidth(warningText);
+        int boxW = textW + 14;
+        int boxH = 17;
+        int boxX = screenPX - (boxW / 2);
+        int boxY = screenPY + 22; // Nằm ngay dưới chân người chơi
+
+        // Khung nền tối sci-fi bo góc
+        g.setColor(new Color(25, 10, 15, alphaBox));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 4, 4);
+
+        // Viền đỏ phát sáng nhấp nháy
+        g.setColor(new Color(255, 55, 55, alphaBorder));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 4, 4);
+
+        // Chữ cảnh báo màu đỏ tươi phát sáng rực rỡ
+        int redG = (int) (80 + 50 * pulse);
+        int redB = (int) (80 + 50 * pulse);
+        g.setColor(new Color(255, redG, redB));
+        g.drawString(warningText, boxX + 7, boxY + 12);
+    }
+
     // --- Getters & Setters ---
 
     public double getX() {
@@ -417,15 +649,15 @@ public class Player {
     }
 
     public double getCenterX() {
-        return x + (size / 2.0);
+        return x + (getSize() / 2.0);
     }
 
     public double getCenterY() {
-        return y + (size / 2.0);
+        return y + (getSize() / 2.0);
     }
 
     public double getSize() {
-        return size;
+        return size * buffManager.getHitboxScale();
     }
 
     public void setSize(double size) {
@@ -477,7 +709,15 @@ public class Player {
     }
 
     public void setDead(boolean dead) {
-        this.isDead = dead;
+        if (dead) {
+            initiateDeathSequence();
+        } else {
+            this.isDead = false;
+            this.deathTimer = 0.0;
+            this.deathSlideVx = 0.0;
+            this.deathSlideVy = 0.0;
+            this.deathSkidParticles.clear();
+        }
     }
 
     // --- Kỹ năng Né đòn & i-frames (Combat Dash / Dodge Roll) Getters & Setters ---
@@ -494,6 +734,19 @@ public class Player {
         return dodgeTimer;
     }
 
+    public void setDodgeTimer(double timer) {
+        this.dodgeTimer = Math.max(0.0, timer);
+    }
+
+    public void setDodging(boolean dodging) {
+        this.dodging = dodging;
+    }
+
+    public void setDodgeDir(double dirX, double dirY) {
+        this.dodgeDirX = dirX;
+        this.dodgeDirY = dirY;
+    }
+
     public double getDodgeCooldownTimer() {
         return dodgeCooldownTimer;
     }
@@ -503,12 +756,17 @@ public class Player {
     }
 
     public double getDodgeCooldownMax() {
-        return DODGE_COOLDOWN;
+        return DODGE_COOLDOWN / buffManager.getDodgeCooldownFactor();
     }
 
     public double getDodgeProgress() {
+        double maxCd = getDodgeCooldownMax();
         if (dodgeCooldownTimer <= 0) return 1.0;
-        return Math.max(0.0, Math.min(1.0, 1.0 - (dodgeCooldownTimer / DODGE_COOLDOWN)));
+        return Math.max(0.0, Math.min(1.0, 1.0 - (dodgeCooldownTimer / maxCd)));
+    }
+
+    public com.groupproject.game.entity.buff.PlayerBuffManager getBuffManager() {
+        return buffManager;
     }
 
     public double getDodgeDirX() {
@@ -586,4 +844,202 @@ public class Player {
             return (float) Math.max(0.0, Math.min(1.0, lifeTime / maxLifeTime));
         }
     }
+
+    // --- Các phương thức hỗ trợ hoạt cảnh tử trận (Death Slide Mechanics) ---
+
+    /**
+     * Kích hoạt chuỗi hoạt cảnh tử trận: Biến thành đầu lâu trượt ma sát trên sàn hầm ngục.
+     */
+    public void initiateDeathSequence() {
+        this.isDead = true;
+        this.deathTimer = 0.0;
+        this.dodging = false;
+        this.invulnerableTimer = 999.0; // Miễn nhiễm sát thương tiếp theo khi đã tử trận
+        this.deathRotation = 0.0;
+        this.skidSpawnTimer = 0.0;
+        this.deathSkidParticles.clear();
+
+        // Xác định hướng và vận tốc trượt ban đầu theo quán tính di chuyển hoặc bị hất văng ra sau
+        double slideSpeed = 280.0; // 280 px/s ban đầu
+        if (Math.hypot(lastMoveDirX, lastMoveDirY) > 0.1) {
+            this.deathSlideVx = lastMoveDirX * slideSpeed;
+            this.deathSlideVy = lastMoveDirY * slideSpeed;
+        } else {
+            // Đang đứng yên: Trượt văng ngược lại hướng ngắm đòn đánh
+            this.deathSlideVx = -Math.cos(aimAngle) * 220.0;
+            this.deathSlideVy = -Math.sin(aimAngle) * 220.0;
+        }
+    }
+
+    /**
+     * Cập nhật chuyển động trượt, va chạm tường và giảm tốc ma sát của đầu lâu trên sàn.
+     */
+    public void updateDeathSlide(double deltaTime, DungeonMap dungeonMap) {
+        deathTimer += deltaTime;
+
+        // Cập nhật các hạt bụi ma sát
+        deathSkidParticles.removeIf(p -> p.update(deltaTime));
+
+        double currentSlideSpeed = Math.hypot(deathSlideVx, deathSlideVy);
+        if (currentSlideSpeed > 3.0) {
+            double moveX = deathSlideVx * deltaTime;
+            double moveY = deathSlideVy * deltaTime;
+            double curSize = getSize();
+
+            if (dungeonMap != null) {
+                if (dungeonMap.isAreaWalkable(x + moveX, y, curSize, curSize)) {
+                    x += moveX;
+                } else {
+                    deathSlideVx = -deathSlideVx * 0.25; // Dội nhẹ khi va tường
+                }
+                if (dungeonMap.isAreaWalkable(x, y + moveY, curSize, curSize)) {
+                    y += moveY;
+                } else {
+                    deathSlideVy = -deathSlideVy * 0.25;
+                }
+            } else {
+                x += moveX;
+                y += moveY;
+            }
+
+            // Giảm tốc do lực ma sát trượt mặt sàn hầm ngục
+            double friction = 2.3;
+            deathSlideVx *= Math.max(0.0, 1.0 - friction * deltaTime);
+            deathSlideVy *= Math.max(0.0, 1.0 - friction * deltaTime);
+
+            // Góc xoay lăn đầu lâu theo lực quán tính trượt
+            deathRotation += (currentSlideSpeed * 0.025) * deltaTime;
+
+            // Sinh các hạt khói bụi cọ xát sau lưng đầu lâu
+            skidSpawnTimer += deltaTime;
+            if (skidSpawnTimer >= 0.035 && currentSlideSpeed > 20.0) {
+                skidSpawnTimer = 0.0;
+                spawnSkidParticle();
+            }
+        } else {
+            deathSlideVx = 0.0;
+            deathSlideVy = 0.0;
+        }
+    }
+
+    private void spawnSkidParticle() {
+        double px = getCenterX() + ThreadLocalRandom.current().nextDouble(-4, 4);
+        double py = getCenterY() + ThreadLocalRandom.current().nextDouble(-3, 3);
+        double r = ThreadLocalRandom.current().nextDouble(2.0, 5.0);
+        double life = ThreadLocalRandom.current().nextDouble(0.4, 0.8);
+        int gray = ThreadLocalRandom.current().nextInt(55, 90);
+        Color color = new Color(gray, gray, gray, 140);
+        deathSkidParticles.add(new SkidParticle(px, py, r, life, color));
+    }
+
+    /**
+     * Vẽ chiếc Đầu Lâu Chiến Binh (Fallen Operative Skull) trượt ma sát trên sàn hầm ngục.
+     */
+    private void renderDeathSkull(Graphics2D g, Camera camera) {
+        // 1. Render các vệt ma sát / hạt bụi cọ xát trên sàn
+        for (SkidParticle p : deathSkidParticles) {
+            p.render(g, camera);
+        }
+
+        double centerX = getCenterX();
+        double centerY = getCenterY();
+        int screenPX = camera.worldToScreenX(centerX);
+        int screenPY = camera.worldToScreenY(centerY);
+
+        // 2. Bóng đổ dã chiến phẳng sát mặt đất
+        g.setColor(new Color(0, 0, 0, 110));
+        g.fillOval(screenPX - 12, screenPY + 4, 24, 10);
+
+        // 3. Vệt cọ xát ma sát cháy sém sau hướng trượt
+        double speed = Math.hypot(deathSlideVx, deathSlideVy);
+        if (speed > 10.0) {
+            g.setColor(new Color(40, 35, 30, 95));
+            double slideAngle = Math.atan2(deathSlideVy, deathSlideVx);
+            int skidTailX = (int) (screenPX - Math.cos(slideAngle) * 14);
+            int skidTailY = (int) (screenPY - Math.sin(slideAngle) * 14);
+            g.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.drawLine(skidTailX, skidTailY, screenPX, screenPY);
+            g.setStroke(new BasicStroke(1.0f));
+        }
+
+        // 4. Vẽ Đầu Lâu Tử Trận (Operative Fallen Skull)
+        Graphics2D g2 = (Graphics2D) g.create();
+        // Áp dụng góc xoay nhẹ theo lực quán tính trượt
+        g2.rotate(deathRotation * 0.4, screenPX, screenPY);
+
+        // Hộp sọ chính (Cranium) bo tròn màu trắng ngà xương
+        g2.setColor(new Color(238, 232, 222)); // Bone Ivory
+        g2.fillOval(screenPX - 12, screenPY - 12, 24, 22);
+        g2.setColor(new Color(145, 135, 125)); // Viền xương xám
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(screenPX - 12, screenPY - 12, 24, 22);
+
+        // Vùng hàm dưới và hàng răng xương trắng
+        g2.setColor(new Color(238, 232, 222));
+        g2.fillRoundRect(screenPX - 7, screenPY + 6, 14, 8, 3, 3);
+        g2.setColor(new Color(145, 135, 125));
+        g2.drawRoundRect(screenPX - 7, screenPY + 6, 14, 8, 3, 3);
+
+        // Kẽ các răng xương
+        g2.setColor(new Color(60, 55, 50));
+        g2.drawLine(screenPX - 3, screenPY + 6, screenPX - 3, screenPY + 13);
+        g2.drawLine(screenPX, screenPY + 6, screenPX, screenPY + 13);
+        g2.drawLine(screenPX + 3, screenPY + 6, screenPX + 3, screenPY + 13);
+
+        // Hai hốc mắt to màu đen sâu thẳm
+        g2.setColor(new Color(22, 18, 20));
+        g2.fillOval(screenPX - 9, screenPY - 5, 7, 9);
+        g2.fillOval(screenPX + 2, screenPY - 5, 7, 9);
+
+        // Đốm lửa ma trơi le lói trong hốc mắt (nhạt dần theo tiến trình trượt)
+        double soulAlpha = Math.max(0.0, 1.0 - deathTimer / DEATH_SLIDE_DURATION);
+        if (soulAlpha > 0.05) {
+            int eyeAlpha = (int) (220 * soulAlpha);
+            g2.setColor(new Color(0, 230, 255, eyeAlpha)); // Cyan linh hồn chiến binh đặc nhiệm
+            g2.fillOval(screenPX - 6, screenPY - 2, 3, 3);
+            g2.fillOval(screenPX + 5, screenPY - 2, 3, 3);
+        }
+
+        // Hốc mũi tam giác ngược
+        g2.setColor(new Color(22, 18, 20));
+        g2.fillPolygon(new int[]{screenPX - 2, screenPX + 2, screenPX}, new int[]{screenPY + 2, screenPY + 2, screenPY + 5}, 3);
+
+        // Vết nứt sọ chiến trường (Battle damage crack)
+        g2.setColor(new Color(125, 115, 105));
+        g2.drawLine(screenPX + 2, screenPY - 12, screenPX + 4, screenPY - 8);
+        g2.drawLine(screenPX + 4, screenPY - 8, screenPX + 1, screenPY - 5);
+
+        g2.dispose();
+    }
+
+    /**
+     * Kiểm tra xem chuỗi hoạt cảnh đầu lâu trượt tử trận đã hoàn tất chưa (sau 2.0 giây).
+     */
+    public boolean isDeathSequenceComplete() {
+        return isDead && deathTimer >= DEATH_SLIDE_DURATION;
+    }
+
+    public double getDeathTimer() {
+        return deathTimer;
+    }
+
+    public double getDeathSequenceDuration() {
+        return DEATH_SLIDE_DURATION;
+    }
+
+    public double getDeathSequenceProgress() {
+        return Math.clamp(deathTimer / DEATH_SLIDE_DURATION, 0.0, 1.0);
+    }
+
+    /**
+     * Hoàn tất ngay chuỗi tử trận (khi người chơi nhấn phím bỏ qua để xem bảng kết quả ngay).
+     */
+    public void completeDeathSequence() {
+        if (isDead) {
+            this.deathTimer = DEATH_SLIDE_DURATION;
+            this.deathSlideVx = 0.0;
+            this.deathSlideVy = 0.0;
+        }
+    }
 }
+

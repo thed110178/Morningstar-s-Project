@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -31,6 +32,8 @@ public class DungeonMap {
     private Room extractRoom;
     private Room shopRoom;
     private Room resetStatRoom;
+    private Room upgradeRoom;
+    private final List<RoomConnection> activeConnections = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     /**
      * Constructs the dungeon matrix and builds the procedural multi-room layout.
@@ -104,15 +107,136 @@ public class DungeonMap {
         }
     }
 
-    private static class RoomConnection {
-        final RoomNode from;
-        final RoomNode to;
-        final Direction dir;
+    /**
+     * Định nghĩa các kiểu hình dạng, kích thước và bố cục che chắn cho phòng combat.
+     */
+    public static class CombatRoomArchetype {
+        public final int width;
+        public final int height;
+        public final String title;
+        public final int coverLayout;
 
-        RoomConnection(RoomNode from, RoomNode to, Direction dir) {
+        public CombatRoomArchetype(int width, int height, String title, int coverLayout) {
+            this.width = width;
+            this.height = height;
+            this.title = title;
+            this.coverLayout = coverLayout;
+        }
+    }
+
+    public static final CombatRoomArchetype[] COMBAT_ARCHETYPES = new CombatRoomArchetype[] {
+        new CombatRoomArchetype(14, 10, "Tactical Arena", 0),       // 0: Cột trụ 4 góc kiên cố
+        new CombatRoomArchetype(12, 9,  "CQC Bunker", 1),           // 1: Boong-ke 2 Trụ Trung Tâm
+        new CombatRoomArchetype(14, 9,  "Assault Gallery", 2),      // 2: 2 Bức Tường Song Song Phân Làn
+        new CombatRoomArchetype(13, 10, "Crossfire Chamber", 3),    // 3: Công Sự Góc Chữ L
+        new CombatRoomArchetype(13, 9,  "Tactical Killzone", 4),    // 4: Bàn Cờ Đan Xen So Le
+        new CombatRoomArchetype(14, 10, "Divided Bastion", 5)       // 5: Chiến Hào Phân Đôi
+    };
+
+    private static class PlacementChoice {
+        final RoomNode source;
+        final Direction dir;
+        final int occupiedNeighbors;
+
+        PlacementChoice(RoomNode source, Direction dir, int occupiedNeighbors) {
+            this.source = source;
+            this.dir = dir;
+            this.occupiedNeighbors = occupiedNeighbors;
+        }
+    }
+
+    private PlacementChoice findBestSpecialRoomPlacement(List<RoomNode> candidateSources, RoomNode[][] grid) {
+        List<PlacementChoice> choices = new ArrayList<>();
+        for (RoomNode cand : candidateSources) {
+            if (cand == null) continue;
+            for (Direction dir : Direction.values()) {
+                int nx = cand.gx + dir.dx;
+                int ny = cand.gy + dir.dy;
+                if (nx >= 0 && nx < GRID_COLS && ny >= 0 && ny < GRID_ROWS && grid[nx][ny] == null) {
+                    int neighbors = countOccupiedNeighbors(grid, nx, ny);
+                    choices.add(new PlacementChoice(cand, dir, neighbors));
+                }
+            }
+        }
+        if (choices.isEmpty()) return null;
+        java.util.Collections.shuffle(choices);
+        // Ưu tiên vị trí có từ 2 phòng lân cận trở lên (ngã ba) để tạo 2 lối vào/ra
+        choices.sort((a, b) -> Integer.compare(b.occupiedNeighbors, a.occupiedNeighbors));
+        return choices.get(0);
+    }
+
+    private int countOccupiedNeighbors(RoomNode[][] grid, int gx, int gy) {
+        int count = 0;
+        for (Direction dir : Direction.values()) {
+            int nx = gx + dir.dx;
+            int ny = gy + dir.dy;
+            if (nx >= 0 && nx < GRID_COLS && ny >= 0 && ny < GRID_ROWS && grid[nx][ny] != null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countRoomConnections(List<RoomConnection> connections, Room room) {
+        int count = 0;
+        for (RoomConnection c : connections) {
+            if (c.from == room || c.to == room) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static class RoomConnection {
+        public final Room from;
+        public final Room to;
+        public final Direction dir;
+
+        public RoomConnection(RoomNode fromNode, RoomNode toNode, Direction dir) {
+            this.from = fromNode.room;
+            this.to = toNode.room;
+            this.dir = dir;
+        }
+
+        public RoomConnection(Room from, Room to, Direction dir) {
             this.from = from;
             this.to = to;
             this.dir = dir;
+        }
+
+        /**
+         * Trả về hình chữ nhật ô tile của hành lang kết nối giữa 2 phòng.
+         */
+        public java.awt.Rectangle getCorridorTileBounds() {
+            if (dir == Direction.EAST) {
+                int exitCol = from.getGridX() + from.getWidthInTiles() - 1;
+                int entryCol = to.getGridX();
+                int minCol = Math.min(exitCol, entryCol);
+                int maxCol = Math.max(exitCol, entryCol);
+                int startRow = from.getGridY() + 3;
+                return new java.awt.Rectangle(minCol, startRow, (maxCol - minCol + 1), 4);
+            } else if (dir == Direction.WEST) {
+                int exitCol = to.getGridX() + to.getWidthInTiles() - 1;
+                int entryCol = from.getGridX();
+                int minCol = Math.min(exitCol, entryCol);
+                int maxCol = Math.max(exitCol, entryCol);
+                int startRow = to.getGridY() + 3;
+                return new java.awt.Rectangle(minCol, startRow, (maxCol - minCol + 1), 4);
+            } else if (dir == Direction.SOUTH) {
+                int exitRow = from.getGridY() + from.getHeightInTiles() - 1;
+                int entryRow = to.getGridY();
+                int minRow = Math.min(exitRow, entryRow);
+                int maxRow = Math.max(exitRow, entryRow);
+                int startCol = from.getGridX() + 5;
+                return new java.awt.Rectangle(startCol, minRow, 4, (maxRow - minRow + 1));
+            } else { // NORTH
+                int exitRow = to.getGridY() + to.getHeightInTiles() - 1;
+                int entryRow = from.getGridY();
+                int minRow = Math.min(exitRow, entryRow);
+                int maxRow = Math.max(exitRow, entryRow);
+                int startCol = to.getGridX() + 5;
+                return new java.awt.Rectangle(startCol, minRow, 4, (maxRow - minRow + 1));
+            }
         }
     }
 
@@ -153,9 +277,9 @@ public class DungeonMap {
      * - Mỗi cặp phòng kề nhau được nối bởi 1 hành lang thẳng tắp duy nhất, bọc tường và lắp blast doors.
      */
     public void generateProceduralDungeon() {
-        int numCombat = ThreadLocalRandom.current().nextInt(3, 6);
+        int numCombat = ThreadLocalRandom.current().nextInt(3, 5);
         boolean success = false;
-        int maxAttempts = 60;
+        int maxAttempts = 100;
 
         for (int attempt = 0; attempt < maxAttempts && !success; attempt++) {
             rooms.clear();
@@ -178,7 +302,9 @@ public class DungeonMap {
             // để người chơi nhấn D đi thẳng vào buồng chiến đấu đầu tiên
             int c1Col = gridOriginX(1);
             int c1Row = gridOriginY(1);
-            Room combat1 = new Room(c1Col, c1Row, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.COMBAT, "Combat Arena 1");
+            CombatRoomArchetype arch1 = COMBAT_ARCHETYPES[0];
+            Room combat1 = new Room(c1Col, c1Row, arch1.width, arch1.height, Room.RoomType.COMBAT, "Combat Arena 1 (" + arch1.title + ")");
+            combat1.setCoverLayout(arch1.coverLayout);
             RoomNode c1Node = new RoomNode(1, 1, combat1);
             grid[1][1] = c1Node;
             combatRooms.add(combat1);
@@ -186,7 +312,7 @@ public class DungeonMap {
             combatNodes.add(c1Node);
             connections.add(new RoomConnection(spawnNode, c1Node, Direction.EAST));
 
-            // 3. Sinh các phòng combat tiếp theo liền kề ở 12h, 3h, 6h, 9h
+            // 3. Sinh các phòng combat tiếp theo liền kề ở 12h, 3h, 6h, 9h với kích thước và bố cục đa dạng
             boolean failedCombat = false;
             for (int i = 2; i <= numCombat; i++) {
                 RoomNode sourceNode = null;
@@ -214,7 +340,9 @@ public class DungeonMap {
                 int nextCol = gridOriginX(nextGx);
                 int nextRow = gridOriginY(nextGy);
 
-                Room nextCombat = new Room(nextCol, nextRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.COMBAT, "Combat Arena " + i);
+                CombatRoomArchetype arch = COMBAT_ARCHETYPES[(i - 1) % COMBAT_ARCHETYPES.length];
+                Room nextCombat = new Room(nextCol, nextRow, arch.width, arch.height, Room.RoomType.COMBAT, "Combat Arena " + i + " (" + arch.title + ")");
+                nextCombat.setCoverLayout(arch.coverLayout);
                 RoomNode nextNode = new RoomNode(nextGx, nextGy, nextCombat);
                 grid[nextGx][nextGy] = nextNode;
                 combatRooms.add(nextCombat);
@@ -263,30 +391,19 @@ public class DungeonMap {
             connections.add(new RoomConnection(extractSource, extNode, extractDir));
 
             // 4.5. Đặt Shop Room ở ô lân cận theo 12h, 3h, 6h, 9h
-            // WHY: Cho phép Shop Room xuất hiện ở bất kỳ đâu trong stage (nhánh từ bất kỳ phòng Combat, Extract, hoặc Spawn)
-            RoomNode shopSource = null;
-            Direction shopDir = null;
-
+            // WHY: Cho phép Shop Room xuất hiện ở bất kỳ đâu trong stage, ưu tiên các nút giao (>= 2 phòng kề cận)
             List<RoomNode> shopCandidates = new ArrayList<>();
             shopCandidates.addAll(combatNodes);
             shopCandidates.add(extNode);
             shopCandidates.add(spawnNode);
-            // Xáo trộn ngẫu nhiên để vị trí phòng Shop phân tán đa dạng khắp màn chơi, không bị cố định dính liền vào Spawn
-            java.util.Collections.shuffle(shopCandidates);
 
-            for (RoomNode cand : shopCandidates) {
-                List<Direction> validDirs = getValidAdjacentDirections(cand, grid);
-                if (!validDirs.isEmpty()) {
-                    shopSource = cand;
-                    shopDir = validDirs.get(ThreadLocalRandom.current().nextInt(validDirs.size()));
-                    break;
-                }
-            }
-
-            if (shopSource == null || shopDir == null) {
+            PlacementChoice shopChoice = findBestSpecialRoomPlacement(shopCandidates, grid);
+            if (shopChoice == null) {
                 continue;
             }
 
+            RoomNode shopSource = shopChoice.source;
+            Direction shopDir = shopChoice.dir;
             int shopGx = shopSource.gx + shopDir.dx;
             int shopGy = shopSource.gy + shopDir.dy;
             int shopCol = gridOriginX(shopGx);
@@ -299,29 +416,18 @@ public class DungeonMap {
             connections.add(new RoomConnection(shopSource, shopNode, shopDir));
 
             // 4.6. Đặt Reset Stat Room ở ô lân cận theo 12h, 3h, 6h, 9h
-            RoomNode resetSource = null;
-            Direction resetDir = null;
-
             List<RoomNode> resetCandidates = new ArrayList<>();
             resetCandidates.addAll(combatNodes);
             resetCandidates.add(extNode);
             resetCandidates.add(spawnNode);
-            resetCandidates.add(shopNode);
-            java.util.Collections.shuffle(resetCandidates);
 
-            for (RoomNode cand : resetCandidates) {
-                List<Direction> validDirs = getValidAdjacentDirections(cand, grid);
-                if (!validDirs.isEmpty()) {
-                    resetSource = cand;
-                    resetDir = validDirs.get(ThreadLocalRandom.current().nextInt(validDirs.size()));
-                    break;
-                }
-            }
-
-            if (resetSource == null || resetDir == null) {
+            PlacementChoice resetChoice = findBestSpecialRoomPlacement(resetCandidates, grid);
+            if (resetChoice == null) {
                 continue;
             }
 
+            RoomNode resetSource = resetChoice.source;
+            Direction resetDir = resetChoice.dir;
             int resetGx = resetSource.gx + resetDir.dx;
             int resetGy = resetSource.gy + resetDir.dy;
             int resetCol = gridOriginX(resetGx);
@@ -332,6 +438,30 @@ public class DungeonMap {
             grid[resetGx][resetGy] = resetNode;
             rooms.add(resetStatRoom);
             connections.add(new RoomConnection(resetSource, resetNode, resetDir));
+
+            // 4.7. Đặt Upgrade Room (Phòng Nâng Cấp Nhân Vật) ở ô lân cận theo 12h, 3h, 6h, 9h
+            List<RoomNode> upgradeCandidates = new ArrayList<>();
+            upgradeCandidates.addAll(combatNodes);
+            upgradeCandidates.add(extNode);
+            upgradeCandidates.add(spawnNode);
+
+            PlacementChoice upgradeChoice = findBestSpecialRoomPlacement(upgradeCandidates, grid);
+            if (upgradeChoice == null) {
+                continue;
+            }
+
+            RoomNode upgradeSource = upgradeChoice.source;
+            Direction upgradeDir = upgradeChoice.dir;
+            int upgradeGx = upgradeSource.gx + upgradeDir.dx;
+            int upgradeGy = upgradeSource.gy + upgradeDir.dy;
+            int upgradeCol = gridOriginX(upgradeGx);
+            int upgradeRow = gridOriginY(upgradeGy);
+
+            upgradeRoom = new Room(upgradeCol, upgradeRow, ROOM_WIDTH, ROOM_HEIGHT, Room.RoomType.UPGRADE, "Bio-Tech Augmentation Laboratory");
+            RoomNode upgradeNode = new RoomNode(upgradeGx, upgradeGy, upgradeRoom);
+            grid[upgradeGx][upgradeGy] = upgradeNode;
+            rooms.add(upgradeRoom);
+            connections.add(new RoomConnection(upgradeSource, upgradeNode, upgradeDir));
 
             // 5. Chạm trổ tất cả các phòng và bệ / cột bên trong
             for (Room r : rooms) {
@@ -346,6 +476,9 @@ public class DungeonMap {
 
             // Bệ Reforge 4x4 tại tâm Reset Stat Room
             carvePad(resetStatRoom.getGridX() + 5, resetStatRoom.getGridY() + 3, 4, 4, TileType.REFORGE_ZONE);
+
+            // Bệ Nâng cấp 4x4 tại tâm Upgrade Room
+            carvePad(upgradeRoom.getGridX() + 5, upgradeRoom.getGridY() + 3, 4, 4, TileType.UPGRADE_ZONE);
 
 
             // 6. Tự động kết nối TẤT CẢ các phòng Combat ở cạnh nhau (theo 4 hướng 12h, 3h, 6h, 9h)
@@ -375,9 +508,41 @@ public class DungeonMap {
                 }
             }
 
+            // 6.5. Cho phép các phòng đặc biệt (Shop, Reset Stat, Upgrade) có thể có tối đa 2 lối vào/ra
+            // WHY: Người chơi có thể đi xuyên qua phòng đặc biệt (crossroad/pass-through) giữa các phòng khác,
+            // xóa bỏ cảm giác phòng cụt và tăng tính cơ động chiến thuật khi di chuyển trên bản đồ.
+            List<RoomNode> specialNodes = Arrays.asList(shopNode, resetNode, upgradeNode);
+            for (RoomNode sNode : specialNodes) {
+                if (sNode == null || sNode.room == null) continue;
+                if (countRoomConnections(connections, sNode.room) >= 2) continue;
+
+                // Kiểm tra 4 hướng lân cận để tìm các phòng kề cận có thể kết nối thêm lối thứ 2
+                for (Direction dir : Direction.values()) {
+                    int nx = sNode.gx + dir.dx;
+                    int ny = sNode.gy + dir.dy;
+                    if (nx >= 0 && nx < GRID_COLS && ny >= 0 && ny < GRID_ROWS) {
+                        RoomNode neighbor = grid[nx][ny];
+                        if (neighbor != null && neighbor.room != null) {
+                            // Nếu neighbor là phòng đặc biệt, chỉ kết nối nếu neighbor chưa đạt tối đa 2 lối
+                            Room.RoomType nType = neighbor.room.getRoomType();
+                            if ((nType == Room.RoomType.SHOP || nType == Room.RoomType.RESET_STAT || nType == Room.RoomType.UPGRADE)
+                                    && countRoomConnections(connections, neighbor.room) >= 2) {
+                                continue;
+                            }
+
+                            if (addUniqueConnection(connections, sNode, neighbor, dir)) {
+                                if (countRoomConnections(connections, sNode.room) >= 2) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 7. Chạm trổ tất cả các hành lang thẳng tắp theo 4 hướng và lắp đặt blast doors
             for (RoomConnection conn : connections) {
-                connectAdjacentRooms(conn.from.room, conn.to.room, conn.dir);
+                connectAdjacentRooms(conn.from, conn.to, conn.dir);
             }
 
             // 8. Sinh đồng thời cả Cover Cứng (Tactical Pillar) và Cover Tạm Thời (Destructible Crate)
@@ -389,17 +554,23 @@ public class DungeonMap {
             }
 
             this.combatRoom = combatRooms.get(0);
+            this.activeConnections.clear();
+            this.activeConnections.addAll(connections);
+            if (this.spawnRoom != null) {
+                this.spawnRoom.setDiscovered(true);
+            }
             success = true;
         }
     }
 
-    private void addUniqueConnection(List<RoomConnection> connections, RoomNode from, RoomNode to, Direction dir) {
+    private boolean addUniqueConnection(List<RoomConnection> connections, RoomNode from, RoomNode to, Direction dir) {
         for (RoomConnection c : connections) {
-            if ((c.from == from && c.to == to) || (c.from == to && c.to == from)) {
-                return;
+            if ((c.from == from.room && c.to == to.room) || (c.from == to.room && c.to == from.room)) {
+                return false;
             }
         }
         connections.add(new RoomConnection(from, to, dir));
+        return true;
     }
 
     private List<Direction> getValidAdjacentDirections(RoomNode node, RoomNode[][] grid) {
@@ -429,7 +600,7 @@ public class DungeonMap {
      */
     private void connectAdjacentRooms(Room from, Room to, Direction dir) {
         if (dir == Direction.EAST) {
-            int exitCol = from.getGridX() + ROOM_WIDTH - 1;
+            int exitCol = from.getGridX() + from.getWidthInTiles() - 1;
             int entryCol = to.getGridX();
             int startRow = from.getGridY() + 3;
             int endRow = from.getGridY() + 6;
@@ -447,6 +618,8 @@ public class DungeonMap {
                     installShopDoorTile(from, exitCol, r);
                 } else if (from.getRoomType() == Room.RoomType.RESET_STAT) {
                     installResetStatDoorTile(from, exitCol, r);
+                } else if (from.getRoomType() == Room.RoomType.UPGRADE) {
+                    installUpgradeDoorTile(from, exitCol, r);
                 }
 
                 if (to.getRoomType() == Room.RoomType.COMBAT) {
@@ -455,6 +628,8 @@ public class DungeonMap {
                     installShopDoorTile(to, entryCol, r);
                 } else if (to.getRoomType() == Room.RoomType.RESET_STAT) {
                     installResetStatDoorTile(to, entryCol, r);
+                } else if (to.getRoomType() == Room.RoomType.UPGRADE) {
+                    installUpgradeDoorTile(to, entryCol, r);
                 }
             }
 
@@ -471,7 +646,7 @@ public class DungeonMap {
             connectAdjacentRooms(to, from, Direction.EAST);
 
         } else if (dir == Direction.SOUTH) {
-            int exitRow = from.getGridY() + ROOM_HEIGHT - 1;
+            int exitRow = from.getGridY() + from.getHeightInTiles() - 1;
             int entryRow = to.getGridY();
             int startCol = from.getGridX() + 5;
             int endCol = from.getGridX() + 8;
@@ -489,6 +664,8 @@ public class DungeonMap {
                     installShopDoorTile(from, c, exitRow);
                 } else if (from.getRoomType() == Room.RoomType.RESET_STAT) {
                     installResetStatDoorTile(from, c, exitRow);
+                } else if (from.getRoomType() == Room.RoomType.UPGRADE) {
+                    installUpgradeDoorTile(from, c, exitRow);
                 }
 
                 if (to.getRoomType() == Room.RoomType.COMBAT) {
@@ -497,6 +674,8 @@ public class DungeonMap {
                     installShopDoorTile(to, c, entryRow);
                 } else if (to.getRoomType() == Room.RoomType.RESET_STAT) {
                     installResetStatDoorTile(to, c, entryRow);
+                } else if (to.getRoomType() == Room.RoomType.UPGRADE) {
+                    installUpgradeDoorTile(to, c, entryRow);
                 }
             }
 
@@ -543,6 +722,17 @@ public class DungeonMap {
         if (isValidGrid(col, row)) {
             Tile doorTile = tiles[col][row];
             doorTile.setType(TileType.DOOR_RESET_STAT); // Luôn mở, nhận diện Neon Cyan của Reset Stat Lab
+            room.addDoorTile(doorTile);
+        }
+    }
+
+    /**
+     * Lắp đặt cửa cổng phòng Nâng Cấp Nhân Vật luôn mở (DOOR_UPGRADE) tại vị trí chỉ định và đăng ký vào upgradeRoom.
+     */
+    private void installUpgradeDoorTile(Room room, int col, int row) {
+        if (isValidGrid(col, row)) {
+            Tile doorTile = tiles[col][row];
+            doorTile.setType(TileType.DOOR_UPGRADE); // Luôn mở, nhận diện Neon Emerald của Bio-Tech Lab
             room.addDoorTile(doorTile);
         }
     }
@@ -832,6 +1022,22 @@ public class DungeonMap {
 
                         renderArchwayBadge(g, doorScreenX, doorScreenY, "★ XƯỞNG QUÂN KHÍ DÃ CHIẾN (LUÔN MỞ) ★", new Color(235, 190, 30, 230), new Color(28, 28, 24, 235));
                     }
+                } else if (room.getRoomType() == Room.RoomType.UPGRADE) {
+                    // Hiển thị biển hiệu cổng vào Phòng Nâng Cấp Nhân Vật
+                    if (!room.getDoorTiles().isEmpty()) {
+                        double avgDoorX = 0, avgDoorY = 0;
+                        for (Tile dt : room.getDoorTiles()) {
+                            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
+                            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
+                        }
+                        avgDoorX /= room.getDoorTiles().size();
+                        avgDoorY /= room.getDoorTiles().size();
+
+                        int doorScreenX = camera.worldToScreenX(avgDoorX);
+                        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
+
+                        renderArchwayBadge(g, doorScreenX, doorScreenY, "★ PHÒNG NÂNG CẤP NHÂN VẬT (LUÔN MỞ) ★", new Color(40, 240, 180, 230), new Color(15, 35, 30, 235));
+                    }
                 } else {
                     g.setColor(new Color(190, 100, 255, 200));
                     g.drawString("[ " + room.getName() + " ]", screenX, screenY);
@@ -884,6 +1090,10 @@ public class DungeonMap {
 
     public Room getResetStatRoom() {
         return resetStatRoom;
+    }
+
+    public Room getUpgradeRoom() {
+        return upgradeRoom;
     }
 
     public List<Room> getRooms() {
@@ -1036,6 +1246,15 @@ public class DungeonMap {
 
         this.combatRoom = bossRoom;
         this.extractRoom = null; // Chưa có phòng sơ tán độc lập, sẽ mở bệ ngay trong phòng sau khi clear
+        this.upgradeRoom = null;
+
+        this.activeConnections.clear();
+        this.activeConnections.add(new RoomConnection(spawnRoom, shopRoom, Direction.NORTH));
+        this.activeConnections.add(new RoomConnection(spawnRoom, resetStatRoom, Direction.SOUTH));
+        this.activeConnections.add(new RoomConnection(spawnRoom, bossRoom, Direction.EAST));
+        if (this.spawnRoom != null) {
+            this.spawnRoom.setDiscovered(true);
+        }
     }
 
     /**
@@ -1111,7 +1330,9 @@ public class DungeonMap {
     }
 
     /**
-     * Sinh các ô cover cứng (Permanent Solid Cover) kiên cố tại các vị trí chiến thuật an toàn bên trong phòng.
+     * Sinh các ô cover cứng (Permanent Solid Cover) kiên cố tại các vị trí chiến thuật an toàn bên trong phòng
+     * dựa trên layout chiến thuật được chỉ định (0: Cột 4 góc, 1: Boong-ke 2 Trụ, 2: Tường Song Song, 3: Góc Chữ L,
+     * 4: Bàn Cờ So Le, 5: Chiến Hào Phân Đôi).
      * Tuyệt đối không sinh ở gần bất kỳ cửa ra vào nào để tránh cản trở và gây tắc nghẽn gameplay.
      *
      * @param room Phòng chiến đấu cần bố trí cover cứng.
@@ -1124,15 +1345,70 @@ public class DungeonMap {
         int rw = room.getWidthInTiles();
         int rh = room.getHeightInTiles();
 
-        // Bố trí các cột trụ chiến thuật tại các góc phòng (cách xa lối đi cửa và tâm phòng)
-        int[][] candidatePositions = {
-            {rx + 3, ry + 2},
-            {rx + rw - 4, ry + 2},
-            {rx + 3, ry + rh - 3},
-            {rx + rw - 4, ry + rh - 3}
-        };
+        int layout = room.getCoverLayout();
+        List<int[]> candidates = new ArrayList<>();
 
-        for (int[] pos : candidatePositions) {
+        switch (layout) {
+            case 1: // CENTRAL_BARRICADES (Boong-ke 2 Trụ Trung Tâm - CQC Bunker)
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + rw - 4, ry + 2});
+                candidates.add(new int[]{rx + 3, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                candidates.add(new int[]{rx + 4, ry + 2});
+                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
+                break;
+
+            case 2: // PARALLEL_DEFENSIVE_WALLS (Bức Tường Song Song Phân Làn - Assault Gallery)
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + 4, ry + 2});
+                candidates.add(new int[]{rx + 5, ry + 2});
+                candidates.add(new int[]{rx + rw - 6, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                break;
+
+            case 3: // L_SHAPED_FORTRESS (Công Sự Góc Chữ L - Crossfire Chamber)
+                // L-shape ở góc Tây Bắc
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + 4, ry + 2});
+                candidates.add(new int[]{rx + 3, ry + 3});
+                // L-shape ở góc Đông Nam
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 4});
+                break;
+
+            case 4: // SCATTERED_CHECKERBOARD (Bàn Cờ Đan Xen So Le - Tactical Killzone)
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + rw - 4, ry + 2});
+                candidates.add(new int[]{rx + 4, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
+                candidates.add(new int[]{rx + 3, ry + rh - 4});
+                candidates.add(new int[]{rx + rw - 4, ry + 3});
+                break;
+
+            case 5: // DIVIDED_BASTION (Chiến Hào Phân Đôi - Divided Bastion)
+                // Hai cặp trụ đôi song lập ở cánh trái và cánh phải
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + 4, ry + 2});
+                candidates.add(new int[]{rx + rw - 5, ry + 2});
+                candidates.add(new int[]{rx + rw - 4, ry + 2});
+                candidates.add(new int[]{rx + 3, ry + rh - 3});
+                candidates.add(new int[]{rx + 4, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                break;
+
+            case 0: // CORNER_PILLARS (Cột Trụ 4 Góc Kiên Cố - Tactical Arena)
+            default:
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + rw - 4, ry + 2});
+                candidates.add(new int[]{rx + 3, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                break;
+        }
+
+        for (int[] pos : candidates) {
             int c = pos[0];
             int r = pos[1];
             if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
@@ -1218,6 +1494,55 @@ public class DungeonMap {
     }
 
     /**
+     * Kiểm tra xem trong vùng chỉ định có bất kỳ ô vật cản cứng nào không thể xuyên phá hay không
+     * (Tường cứng, Void, Cửa đóng - loại trừ các ô cover tạm thời có thể phá hủy).
+     */
+    public boolean isAreaBlockingImpenetrable(double worldX, double worldY, double width, double height) {
+        int minCol = (int) Math.floor(worldX / GameConfig.TILE_SIZE);
+        int maxCol = (int) Math.floor((worldX + width - 0.001) / GameConfig.TILE_SIZE);
+        int minRow = (int) Math.floor(worldY / GameConfig.TILE_SIZE);
+        int maxRow = (int) Math.floor((worldY + height - 0.001) / GameConfig.TILE_SIZE);
+
+        for (int c = minCol; c <= maxCol; c++) {
+            for (int r = minRow; r <= maxRow; r++) {
+                if (!isValidGrid(c, r)) {
+                    return true;
+                }
+                Tile tile = tiles[c][r];
+                // Nếu ô chặn đạn và KHÔNG PHẢI là cover tạm thời có thể phá hủy -> cản cứng tuyệt đối!
+                if (tile.blocksProjectiles() && !tile.isDestructible()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Tác động sát thương lên các ô cover tạm thời trong vùng và ghi nhận lượt xuyên phá vào viên đạn.
+     * @return true nếu đạn đã chạm và gây sát thương lên ít nhất một ô cover tạm thời.
+     */
+    public boolean handleProjectileCoverPenetration(com.groupproject.game.entity.projectile.Projectile p) {
+        if (p == null || !p.isActive()) return false;
+        int minCol = (int) Math.floor((p.getX() - 4) / GameConfig.TILE_SIZE);
+        int maxCol = (int) Math.floor((p.getX() + 4 - 0.001) / GameConfig.TILE_SIZE);
+        int minRow = (int) Math.floor((p.getY() - 4) / GameConfig.TILE_SIZE);
+        int maxRow = (int) Math.floor((p.getY() + 4 - 0.001) / GameConfig.TILE_SIZE);
+
+        boolean hitAnyCover = false;
+        for (int c = minCol; c <= maxCol; c++) {
+            for (int r = minRow; r <= maxRow; r++) {
+                if (isValidGrid(c, r) && tiles[c][r].isDestructible()) {
+                    tiles[c][r].takeDamage(p.getDamage());
+                    p.onHitCover(c, r);
+                    hitAnyCover = true;
+                }
+            }
+        }
+        return hitAnyCover;
+    }
+
+    /**
      * Resets the dungeon by regenerating a fresh procedural layout with new random rooms and corridors.
      */
     public void reset() {
@@ -1226,6 +1551,57 @@ public class DungeonMap {
         }
         this.currentStage = 1;
         generateStage(1);
+    }
+
+    /**
+     * Danh sách tất cả các hành lang kết nối đang hoạt động trong stage hiện tại.
+     */
+    public List<RoomConnection> getActiveConnections() {
+        return activeConnections;
+    }
+
+    /**
+     * Tìm căn phòng chứa tọa độ thế giới (worldX, worldY).
+     * Trả về null nếu tọa độ nằm trong hành lang hoặc ngoài phạm vi các phòng.
+     */
+    public Room getRoomAtWorldPoint(double worldX, double worldY) {
+        for (Room r : rooms) {
+            if (r != null && r.containsWorldPoint(worldX, worldY)) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Cập nhật trạng thái khám phá (Fog of War) dựa trên vị trí hiện tại của Operative.
+     * Khi người chơi bước vào một căn phòng, phòng đó lập tức được đánh dấu đã khám phá (discovered = true),
+     * đồng thời toàn bộ hành lang dẫn tới phòng đó sẽ được hiển thị trên Minimap.
+     */
+    public void updateDiscovery(double worldX, double worldY) {
+        Room currentRoom = getRoomAtWorldPoint(worldX, worldY);
+        if (currentRoom != null && !currentRoom.isDiscovered()) {
+            currentRoom.setDiscovered(true);
+        }
+    }
+
+    /**
+     * Kiểm tra xem một căn phòng có kề cạnh (nối qua hành lang) với ít nhất một phòng đã được khám phá hay không.
+     * Dùng để hiển thị biểu tượng "?" và khung mờ bí ẩn trên Minimap cho các phòng liền kề chưa bước vào.
+     */
+    public boolean isRoomAdjacentToDiscovered(Room room) {
+        if (room == null || room.isDiscovered()) {
+            return false;
+        }
+        for (RoomConnection conn : activeConnections) {
+            if (conn.from == room && conn.to != null && conn.to.isDiscovered()) {
+                return true;
+            }
+            if (conn.to == room && conn.from != null && conn.from.isDiscovered()) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

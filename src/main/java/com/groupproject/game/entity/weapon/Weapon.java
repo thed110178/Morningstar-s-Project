@@ -21,7 +21,7 @@ public abstract class Weapon {
     protected int slotIndex; // Slot số 1 hoặc 2 cho vũ khí chính, 3 cho Pistol, 4 cho Knife
     protected int damage;
     protected double fireRateCooldown; // Seconds between successive strikes/shots
-    protected final int magazineSize;        // Maximum magazine capacity (0 for melee)
+    protected int magazineSize;              // Maximum magazine capacity (0 for melee)
     protected final double reloadDuration;   // Time in seconds to reload a fresh magazine
 
     // --- Hệ thống cấp độ và chỉ số sao (Star Modifiers) ---
@@ -45,6 +45,11 @@ public abstract class Weapon {
     // Tỉ lệ chí mạng càng cao thì tỉ lệ xuất hiện trong hòm/shop càng ít.
     protected double critChance = 0.15; // Mặc định 15%
     protected double critMultiplier = 2.0; // Sát thương x2.0 khi nổ chí mạng
+
+    // --- Hệ thống Khí Tài Hạng S (S-Tier Legendary) ---
+    // WHY: 5% tỉ lệ súng nhặt được hoặc xuất hiện sẽ mang mác S với tỉ lệ chí mạng thường xuyên cao (35% - 50%)
+    // và sở hữu đặc quyền tự động thăng cấp (+1 Level) mỗi khi vượt qua một Stage tác chiến.
+    protected boolean sTier = false;
 
     protected int currentAmmo;
     protected double cooldownTimer = 0.0;
@@ -80,6 +85,7 @@ public abstract class Weapon {
         this.fireRateStars = 1;
         this.accuracyStars = 1;
         this.critChance = rollRandomCritChance();
+        this.critMultiplier = rollRandomCritMultiplier();
     }
 
     /**
@@ -199,6 +205,17 @@ public abstract class Weapon {
     }
 
     /**
+     * Kiểm tra xem vũ khí này có bị hết sạch đạn hoàn toàn hay không
+     * (đạn trong băng = 0 VÀ đạn trong kho dự trữ = 0, loại trừ vũ khí cận chiến và súng vô hạn đạn).
+     */
+    public boolean isOutOfAmmo() {
+        if (isMelee() || hasInfiniteAmmo()) {
+            return false;
+        }
+        return currentAmmo <= 0 && getReserveAmmo() <= 0;
+    }
+
+    /**
      * Checks if the weapon is ready to strike or fire.
      */
     public boolean canAttack() {
@@ -211,6 +228,10 @@ public abstract class Weapon {
     public abstract void render(Graphics2D g, Camera camera, double originX, double originY, double aimAngle);
 
     public String getName() {
+        return sTier ? "[S] " + name : name;
+    }
+
+    public String getRawName() {
         return name;
     }
 
@@ -232,6 +253,10 @@ public abstract class Weapon {
 
     public int getMagazineSize() {
         return magazineSize;
+    }
+
+    public void setMagazineSize(int magazineSize) {
+        this.magazineSize = Math.max(1, magazineSize);
     }
 
     public boolean isReloading() {
@@ -371,17 +396,22 @@ public abstract class Weapon {
      * Trả về tên ngắn gọn kèm cấp độ hiển thị trực quan (VD: "AR I", "Shotgun II", "SMG III", "AR Lv.100").
      */
     public String getShortDisplayName() {
+        String prefix = sTier ? "[S] " : "";
         String lvl = getLevelDisplay();
         if (this instanceof AssaultRifle) {
-            return "AR " + lvl;
+            return prefix + "AR " + lvl;
         } else if (this instanceof Shotgun) {
-            return "Shotgun " + lvl;
+            return prefix + "Shotgun " + lvl;
         } else if (this instanceof SMG) {
-            return "SMG " + lvl;
+            return prefix + "SMG " + lvl;
+        } else if (this instanceof SniperRifle) {
+            return prefix + "SR " + lvl;
+        } else if (this instanceof SemiCarbineRifle) {
+            return prefix + "SCR " + lvl;
         } else if (this instanceof Pistol) {
-            return "Pistol " + lvl;
+            return prefix + "Pistol " + lvl;
         } else {
-            return name + " " + lvl;
+            return prefix + name + " " + lvl;
         }
     }
 
@@ -408,6 +438,10 @@ public abstract class Weapon {
 
     public int getLevel() {
         return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = Math.max(1, level);
     }
 
     public int getUpgradeCount() {
@@ -478,14 +512,66 @@ public abstract class Weapon {
     }
 
     public void setCritMultiplier(double critMultiplier) {
-        this.critMultiplier = Math.max(1.0, critMultiplier);
+        this.critMultiplier = Math.clamp(critMultiplier, 1.0, 5.0);
+    }
+
+    public boolean isSTier() {
+        return sTier;
+    }
+
+    public void setSTier(boolean sTier) {
+        this.sTier = sTier;
     }
 
     /**
-     * Quay xúc xắc ngẫu nhiên xác định phát bắn/chém có phải đòn chí mạng hay không.
+     * Kích hoạt đặc quyền Khí Tài Hạng S (S-Tier Legendary):
+     * - Đánh dấu cờ sTier = true.
+     * - Gieo ngẫu nhiên tỉ lệ chí mạng trong khoảng cao [35%, 50%].
+     * - Gieo hệ số sát thương chí mạng ngẫu nhiên [1.5x - 2.0x].
+     */
+    public void applySTierUpgrade() {
+        this.sTier = true;
+        int critPct = 35 + ThreadLocalRandom.current().nextInt(16); // 35% đến 50%
+        this.critChance = critPct / 100.0;
+        this.critMultiplier = rollRandomCritMultiplier();
+    }
+
+    /**
+     * Đặc quyền Hạng S: Tự động thăng thêm 1 Cấp (+1 Level) mỗi khi vượt qua một Stage tác chiến mới.
+     * Cơ chế này cộng thêm 1 sao thặng dư ngẫu nhiên và tính toán lại các chỉ số mà KHÔNG tiêu tốn
+     * lượt nâng cấp tại Shop dã chiến (upgradeCount được bảo toàn).
+     *
+     * @return Tên chỉ số vừa được tăng thêm sao; hoặc null nếu không phải súng Hạng S.
+     */
+    public String autoAdvanceStageLevel() {
+        if (!sTier) {
+            return null;
+        }
+        level++;
+        String upgradedStat = addRandomStar();
+        recalculateStatsFromStars();
+        return upgradedStat;
+    }
+
+    protected com.groupproject.game.entity.buff.PlayerBuffManager boundBuffManager;
+
+    public void bindBuffManager(com.groupproject.game.entity.buff.PlayerBuffManager bm) {
+        this.boundBuffManager = bm;
+    }
+
+    public com.groupproject.game.entity.buff.PlayerBuffManager getBoundBuffManager() {
+        return boundBuffManager;
+    }
+
+    /**
+     * Quay xúc xắc ngẫu nhiên xác định phát bắn/chém có phải đòn chí mạng hay không (có cộng dồn buff).
      */
     public boolean rollCritical() {
-        return ThreadLocalRandom.current().nextDouble() < critChance;
+        double chance = critChance;
+        if (boundBuffManager != null) {
+            chance += boundBuffManager.getCritChanceBonus();
+        }
+        return ThreadLocalRandom.current().nextDouble() < chance;
     }
 
     /**
@@ -506,13 +592,23 @@ public abstract class Weapon {
     }
 
     /**
-     * Tính toán lượng sát thương thực tế dựa trên cờ chí mạng (x2.0 sát thương).
+     * Tính toán lượng sát thương thực tế dựa trên cờ chí mạng (x2.0 sát thương hoặc theo buff người chơi).
      */
     public int calculateDamage(boolean isCrit) {
+        double attackMult = (boundBuffManager != null) ? boundBuffManager.getAttackMultiplier() : 1.0;
+        double customCritMult = (boundBuffManager != null) ? boundBuffManager.getCustomCritMultiplier(this) : critMultiplier;
+        return calculateDamage(isCrit, attackMult, customCritMult);
+    }
+
+    /**
+     * Tính toán lượng sát thương thực tế có áp dụng hệ số Tấn công của người chơi và hệ số Chí mạng tùy biến.
+     */
+    public int calculateDamage(boolean isCrit, double attackMultiplier, double customCritMultiplier) {
+        double scaledBase = damage * Math.max(0.1, attackMultiplier);
         if (isCrit) {
-            return Math.max(1, (int) Math.round(damage * critMultiplier));
+            return Math.max(1, (int) Math.round(scaledBase * customCritMultiplier));
         }
-        return damage;
+        return Math.max(1, (int) Math.round(scaledBase));
     }
 
     /**
@@ -525,6 +621,53 @@ public abstract class Weapon {
 
     public String getFormattedRPM() {
         return getRPM() + " RPM";
+    }
+
+    /**
+     * Số lượng đầu đạn/pellet bắn ra trong 1 lần tấn công.
+     * Mặc định là 1 (AR, SMG, Pistol, Dao), Shotgun override là 6.
+     */
+    public int getProjectilesPerShot() {
+        return 1;
+    }
+
+    /**
+     * Sát thương theo giây (DPS) cơ bản khi không chí mạng.
+     * Công thức: (Sát thương mỗi phát * Số đầu đạn) * Tốc độ phát/giây.
+     */
+    public int getNormalDPS() {
+        if (fireRateCooldown <= 0.0001) return 0;
+        double shotsPerSec = 1.0 / fireRateCooldown;
+        int totalDmgPerShot = damage * getProjectilesPerShot();
+        return (int) Math.round(totalDmgPerShot * shotsPerSec);
+    }
+
+    /**
+     * Sát thương theo giây (DPS) khi đòn tấn công nổ chí mạng.
+     * Công thức: (Sát thương chí mạng mỗi phát * Số đầu đạn) * Tốc độ phát/giây.
+     */
+    public int getCritDPS() {
+        if (fireRateCooldown <= 0.0001) return 0;
+        double shotsPerSec = 1.0 / fireRateCooldown;
+        int critDmgPerShot = (int) Math.round(damage * critMultiplier) * getProjectilesPerShot();
+        return (int) Math.round(critDmgPerShot * shotsPerSec);
+    }
+
+    /**
+     * Chuỗi hiển thị chỉ số DPS hoàn chỉnh gồm cả sát thương thường và sát thương chí mạng.
+     * Ví dụ: "187 DPS (Crit: 338)"
+     */
+    public String getFormattedDPS() {
+        return getNormalDPS() + " DPS (Crit: " + getCritDPS() + ")";
+    }
+
+    /**
+     * Quay ngẫu nhiên hệ số sát thương chí mạng cho súng trong khoảng từ 1.50x đến 2.00x.
+     * WHY: Tạo tính ngẫu nhiên, hấp dẫn cho mỗi khẩu súng nhặt được hay mua tại Shop (bước nhảy 0.05).
+     */
+    public static double rollRandomCritMultiplier() {
+        int step = ThreadLocalRandom.current().nextInt(11); // 0 đến 10
+        return 1.50 + step * 0.05; // 1.50, 1.55, 1.60, ..., 2.00
     }
 
     /**
@@ -541,20 +684,37 @@ public abstract class Weapon {
     }
 
     /**
-     * Sinh ngẫu nhiên một khẩu súng chính theo trọng số xác suất nghịch đảo với tỉ lệ chí mạng.
-     * Quy tắc: Tỉ lệ chí mạng càng cao thì tỉ lệ ra càng ít.
-     * - SMG (10% crit): Tỉ lệ ra cao nhất ~50%
-     * - Assault Rifle (20% crit): Tỉ lệ ra trung bình ~30%
-     * - Shotgun (30% crit): Tỉ lệ ra hiếm nhất ~20%
+     * Sinh ngẫu nhiên một khẩu súng chính theo trọng số xác suất:
+     * - Súng Hạng S huyền thoại (5%): Chọn ngẫu nhiên SMG, AR, Shotgun và kích hoạt mác Hạng S.
+     * - Súng thường (95%):
+     *   + SMG (10% crit): Tỉ lệ ra cao nhất ~47%
+     *   + Assault Rifle (20% crit): Tỉ lệ ra trung bình ~30%
+     *   + Shotgun (30% crit): Tỉ lệ ra thấp nhất ~18%
      */
     public static Weapon getRandomDropWeapon() {
         int roll = ThreadLocalRandom.current().nextInt(100);
-        if (roll < 50) {
+        if (roll < 5) {
+            // 5% tỉ lệ súng Hạng S siêu hiếm (S-Tier Legendary)
+            int sWeaponType = ThreadLocalRandom.current().nextInt(5);
+            Weapon sWeapon = switch (sWeaponType) {
+                case 0 -> new SMG();
+                case 1 -> new AssaultRifle();
+                case 2 -> new Shotgun();
+                case 3 -> new SemiCarbineRifle();
+                default -> new SniperRifle();
+            };
+            sWeapon.applySTierUpgrade();
+            return sWeapon;
+        } else if (roll < 35) { // 30% tỉ lệ rơi SMG
             return new SMG();
-        } else if (roll < 80) {
+        } else if (roll < 60) { // 25% tỉ lệ rơi Assault Rifle
             return new AssaultRifle();
-        } else {
+        } else if (roll < 80) { // 20% tỉ lệ rơi Semi-Carbine Rifle (SCR)
+            return new SemiCarbineRifle();
+        } else if (roll < 92) { // 12% tỉ lệ rơi Shotgun
             return new Shotgun();
+        } else { // 8% tỉ lệ súng bắn tỉa Sniper Rifle (quý hiếm, uy lực cực cao)
+            return new SniperRifle();
         }
     }
 
@@ -595,6 +755,10 @@ public abstract class Weapon {
      *
      * @return Bản ghi chi tiết kết quả tái phân bổ sao và tỉ lệ chí mạng mới.
      */
+    public ReforgeResult reforge() {
+        return reforgeStats();
+    }
+
     public ReforgeResult reforgeStats() {
         int currentLevel = this.level;
         int oldDmg = this.damageStars;
@@ -619,9 +783,15 @@ public abstract class Weapon {
         // Cập nhật lại các thông số sát thương, tốc độ bắn RPM và độ chụm đạn dựa trên số sao mới
         recalculateStatsFromStars();
 
-        // 2. Gieo lại ngẫu nhiên tỉ lệ chí mạng mới trong dải [5%, 50%]
-        double newCritChance = rollRandomCritChance();
-        setCritChance(newCritChance);
+        // 2. Gieo lại ngẫu nhiên tỉ lệ chí mạng và hệ số chí mạng [1.5x, 2.0x]
+        if (this.sTier) {
+            int critPct = 35 + ThreadLocalRandom.current().nextInt(16);
+            setCritChance(critPct / 100.0);
+        } else {
+            double newCritChance = rollRandomCritChance();
+            setCritChance(newCritChance);
+        }
+        this.critMultiplier = rollRandomCritMultiplier();
 
         return new ReforgeResult(
                 currentLevel,

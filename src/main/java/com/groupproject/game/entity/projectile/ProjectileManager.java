@@ -72,9 +72,16 @@ public class ProjectileManager {
                     if (p instanceof BossCannonShell) {
                         ((BossCannonShell) p).explode(playingState, dungeonMap);
                     } else {
-                        // Gây sát thương lên ô cover tạm thời (nếu trúng)
-                        dungeonMap.damageDestructibleCoverInArea(p.getX() - 4, p.getY() - 4, 8, 8, p.getDamage());
-                        p.deactivate(); // Impact absorbed by terrain or door energy threshold
+                        // Kiểm tra nếu có vật cản cứng không thể xuyên phá (tường cứng, void, cửa đóng)
+                        boolean hitImpenetrable = dungeonMap.isAreaBlockingImpenetrable(p.getX() - 2, p.getY() - 2, 4, 4);
+                        if (hitImpenetrable) {
+                            // Gây sát thương lên ô cover tạm thời lân cận (nếu có) trước khi đạn tắt hẳn
+                            dungeonMap.damageDestructibleCoverInArea(p.getX() - 4, p.getY() - 4, 8, 8, p.getDamage());
+                            p.deactivate(); // Impact absorbed by solid terrain or blast door
+                        } else {
+                            // Chỉ va chạm vào ô cover tạm thời có thể phá hủy: xử lý đạn xuyên qua hoặc tiêu hao lượt xuyên
+                            dungeonMap.handleProjectileCoverPenetration(p);
+                        }
                     }
                 }
             }

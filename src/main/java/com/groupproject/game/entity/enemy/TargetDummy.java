@@ -479,6 +479,14 @@ public class TargetDummy {
         return y;
     }
 
+    public double getCenterX() {
+        return x;
+    }
+
+    public double getCenterY() {
+        return y;
+    }
+
     public double getSize() {
         return size;
     }

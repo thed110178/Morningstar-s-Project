@@ -9,7 +9,6 @@ import com.groupproject.game.entity.enemy.RangedPistolEnemy;
 import com.groupproject.game.entity.enemy.TargetDummy;
 import com.groupproject.game.entity.projectile.BossCannonShell;
 import com.groupproject.game.entity.projectile.CriticalHitVisual;
-import com.groupproject.game.entity.projectile.ExplosionVisual;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.weapon.MeleeSlash;
@@ -961,6 +960,7 @@ class EnemyAITest {
         PlayingState state = new PlayingState(gsm);
         state.init();
         state.loadBossStageDirectly();
+        state.skipBossIntro(); // Intro Boss đóng băng gameplay; test này kiểm tra logic tiếp viện
 
         // 1. Initially in Boss Arena: bossDummy is alive and 8 minions were spawned
         assertNotNull(state.getBossDummy(), "Boss dummy must be initialized in Boss Arena");

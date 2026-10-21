@@ -7,7 +7,7 @@ import java.awt.event.MouseWheelEvent;
 /**
  * Handles mouse movement, clicking, and dragging for 360-degree aiming.
  *
- * <p>WHY: Top-down roguelite shooters (like Soul Knight and POBG) require omnidirectional
+ * <p>WHY: Top-down roguelite shooters (like Soul Knight and Surviv.io) require omnidirectional
  * aiming where the firearm points directly at the cursor, and shooting can occur either continuously
  * (automatic rifles) or on discrete clicks (pistols, shotguns). MouseHandler captures real-time
  * cursor screen coordinates and tracks button states so that game states can calculate aim vectors

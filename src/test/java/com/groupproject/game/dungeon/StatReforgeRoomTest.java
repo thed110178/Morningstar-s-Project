@@ -1,6 +1,5 @@
 package com.groupproject.game.dungeon;
 
-import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.CombatKnife;
@@ -102,33 +101,40 @@ public class StatReforgeRoomTest {
     }
 
     @Test
-    @DisplayName("Verify progressive credit cost progression formula: 40 -> 65 -> 95 -> 135 -> 185 -> 245")
+    @DisplayName("Verify progressive credit cost formula: Lv.1 weapon (15 -> 25 -> 40 -> 60) and Lv.2+ weapon (30 -> 50 -> 75 -> 105)")
     void testStatReforgeStationCostProgression() {
         StatReforgeStation station = new StatReforgeStation(100.0, 100.0);
+        Pistol lv1Pistol = new Pistol();
+        lv1Pistol.configureLevel(1);
 
-        // Initial cost (0 resets)
+        AssaultRifle lv2Rifle = new AssaultRifle();
+        lv2Rifle.configureLevel(2);
+
+        // --- 1. Súng Cấp 1 (Chỉ roll lại tỉ lệ chí mạng): Giá ưu đãi khởi đầu 15 Credits ---
         assertEquals(0, station.getReforgeCount());
-        assertEquals(40, station.getCurrentCost(), "Initial reforge cost must be 40 Credits");
+        assertEquals(15, station.getCurrentCost(lv1Pistol), "Initial reforge cost for Lv.1 weapon must be 15 Credits");
 
-        // Simulate 1st reset
         station.setReforgeCount(1);
-        assertEquals(65, station.getCurrentCost(), "2nd reset cost must be 65 Credits (+25)");
+        assertEquals(25, station.getCurrentCost(lv1Pistol), "2nd reforge for Lv.1 must be 25 Credits (+10)");
 
-        // Simulate 2nd reset
         station.setReforgeCount(2);
-        assertEquals(95, station.getCurrentCost(), "3rd reset cost must be 95 Credits (+30)");
+        assertEquals(40, station.getCurrentCost(lv1Pistol), "3rd reforge for Lv.1 must be 40 Credits (+15)");
 
-        // Simulate 3rd reset
         station.setReforgeCount(3);
-        assertEquals(135, station.getCurrentCost(), "4th reset cost must be 135 Credits (+40)");
+        assertEquals(60, station.getCurrentCost(lv1Pistol), "4th reforge for Lv.1 must be 60 Credits (+20)");
 
-        // Simulate 4th reset
-        station.setReforgeCount(4);
-        assertEquals(185, station.getCurrentCost(), "5th reset cost must be 185 Credits (+50)");
+        // --- 2. Súng Cấp 2+ (Tái phân bổ sao và roll chí mạng): Khởi đầu 30 Credits ---
+        station.setReforgeCount(0);
+        assertEquals(30, station.getCurrentCost(lv2Rifle), "Initial reforge cost for Lv.2+ weapon must be 30 Credits");
 
-        // Simulate 5th reset
-        station.setReforgeCount(5);
-        assertEquals(245, station.getCurrentCost(), "6th reset cost must be 245 Credits (+60)");
+        station.setReforgeCount(1);
+        assertEquals(50, station.getCurrentCost(lv2Rifle), "2nd reforge for Lv.2+ must be 50 Credits (+20)");
+
+        station.setReforgeCount(2);
+        assertEquals(75, station.getCurrentCost(lv2Rifle), "3rd reforge for Lv.2+ must be 75 Credits (+25)");
+
+        station.setReforgeCount(3);
+        assertEquals(105, station.getCurrentCost(lv2Rifle), "4th reforge for Lv.2+ must be 105 Credits (+30)");
     }
 
     @Test
@@ -147,33 +153,34 @@ public class StatReforgeRoomTest {
 
         Weapon activeWeapon = state.getWeaponManager().getActiveWeapon();
         assertNotNull(activeWeapon, "Player must have an active weapon in hand");
+        assertEquals(1, activeWeapon.getLevel(), "Default starting weapon in hand must be Level 1");
 
-        // First reforge: Cost is 40
+        // First reforge: Cost for Lv.1 weapon is 15 Credits
         boolean success1 = station.interact(state);
         assertTrue(success1, "Reforge with 200 credits should succeed");
-        assertEquals(160, state.getPlayerCredits(), "Credits must be 200 - 40 = 160");
+        assertEquals(185, state.getPlayerCredits(), "Credits must be 200 - 15 = 185");
         assertEquals(1, station.getReforgeCount(), "Reforge count should now be 1");
-        assertEquals(65, station.getCurrentCost(), "Next reforge cost must be 65");
+        assertEquals(25, station.getCurrentCost(activeWeapon), "Next reforge cost for Lv.1 must be 25");
 
         // Verify rerolled weapon stats
         assertTrue(activeWeapon.getLevel() >= 1 && activeWeapon.getLevel() <= 5,
-                "Weapon level must be within 1 to 5 stars, got: " + activeWeapon.getLevel());
+                "Weapon level must be preserved within valid range, got: " + activeWeapon.getLevel());
         assertTrue(activeWeapon.getCritChance() >= 0.05 && activeWeapon.getCritChance() <= 0.50,
                 "Weapon crit chance must be within 5% to 50%, got: " + activeWeapon.getCritChance());
 
-        // Second reforge: Cost is 65
+        // Second reforge: Cost is 25 Credits
         boolean success2 = station.interact(state);
-        assertTrue(success2, "Second reforge with 160 credits should succeed");
-        assertEquals(95, state.getPlayerCredits(), "Credits must be 160 - 65 = 95");
+        assertTrue(success2, "Second reforge with 185 credits should succeed");
+        assertEquals(160, state.getPlayerCredits(), "Credits must be 185 - 25 = 160");
         assertEquals(2, station.getReforgeCount(), "Reforge count should now be 2");
-        assertEquals(95, station.getCurrentCost(), "Next reforge cost must be 95");
+        assertEquals(40, station.getCurrentCost(activeWeapon), "Next reforge cost for Lv.1 must be 40");
 
-        // Third reforge: Cost is 95
+        // Third reforge: Cost is 40 Credits
         boolean success3 = station.interact(state);
-        assertTrue(success3, "Third reforge with exactly 95 credits should succeed");
-        assertEquals(0, state.getPlayerCredits(), "Credits must be 95 - 95 = 0");
+        assertTrue(success3, "Third reforge with 160 credits should succeed");
+        assertEquals(120, state.getPlayerCredits(), "Credits must be 160 - 40 = 120");
         assertEquals(3, station.getReforgeCount(), "Reforge count should now be 3");
-        assertEquals(135, station.getCurrentCost(), "Next reforge cost must be 135");
+        assertEquals(60, station.getCurrentCost(activeWeapon), "Next reforge cost for Lv.1 must be 60");
     }
 
     @Test
@@ -186,14 +193,15 @@ public class StatReforgeRoomTest {
         StatReforgeStation station = state.getStatReforgeStation();
         assertNotNull(station);
 
-        // Player has 25 credits (cost is 40)
-        state.setPlayerCredits(25);
+        // Player has 10 credits (cost for Lv.1 weapon is 15 credits)
+        state.setPlayerCredits(10);
 
         boolean success = station.interact(state);
-        assertFalse(success, "Reforge must fail when player has less than 40 credits");
-        assertEquals(25, state.getPlayerCredits(), "Credits should not be deducted upon failure");
+        assertFalse(success, "Reforge must fail when player has less than 15 credits for Lv.1 weapon");
+        assertEquals(10, state.getPlayerCredits(), "Credits should not be deducted upon failure");
         assertEquals(0, station.getReforgeCount(), "Reforge count must remain 0");
-        assertEquals(40, station.getCurrentCost(), "Current cost must remain 40");
+        Weapon activeWeapon = state.getWeaponManager().getActiveWeapon();
+        assertEquals(15, station.getCurrentCost(activeWeapon), "Current cost for Lv.1 weapon must remain 15");
     }
 
     @Test

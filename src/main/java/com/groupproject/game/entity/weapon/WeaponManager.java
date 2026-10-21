@@ -6,7 +6,6 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,14 +124,36 @@ public class WeaponManager {
         return true;
     }
 
+    private com.groupproject.game.entity.buff.PlayerBuffManager boundBuffManager;
+
     /**
-     * Registers a weapon into its assigned slot and binds player's ammo inventory.
+     * Registers a weapon into its assigned slot and binds player's ammo inventory and buff manager.
      */
     public void addWeapon(Weapon weapon) {
         if (weapon != null) {
             weapon.bindAmmoInventory(ammoInventory);
+            if (boundBuffManager != null) {
+                weapon.bindBuffManager(boundBuffManager);
+                boundBuffManager.applyExtendedMagazineToWeapon(weapon);
+            }
             weaponSlots.put(weapon.getSlotIndex(), weapon);
         }
+    }
+
+    /**
+     * Binds the player's buff manager to all existing and future weapons.
+     */
+    public void bindPlayerBuffManager(com.groupproject.game.entity.buff.PlayerBuffManager bm) {
+        this.boundBuffManager = bm;
+        for (Weapon w : weaponSlots.values()) {
+            if (w != null) {
+                w.bindBuffManager(bm);
+                if (bm != null) {
+                    bm.applyExtendedMagazineToWeapon(w);
+                }
+            }
+        }
+        fallbackKnife.bindBuffManager(bm);
     }
 
     /**
@@ -144,6 +165,10 @@ public class WeaponManager {
             previousWeapon = activeWeapon;
             activeWeapon = selected;
         }
+    }
+
+    public void switchWeapon(int slotIndex) {
+        selectSlot(slotIndex);
     }
 
     /**
@@ -251,7 +276,7 @@ public class WeaponManager {
     public void renderHUD(Graphics2D g, int screenWidth, int screenHeight) {
         if (activeWeapon == null) return;
 
-        int hudW = 340;
+        int hudW = 356;
         int hudH = 132;
         int hudX = screenWidth - hudW - 20;
         int hudY = screenHeight - hudH - 20;
@@ -262,15 +287,23 @@ public class WeaponManager {
         g.setColor(new Color(50, 70, 95));
         g.drawRoundRect(hudX, hudY, hudW, hudH, 10, 10);
 
-        // 2. Dòng 1: Tên vũ khí đang cầm kèm CẤP ĐỘ (Level) và TỈ LỆ CHÍ MẠNG
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
-        g.setColor(new Color(255, 205, 50)); // Màu vàng kim
-        String weaponTitle = String.format("[%d] %s   Lv.%d   •   CRIT: %d%%",
+        // 2. Dòng 1: Tên vũ khí đang cầm kèm CẤP ĐỘ (Level) và TỈ LỆ CHÍ MẠNG & HỆ SỐ CHÍ MẠNG
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        String nameAndLevel = String.format("[%d] %s   Lv.%d",
                 activeWeapon.getSlotIndex(),
                 activeWeapon.getName().toUpperCase(),
-                activeWeapon.getLevel(),
-                activeWeapon.getCritChancePercent());
-        g.drawString(weaponTitle, hudX + 14, hudY + 22);
+                activeWeapon.getLevel());
+        String critInfo = String.format("•   CRIT: %d%% (x%.2f)",
+                activeWeapon.getCritChancePercent(),
+                activeWeapon.getCritMultiplier());
+
+        g.setColor(new Color(255, 215, 65)); // Màu vàng kim cho tên và level
+        g.drawString(nameAndLevel, hudX + 14, hudY + 22);
+
+        FontMetrics fmTitle = g.getFontMetrics();
+        int nameW = fmTitle.stringWidth(nameAndLevel);
+        g.setColor(new Color(255, 120, 80)); // Màu đỏ cam nổi bật cho CRIT % và Hệ số chí mạng
+        g.drawString(critInfo, hudX + 14 + nameW + 8, hudY + 22);
 
         // 3. Dòng 2: Hiển thị đạn băng / nạp đạn của vũ khí đang cầm
         g.setFont(new Font("SansSerif", Font.BOLD, 20));
@@ -324,20 +357,23 @@ public class WeaponManager {
         int arReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) : 0;
         int smgReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.SMG) : 0;
         int sgReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) : 0;
+        int srReserve = ammoInventory != null ? ammoInventory.getAmmo(com.groupproject.game.entity.item.AmmoType.SR) : 0;
 
         int arMax = com.groupproject.game.entity.item.AmmoType.AR.getMaxCapacity();
         int smgMax = com.groupproject.game.entity.item.AmmoType.SMG.getMaxCapacity();
         int sgMax = com.groupproject.game.entity.item.AmmoType.SHOTGUN.getMaxCapacity();
+        int srMax = com.groupproject.game.entity.item.AmmoType.SR.getMaxCapacity();
 
         int ammoBarY = hudY + 62;
-        int ammoBadgeW = 100;
+        int ammoBadgeW = 76;
         int ammoBadgeH = 18;
-        int ammoGap = 7;
+        int ammoGap = 8;
         int ammoStartX = hudX + 14;
 
-        renderAmmoPill(g, ammoStartX, ammoBarY, ammoBadgeW, ammoBadgeH, "AR", arReserve, arMax, com.groupproject.game.entity.item.AmmoType.AR.getColor());
-        renderAmmoPill(g, ammoStartX + ammoBadgeW + ammoGap, ammoBarY, ammoBadgeW, ammoBadgeH, "SMG", smgReserve, smgMax, com.groupproject.game.entity.item.AmmoType.SMG.getColor());
+        renderAmmoPill(g, ammoStartX, ammoBarY, ammoBadgeW, ammoBadgeH, "RIF", arReserve, arMax, com.groupproject.game.entity.item.AmmoType.AR.getColor());
+        renderAmmoPill(g, ammoStartX + (ammoBadgeW + ammoGap), ammoBarY, ammoBadgeW, ammoBadgeH, "SMG", smgReserve, smgMax, com.groupproject.game.entity.item.AmmoType.SMG.getColor());
         renderAmmoPill(g, ammoStartX + (ammoBadgeW + ammoGap) * 2, ammoBarY, ammoBadgeW, ammoBadgeH, "SG", sgReserve, sgMax, com.groupproject.game.entity.item.AmmoType.SHOTGUN.getColor());
+        renderAmmoPill(g, ammoStartX + (ammoBadgeW + ammoGap) * 3, ammoBarY, ammoBadgeW, ammoBadgeH, "SR", srReserve, srMax, com.groupproject.game.entity.item.AmmoType.SR.getColor());
 
         // 5. Dòng 4: Các vị trí nút trang bị (Equipment Slots) [1] [2] [3] [4] (Yêu cầu 2)
         int slotY = hudY + 92;
@@ -375,6 +411,10 @@ public class WeaponManager {
                 label = "SMG " + w.getLevelDisplay();
             } else if (w instanceof Shotgun) {
                 label = "SG " + w.getLevelDisplay();
+            } else if (w instanceof SniperRifle) {
+                label = "SR " + w.getLevelDisplay();
+            } else if (w instanceof SemiCarbineRifle) {
+                label = "SCR " + w.getLevelDisplay();
             } else if (w instanceof Pistol) {
                 label = "Pistol";
             } else if (w instanceof CombatKnife) {
@@ -419,6 +459,13 @@ public class WeaponManager {
         return activeWeapon;
     }
 
+    /**
+     * Kiểm tra xem vũ khí hiện tại có bị cạn sạch toàn bộ đạn (cả băng lẫn dự trữ) hay không.
+     */
+    public boolean isCurrentWeaponOutOfAmmo() {
+        return activeWeapon != null && activeWeapon.isOutOfAmmo();
+    }
+
     public List<MeleeSlash> getActiveSlashes() {
         return activeSlashes;
     }
@@ -427,8 +474,20 @@ public class WeaponManager {
         return weaponSlots.get(slotIndex);
     }
 
+    public Weapon getWeapon(int slotIndex) {
+        return weaponSlots.get(slotIndex);
+    }
+
+    public Weapon removeWeapon(int slotIndex) {
+        return weaponSlots.remove(slotIndex);
+    }
+
     public Map<Integer, Weapon> getWeaponSlots() {
         return java.util.Collections.unmodifiableMap(weaponSlots);
+    }
+
+    public java.util.Collection<Weapon> getAllWeapons() {
+        return weaponSlots.values();
     }
 
     public com.groupproject.game.entity.item.AmmoInventory getAmmoInventory() {

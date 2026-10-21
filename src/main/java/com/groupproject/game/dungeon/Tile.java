@@ -268,6 +268,33 @@ public class Tile {
             g2.fillRect(screenX, screenY + size - 3, size, 3);
 
             g2.dispose();
+        } else if (type == TileType.DOOR_UPGRADE) {
+            // Ngưỡng cửa Phòng Nâng Cấp Nhân Vật (Bio-Tech Augmentation Lab Gateway)
+            // Nền xanh đen sinh học công nghệ cao với dải viền Neon Emerald
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.clipRect(screenX, screenY, size, size);
+
+            g2.setColor(new Color(20, 36, 38));
+            g2.fillRect(screenX, screenY, size, size);
+
+            // Viền phát quang xanh ngọc Neon
+            g2.setColor(new Color(45, 230, 175, 220));
+            g2.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+
+            // Các vạch quét năng lượng sinh học kép
+            g2.setStroke(new BasicStroke(1.5f));
+            g2.drawLine(screenX + 5, screenY + 7, screenX + size - 5, screenY + 7);
+            g2.drawLine(screenX + 5, screenY + size - 7, screenX + size - 5, screenY + size - 7);
+
+            // Biểu tượng lục giác sinh học ở tâm
+            int cx = screenX + size / 2;
+            int cy = screenY + size / 2;
+            g2.setColor(new Color(60, 255, 200));
+            g2.drawOval(cx - 4, cy - 4, 8, 8);
+            g2.setColor(new Color(120, 255, 230));
+            g2.fillOval(cx - 2, cy - 2, 4, 4);
+
+            g2.dispose();
         } else if (type == TileType.REFORGE_ZONE) {
             // Tấm lót cao su dã chiến bảo dưỡng súng (Gunsmith Maintenance Mat)
             g.setColor(new Color(36, 42, 38));
@@ -288,6 +315,19 @@ public class Tile {
             g.setColor(new Color(50, 60, 52));
             g.drawLine(screenX + 6, screenY + size / 2, screenX + size - 6, screenY + size / 2);
             g.drawLine(screenX + size / 2, screenY + 6, screenX + size / 2, screenY + size - 6);
+        } else if (type == TileType.UPGRADE_ZONE) {
+            // Sàn bệ công nghệ sinh học Bio-Tech: Màu xanh lục cyan sẫm với mạch vi mạch phát quang
+            g.setColor(new Color(24, 38, 48));
+            g.fillRect(screenX, screenY, size, size);
+
+            // Viền kim loại titanium xanh
+            g.setColor(new Color(50, 160, 190, 160));
+            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+
+            // Đường dẫn năng lượng vi mạch ở tâm
+            g.setColor(new Color(60, 220, 200, 120));
+            g.drawLine(screenX + 4, screenY + 4, screenX + size / 2, screenY + size / 2);
+            g.drawLine(screenX + size - 5, screenY + size - 5, screenX + size / 2, screenY + size / 2);
         } else if (type == TileType.SPAWN_ZONE) {
             // Điểm tập kết dã chiến: Vạch định vị góc màu xanh rêu quân đội (Tactical Corner Brackets)
             g.setColor(new Color(55, 75, 60, 140));

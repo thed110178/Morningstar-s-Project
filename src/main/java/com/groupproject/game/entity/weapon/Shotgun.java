@@ -189,6 +189,11 @@ public class Shotgun extends Weapon {
     }
 
     @Override
+    public int getProjectilesPerShot() {
+        return PELLETS_PER_SHOT; // 6 viên đạn chì mỗi phát bắn
+    }
+
+    @Override
     public void render(Graphics2D g, Camera camera, double originX, double originY, double aimAngle) {
         int screenPX = camera.worldToScreenX(originX);
         int screenPY = camera.worldToScreenY(originY);

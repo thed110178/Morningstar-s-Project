@@ -20,6 +20,7 @@ public class GameStateManager {
      */
     public enum StateType {
         MENU,
+        THE_RANGE,
         PLAYING,
         PAUSE,
         UPGRADE,
@@ -30,6 +31,7 @@ public class GameStateManager {
      * Map caching registered state instances by their enum key.
      */
     private final Map<StateType, GameState> states = new EnumMap<>(StateType.class);
+    private final com.groupproject.game.ui.ScreenTransition screenTransition = new com.groupproject.game.ui.ScreenTransition();
 
     /**
      * The currently active state type.
@@ -39,6 +41,13 @@ public class GameStateManager {
 
     public GameStateManager() {
         // States will be registered via registerState()
+    }
+
+    /**
+     * Lấy bộ quản lý hiệu ứng chuyển cảnh toàn cục.
+     */
+    public com.groupproject.game.ui.ScreenTransition getScreenTransition() {
+        return screenTransition;
     }
 
     /**
@@ -76,6 +85,22 @@ public class GameStateManager {
     }
 
     /**
+     * Chuyển đổi trạng thái với hiệu ứng mờ dần (Fade transition) mượt mà.
+     */
+    public void transitionTo(StateType type) {
+        if (screenTransition.isActive()) return;
+        screenTransition.start(() -> setState(type));
+    }
+
+    /**
+     * Chuyển đổi trạng thái với hiệu ứng điện ảnh và tiêu đề thông báo.
+     */
+    public void transitionTo(StateType type, String title, String subtitle) {
+        if (screenTransition.isActive()) return;
+        screenTransition.start(0.35, 0.15, () -> setState(type), title, subtitle);
+    }
+
+    /**
      * Retrieves the instance of a registered state without changing the current active state.
      */
     public GameState getState(StateType type) {
@@ -93,6 +118,7 @@ public class GameStateManager {
      * Forwards logic updates and user inputs down to the active state.
      */
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        screenTransition.update(deltaTime);
         GameState state = states.get(currentState);
         if (state != null) {
             state.update(deltaTime, keyH, mouseH);
@@ -100,12 +126,13 @@ public class GameStateManager {
     }
 
     /**
-     * Forwards rendering calls to the active state.
+     * Forwards rendering calls to the active state and overlays screen transition.
      */
     public void render(Graphics2D g) {
         GameState state = states.get(currentState);
         if (state != null) {
             state.render(g);
         }
+        screenTransition.render(g);
     }
 }

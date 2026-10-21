@@ -24,8 +24,8 @@ public class MenuState extends GameState {
      * Primary menu choices available to the user.
      */
     private final String[] options = {
+        "THE RANGE (TRƯỜNG BẮN & HUẤN LUYỆN)",
         "BOSS FIGHT: TITAN TANK",
-        "START CAMPAIGN (STAGE 1)",
         "CÀI ĐẶT PHÍM (SETTINGS)",
         "HOW TO PLAY",
         "EXIT"
@@ -124,12 +124,11 @@ public class MenuState extends GameState {
     private void selectCurrentOption() {
         switch (selectedOption) {
             case 0 -> {
-                PlayingState.setSpawnDirectlyInBossRoom(true);
-                gsm.setState(GameStateManager.StateType.PLAYING);
+                gsm.transitionTo(GameStateManager.StateType.THE_RANGE, "CĂN CỨ TIỀN PHƯƠNG", "KHU VỰC THỬ NGHIỆM VŨ KHÍ THE RANGE");
             }
             case 1 -> {
-                PlayingState.setSpawnDirectlyInBossRoom(false);
-                gsm.setState(GameStateManager.StateType.PLAYING);
+                PlayingState.setSpawnDirectlyInBossRoom(true);
+                gsm.transitionTo(GameStateManager.StateType.PLAYING, "GRAND BOSS ARENA", "GIAO TRANH TRỰC TIẾP VỚI CHIẾN XA BỌC THÉP");
             }
             case 2 -> {
                 showSettings = true;

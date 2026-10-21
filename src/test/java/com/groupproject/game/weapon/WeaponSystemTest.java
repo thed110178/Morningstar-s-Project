@@ -12,6 +12,15 @@ import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
 import java.util.ArrayList;
 import java.util.List;
+import com.groupproject.game.entity.buff.CharacterBuff;
+import com.groupproject.game.entity.player.Player;
+import com.groupproject.game.ui.BackpackUI;
+import com.groupproject.game.ui.BackpackUI.BackpackTab;
+import java.awt.Canvas;
+import java.awt.Graphics2D;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -416,8 +425,8 @@ public class WeaponSystemTest {
             chest.open();
             if (chest.getRewardType() == com.groupproject.game.entity.item.WeaponChest.ChestRewardType.CREDITS) {
                 creditsCount++;
-                assertTrue(chest.getCreditsReward() >= 20 && chest.getCreditsReward() <= 35,
-                        "Credits reward should be between 20 and 35");
+                assertTrue(chest.getCreditsReward() >= 15 && chest.getCreditsReward() <= 25,
+                        "Stage 1 credits reward should be between 15 and 25 (was: " + chest.getCreditsReward() + ")");
                 assertNull(chest.getDroppedWeapon());
             } else {
                 weaponCount++;
@@ -456,6 +465,25 @@ public class WeaponSystemTest {
                 new com.groupproject.game.entity.item.WeaponChest(200, 200, false, 2);
         assertFalse(ratioChest.isGuaranteedWeapon());
         assertEquals(2, ratioChest.getStage());
+
+        // 3. Kiểm tra phân tầng tiền thưởng hòm chiến lợi phẩm theo Stage
+        for (int i = 0; i < 50; i++) {
+            com.groupproject.game.entity.item.WeaponChest stage2Chest =
+                    new com.groupproject.game.entity.item.WeaponChest(200, 200, false, 2);
+            stage2Chest.open();
+            if (stage2Chest.getRewardType() == com.groupproject.game.entity.item.WeaponChest.ChestRewardType.CREDITS) {
+                assertTrue(stage2Chest.getCreditsReward() >= 25 && stage2Chest.getCreditsReward() <= 40,
+                        "Stage 2 credits reward must be between 25 and 40");
+            }
+
+            com.groupproject.game.entity.item.WeaponChest stage3Chest =
+                    new com.groupproject.game.entity.item.WeaponChest(300, 300, false, 3);
+            stage3Chest.open();
+            if (stage3Chest.getRewardType() == com.groupproject.game.entity.item.WeaponChest.ChestRewardType.CREDITS) {
+                assertTrue(stage3Chest.getCreditsReward() >= 40 && stage3Chest.getCreditsReward() <= 60,
+                        "Stage 3 credits reward must be between 40 and 60");
+            }
+        }
     }
 
     @Test
@@ -813,6 +841,104 @@ public class WeaponSystemTest {
     }
 
     @Test
+    @DisplayName("Verify BackpackUI tab switching with [Q] and [E] keyboard shortcuts and mouse clicks")
+    void testBackpackUITabSwitching() {
+        BackpackUI backpackUI = new BackpackUI();
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        WeaponManager wm = new WeaponManager();
+        Player player = new Player(100.0, 100.0);
+
+        // 1. Mặc định là Tab WEAPONS
+        assertEquals(BackpackTab.WEAPONS, backpackUI.getActiveTab());
+
+        // 2. Nhấn [E] -> Chuyển sang Tab CHARACTER_PERKS
+        keyH.keyPressed(new KeyEvent(new Canvas(), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_E, 'e'));
+        keyH.update();
+        assertTrue(keyH.isKeyPressedOnce(KeyEvent.VK_E));
+
+        backpackUI.update(keyH, mouseH, wm, player, 0.016);
+        assertEquals(BackpackTab.CHARACTER_PERKS, backpackUI.getActiveTab(), "Pressing E must switch to CHARACTER_PERKS tab");
+
+        // 3. Nhấn [Q] -> Chuyển lại về Tab WEAPONS
+        keyH.keyPressed(new KeyEvent(new Canvas(), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_Q, 'q'));
+        keyH.update();
+        assertTrue(keyH.isKeyPressedOnce(KeyEvent.VK_Q));
+
+        backpackUI.update(keyH, mouseH, wm, player, 0.016);
+        assertEquals(BackpackTab.WEAPONS, backpackUI.getActiveTab(), "Pressing Q must switch back to WEAPONS tab");
+
+        // 4. Render một frame để tính toán tọa độ tab bounds
+        BufferedImage img = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = img.createGraphics();
+        backpackUI.render(g2d, wm, player, 1280, 720);
+
+        assertTrue(backpackUI.getTabPerksBounds().width > 0, "Tab bounds must be calculated after render");
+        assertTrue(backpackUI.getTabWeaponsBounds().width > 0);
+
+        // 5. Click chuột vào tab Perks
+        int perksCenterX = backpackUI.getTabPerksBounds().x + backpackUI.getTabPerksBounds().width / 2;
+        int perksCenterY = backpackUI.getTabPerksBounds().y + backpackUI.getTabPerksBounds().height / 2;
+        mouseH.mousePressed(new MouseEvent(new Canvas(), MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, perksCenterX, perksCenterY, 1, false, MouseEvent.BUTTON1));
+        
+        backpackUI.update(keyH, mouseH, wm, player, 0.016);
+        assertEquals(BackpackTab.CHARACTER_PERKS, backpackUI.getActiveTab(), "Clicking on Perks tab header must switch active tab");
+
+        // 6. Click chuột vào tab Weapons
+        int weaponsCenterX = backpackUI.getTabWeaponsBounds().x + backpackUI.getTabWeaponsBounds().width / 2;
+        int weaponsCenterY = backpackUI.getTabWeaponsBounds().y + backpackUI.getTabWeaponsBounds().height / 2;
+        mouseH.mousePressed(new MouseEvent(new Canvas(), MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, weaponsCenterX, weaponsCenterY, 1, false, MouseEvent.BUTTON1));
+
+        backpackUI.update(keyH, mouseH, wm, player, 0.016);
+        assertEquals(BackpackTab.WEAPONS, backpackUI.getActiveTab(), "Clicking on Weapons tab header must switch active tab");
+        g2d.dispose();
+    }
+
+    @Test
+    @DisplayName("Verify BackpackUI renders Character Perks tab with buffs, perks, and null player safely")
+    void testBackpackUICharacterPerksRendering() {
+        BackpackUI backpackUI = new BackpackUI();
+        WeaponManager wm = new WeaponManager();
+        Player player = new Player(100.0, 100.0);
+
+        // Nâng cấp một số Buff cơ bản
+        player.getBuffManager().applyBuff(CharacterBuff.MAX_HEALTH, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.ATTACK_DAMAGE, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.DEFENSE, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.MOVE_SPEED, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.DODGE_COOLDOWN, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.LOOT_LUCK, player, wm);
+
+        // Mở khóa các Perk đặc biệt
+        player.getBuffManager().applyBuff(CharacterBuff.ONE_HIT_BARRIER, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.PHASE_DODGE, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.KILL_HEAL, player, wm);
+        player.getBuffManager().applyBuff(CharacterBuff.CRITICAL_MASTERY, player, wm);
+
+        BufferedImage img = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = img.createGraphics();
+
+        // 1. Chuyển sang Tab CHARACTER_PERKS và render
+        backpackUI.setActiveTab(BackpackTab.CHARACTER_PERKS);
+        assertDoesNotThrow(() -> {
+            backpackUI.render(g2d, wm, player, 1280, 720);
+        }, "Rendering Character Perks tab with player buffs must not throw exceptions");
+
+        // 2. Render với player = null để đảm bảo an toàn tuyệt đối (defensive check)
+        assertDoesNotThrow(() -> {
+            backpackUI.render(g2d, wm, null, 1280, 720);
+        }, "Rendering Character Perks tab with null player must handle gracefully without crashing");
+
+        // 3. Render Tab WEAPONS với player != null
+        backpackUI.setActiveTab(BackpackTab.WEAPONS);
+        assertDoesNotThrow(() -> {
+            backpackUI.render(g2d, wm, player, 1280, 720);
+        }, "Rendering Weapons tab with player must not throw exceptions");
+
+        g2d.dispose();
+    }
+
+    @Test
     @DisplayName("Verify AR first-shot accuracy, bloom accumulation during continuous fire, and recoil recovery")
     void testAssaultRifleFirstShotAccuracyAndSprayBloom() {
         AssaultRifle ar = new AssaultRifle();
@@ -1059,17 +1185,55 @@ public class WeaponSystemTest {
     void testCriticalDamageCalculationAndProjectile() {
         AssaultRifle testAr = new AssaultRifle();
         int baseDmg = testAr.getDamage();
+        double critMult = testAr.getCritMultiplier();
+        assertTrue(critMult >= 1.50 && critMult <= 2.00,
+                "Crit multiplier must fall within [1.50, 2.00] (was: " + critMult + ")");
         assertEquals(baseDmg, testAr.calculateDamage(false), "Non-crit damage must match base damage");
-        assertEquals(baseDmg * 2, testAr.calculateDamage(true), "Crit damage must apply x2.0 multiplier");
+        assertEquals((int) Math.round(baseDmg * critMult), testAr.calculateDamage(true),
+                "Crit damage must apply dynamic crit multiplier");
 
         // Force 100% crit chance temporarily to verify projectile firing
         testAr.setCritChance(1.0); // Will be clamped to 0.50, but we can test calculateDamage directly
         Projectile critProj = new Projectile(100, 100, 0.0, 700.0, testAr.calculateDamage(true), 1.0, true, true);
         assertTrue(critProj.isCritical(), "Projectile must report isCritical == true");
-        assertEquals(baseDmg * 2, critProj.getDamage());
+        assertEquals((int) Math.round(baseDmg * critMult), critProj.getDamage());
 
         Projectile normalProj = new Projectile(100, 100, 0.0, 700.0, baseDmg, 1.0, true, false);
         assertFalse(normalProj.isCritical(), "Normal projectile must report isCritical == false");
+    }
+
+    @Test
+    @DisplayName("Verify random crit multiplier in [1.5, 2.0], Shotgun 6 pellets, and DPS calculations")
+    void testWeaponRandomCritMultiplierAndDPSCalculation() {
+        // 1. Kiểm tra 100 vũ khí ngẫu nhiên đều có hệ số critMultiplier trong khoảng [1.50, 2.00]
+        for (int i = 0; i < 100; i++) {
+            Weapon w = Weapon.getRandomDropWeapon();
+            double mult = w.getCritMultiplier();
+            assertTrue(mult >= 1.50 && mult <= 2.00,
+                    "Random drop weapon crit multiplier must be in [1.50, 2.00], was: " + mult);
+        }
+
+        // 2. Kiểm tra Shotgun bắn 6 pellets và tính DPS chuẩn xác
+        Shotgun sg = new Shotgun();
+        assertEquals(6, sg.getProjectilesPerShot(), "Shotgun must fire exactly 6 pellets per shot");
+        int sgDmg = sg.getDamage();
+        int expectedNormalDPS = (int) Math.round(sgDmg * 6 * (1.0 / sg.getFireRateCooldown()));
+        assertEquals(expectedNormalDPS, sg.getNormalDPS(), "Shotgun normal DPS calculation must match formula");
+
+        int expectedCritDmgPerPellet = (int) Math.round(sgDmg * sg.getCritMultiplier());
+        int expectedCritDPS = (int) Math.round(expectedCritDmgPerPellet * 6 * (1.0 / sg.getFireRateCooldown()));
+        assertEquals(expectedCritDPS, sg.getCritDPS(), "Shotgun crit DPS calculation must match formula");
+
+        // 3. Kiểm tra AR DPS
+        AssaultRifle ar = new AssaultRifle();
+        assertEquals(1, ar.getProjectilesPerShot());
+        assertTrue(ar.getNormalDPS() > 0);
+        assertTrue(ar.getCritDPS() >= ar.getNormalDPS(), "Crit DPS must be greater than or equal to normal DPS");
+
+        // 4. Kiểm tra reforgeStats tái gieo lại critMultiplier trong [1.50, 2.00]
+        ar.reforgeStats();
+        assertTrue(ar.getCritMultiplier() >= 1.50 && ar.getCritMultiplier() <= 2.00,
+                "Reforged weapon must roll new crit multiplier within [1.50, 2.00]");
     }
 
     @Test
@@ -1087,8 +1251,9 @@ public class WeaponSystemTest {
         assertEquals(1, wm.getActiveSlashes().size(), "Active slashes must contain 1 newly spawned slash");
 
         MeleeSlash slash = wm.getActiveSlashes().get(0);
-        int expectedDmg = slash.isCritical() ? 90 : 45;
-        assertEquals(expectedDmg, slash.getDamage(), "Quick melee slash must deal full knife damage (45 HP or 90 on crit)");
+        Weapon knifeW = wm.getWeaponInSlot(4);
+        int expectedDmg = slash.isCritical() ? (int) Math.round(45 * knifeW.getCritMultiplier()) : 45;
+        assertEquals(expectedDmg, slash.getDamage(), "Quick melee slash must deal full knife damage (45 HP or scaled on crit)");
         assertEquals(600.0, slash.getKnockbackForce(), 0.001, "Quick melee slash must have 600 px/s knockback impulse");
     }
 
@@ -1131,5 +1296,185 @@ public class WeaponSystemTest {
                 "Gun auto-fire must halt when right-click is pressed (projectile count unchanged at 1)");
         assertEquals(1, state.getWeaponManager().getActiveSlashes().size(),
                 "Quick-melee slash must be spawned on right-click");
+    }
+
+    @Test
+    @DisplayName("Verify Shop weapon level (ensures firepower for 2 subsequent sectors) and price scaling")
+    void testShopWeaponPowerAndPriceScaling() {
+        com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+        com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+        state.init();
+        assertEquals(1, state.getCurrentStage());
+
+        // Tìm quầy bán vũ khí chính ở Shop
+        com.groupproject.game.entity.shop.ShopItem weaponItem = state.getShopItems().stream()
+                .filter(item -> item.getType() == com.groupproject.game.entity.shop.ShopItem.ShopItemType.PRIMARY_WEAPON)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(weaponItem, "Tactical shop must contain a primary weapon item");
+        assertNotNull(weaponItem.getWeapon(), "Weapon item must have an associated weapon");
+
+        // Ở Stage 1: Súng bán ở shop là súng Level 3 tiêu chuẩn (đủ hỏa lực tác chiến tới hết Stage 3)
+        assertEquals(3, weaponItem.getWeapon().getLevel(), "Stage 1 shop weapon must be standard Level 3");
+        assertEquals(90, weaponItem.getPrice(), "Stage 1 shop weapon price must be 90 Credits");
+    }
+
+    @Test
+    @DisplayName("Verify S-Tier weapon attributes: High crit chance [35%-50%], random multiplier [1.5x-2.0x], and [S] prefix")
+    void testSTierWeaponAttributesAndHighCrit() {
+        AssaultRifle ar = new AssaultRifle();
+        assertFalse(ar.isSTier(), "Normal AR must not be S-Tier initially");
+        assertEquals("Assault Rifle (AR)", ar.getName());
+
+        ar.applySTierUpgrade();
+        assertTrue(ar.isSTier(), "AR should now be marked as S-Tier");
+        assertTrue(ar.getName().startsWith("[S] "), "S-Tier weapon name must start with [S] prefix");
+        assertTrue(ar.getShortDisplayName().startsWith("[S] "), "S-Tier short display name must start with [S] prefix");
+
+        // Tỉ lệ chí mạng thường xuyên cao [35% - 50%]
+        assertTrue(ar.getCritChance() >= 0.35 && ar.getCritChance() <= 0.50,
+                "S-Tier crit chance must be in range [35%, 50%], got: " + ar.getCritChance());
+        assertTrue(ar.getCritMultiplier() >= 1.50 && ar.getCritMultiplier() <= 2.00,
+                "S-Tier crit multiplier must be in range [1.50x, 2.00x], got: " + ar.getCritMultiplier());
+    }
+
+    @Test
+    @DisplayName("Verify S-Tier auto-advance: +1 level per stage without consuming shop upgrade count")
+    void testSTierAutoAdvanceStageMechanic() {
+        AssaultRifle ar = new AssaultRifle();
+        ar.applySTierUpgrade();
+        assertEquals(1, ar.getLevel(), "Starts at Level 1");
+        assertEquals(0, ar.getUpgradeCount(), "Starts with 0 upgrades");
+
+        // Normal weapon should not auto advance
+        Shotgun normalSg = new Shotgun();
+        assertNull(normalSg.autoAdvanceStageLevel(), "Non-S-tier weapon cannot auto advance");
+        assertEquals(1, normalSg.getLevel());
+
+        // S-Tier auto advances
+        String statUpgraded = ar.autoAdvanceStageLevel();
+        assertNotNull(statUpgraded, "S-Tier auto advance should return upgraded stat");
+        assertEquals(2, ar.getLevel(), "S-Tier level must increase to 2");
+        assertEquals(0, ar.getUpgradeCount(), "Auto advance must not consume shop upgradeCount");
+        assertEquals(4, ar.getDamageStars() + ar.getFireRateStars() + ar.getAccuracyStars(),
+                "Total stars must be base 3 + 1 extra = 4 stars");
+
+        // Still retains the full ability to upgrade 3 times at the shop!
+        assertTrue(ar.canUpgrade(), "S-Tier weapon can still be upgraded at shop");
+        ar.upgradeLevel();
+        assertEquals(3, ar.getLevel());
+        assertEquals(1, ar.getUpgradeCount());
+    }
+
+    @Test
+    @DisplayName("Verify S-Tier automatic level up when advancing stages in PlayingState")
+    void testSTierAutoAdvanceInPlayingState() {
+        com.groupproject.game.state.GameStateManager gsm = new com.groupproject.game.state.GameStateManager();
+        com.groupproject.game.state.PlayingState state = new com.groupproject.game.state.PlayingState(gsm);
+        state.init();
+        assertEquals(1, state.getCurrentStage());
+
+        AssaultRifle sAr = new AssaultRifle();
+        sAr.applySTierUpgrade();
+        state.getWeaponManager().equipWeapon(sAr);
+
+        assertEquals(1, sAr.getLevel());
+
+        // Advance to Stage 2
+        state.advanceToNextStage();
+        assertEquals(2, state.getCurrentStage());
+        assertEquals(2, sAr.getLevel(), "S-Tier weapon must auto-level to 2 on advancing to Stage 2");
+
+        // Advance to Stage 3
+        state.advanceToNextStage();
+        assertEquals(3, state.getCurrentStage());
+        assertEquals(3, sAr.getLevel(), "S-Tier weapon must auto-level to 3 on advancing to Stage 3");
+    }
+
+    @Test
+    @DisplayName("Verify S-Tier reforge preserves high crit chance range [35%, 50%]")
+    void testSTierReforgePreservesHighCritRange() {
+        SMG smg = new SMG();
+        smg.applySTierUpgrade();
+        assertTrue(smg.isSTier());
+
+        for (int i = 0; i < 20; i++) {
+            Weapon.ReforgeResult res = smg.reforgeStats();
+            assertTrue(res.newCritPercent() >= 35 && res.newCritPercent() <= 50,
+                    "Reforged S-Tier crit must stay in high range [35%, 50%], got: " + res.newCritPercent());
+            assertTrue(smg.getCritMultiplier() >= 1.50 && smg.getCritMultiplier() <= 2.00);
+        }
+    }
+
+    @Test
+    @DisplayName("Verify Sniper Rifle bolt-action stats, 3 key indicators, and bullet penetration with damage falloff")
+    void testSniperRifleBoltActionMechanicsAndPenetration() {
+        com.groupproject.game.entity.weapon.SniperRifle sr = new com.groupproject.game.entity.weapon.SniperRifle();
+
+        // 1. Kiểm tra 3 chỉ số chính cơ sở
+        assertEquals(95, sr.getDamage(), "Base single-shot damage must be 95");
+        assertEquals(5, sr.getMagazineSize(), "Magazine size must be 5");
+        assertEquals(5, sr.getCurrentAmmo());
+        assertEquals(0.95, sr.getFireRateCooldown(), 0.001, "Bolt action cycle must be 0.95s");
+        assertEquals(1, sr.getDamageStars());
+        assertEquals(1, sr.getFireRateStars());
+        assertEquals(1, sr.getPierceStars());
+        assertEquals(2, sr.getMaxPierces(), "Base penetration must allow 2 pierces (hitting up to 3 targets)");
+        assertEquals(0.25, sr.getPierceDamageFalloff(), 0.001, "Base damage falloff must be 25%");
+        assertEquals(25, sr.getPierceFalloffPercent());
+        assertFalse(sr.isAutomatic(), "Bolt-action sniper rifle must not be automatic");
+
+        // 2. Kiểm tra bắn đạn sinh Projectile có thuộc tính xuyên phá
+        ProjectileManager pm = new ProjectileManager();
+        assertTrue(sr.attack(100, 100, 0.0, pm, null));
+        assertEquals(4, sr.getCurrentAmmo());
+        pm.update(0.001, null);
+        assertEquals(1, pm.getActiveProjectiles().size());
+
+        Projectile bullet = pm.getActiveProjectiles().get(0);
+        assertTrue(bullet.isPiercing(), "Sniper bullet must be marked as piercing");
+        assertEquals(2, bullet.getRemainingPierces());
+        assertEquals(0.25, bullet.getPierceDamageFalloff(), 0.001);
+        int initialDmg = bullet.getDamage();
+        assertTrue(initialDmg >= 95, "Fired damage must be at least base 95");
+
+        // 3. Giả lập đạn xuyên qua 3 mục tiêu liên tiếp
+        Object dummy1 = new Object();
+        Object dummy2 = new Object();
+        Object dummy3 = new Object();
+        Object dummy4 = new Object();
+
+        assertTrue(bullet.canHit(dummy1));
+        bullet.onHitTarget(dummy1);
+        assertTrue(bullet.isActive(), "Bullet must remain active after 1st pierce");
+        assertEquals(1, bullet.getRemainingPierces());
+        int dmgAfter1 = bullet.getDamage();
+        assertEquals(Math.max(1, (int) Math.round(initialDmg * 0.75)), dmgAfter1);
+
+        // Mục tiêu 1 không thể bị bắn trúng lần 2 bởi cùng viên đạn
+        assertFalse(bullet.canHit(dummy1));
+
+        // Mục tiêu 2
+        assertTrue(bullet.canHit(dummy2));
+        bullet.onHitTarget(dummy2);
+        assertTrue(bullet.isActive(), "Bullet must remain active after 2nd pierce");
+        assertEquals(0, bullet.getRemainingPierces());
+        int dmgAfter2 = bullet.getDamage();
+        assertEquals(Math.max(1, (int) Math.round(dmgAfter1 * 0.75)), dmgAfter2);
+
+        // Mục tiêu 3 (hết lượt xuyên -> đạn tiêu biến)
+        assertTrue(bullet.canHit(dummy3));
+        bullet.onHitTarget(dummy3);
+        assertFalse(bullet.isActive(), "Bullet must deactivate after penetrating through maximum pierces");
+
+        // Mục tiêu 4 không thể nhận sát thương do đạn đã tắt
+        assertFalse(bullet.canHit(dummy4));
+
+        // 4. Kiểm tra thăng sao Độ Xuyên (AccuracyStars/PierceStars)
+        sr.setPierceStars(3); // Thăng lên 3 sao độ xuyên
+        assertEquals(3, sr.getPierceStars());
+        assertEquals(4, sr.getMaxPierces(), "3-star pierce must allow 4 penetrations");
+        assertEquals(0.15, sr.getPierceDamageFalloff(), 0.001, "3-star pierce damage falloff must decrease to 15%");
+        assertEquals(15, sr.getPierceFalloffPercent());
     }
 }

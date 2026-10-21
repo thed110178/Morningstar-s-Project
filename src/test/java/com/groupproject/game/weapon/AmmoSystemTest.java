@@ -40,14 +40,20 @@ public class AmmoSystemTest {
         assertEquals(0, inventory.getAmmo(AmmoType.AR));
         assertEquals(0, inventory.getAmmo(AmmoType.SMG));
         assertEquals(0, inventory.getAmmo(AmmoType.SHOTGUN));
+        assertEquals(0, inventory.getAmmo(AmmoType.SR));
 
         assertEquals(150, inventory.getMaxCapacity(AmmoType.AR));
         assertEquals(180, inventory.getMaxCapacity(AmmoType.SMG));
         assertEquals(50, inventory.getMaxCapacity(AmmoType.SHOTGUN));
+        assertEquals(30, inventory.getMaxCapacity(AmmoType.SR));
 
         assertEquals(30, AmmoType.AR.getStackAmount());
         assertEquals(35, AmmoType.SMG.getStackAmount());
         assertEquals(10, AmmoType.SHOTGUN.getStackAmount());
+        assertEquals(5, AmmoType.SR.getStackAmount());
+
+        assertEquals("Đạn súng trường (Rifle ammo)", AmmoType.AR.getDisplayName());
+        assertEquals("Đạn bắn tỉa SR (Sniper ammo)", AmmoType.SR.getDisplayName());
     }
 
     @Test
@@ -243,7 +249,7 @@ public class AmmoSystemTest {
 
         for (AmmoPickup p : state.getAmmoPickups()) {
             assertNotNull(p.getType());
-            assertTrue(p.getAmount() == 30 || p.getAmount() == 35 || p.getAmount() == 10);
+            assertTrue(p.getAmount() == 30 || p.getAmount() == 35 || p.getAmount() == 10 || p.getAmount() == 5);
             assertEquals(p.getType().getStackAmount(), p.getAmount());
         }
     }
@@ -262,6 +268,7 @@ public class AmmoSystemTest {
         assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.AR));
         assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.SMG));
         assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.SHOTGUN));
+        assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.SR));
 
         // Bắn 1 phát mỗi khẩu
         ar.attack(0, 0, 0, pm, null);
@@ -270,13 +277,14 @@ public class AmmoSystemTest {
         assertEquals(29, ar.getCurrentAmmo());
         assertEquals(24, smg.getCurrentAmmo());
 
-        // Gọi tiếp tế quầy đạn tại Shop (+2 stack cho mỗi loại: AR=60, SMG=70, SG=20)
+        // Gọi tiếp tế quầy đạn tại Shop (+2 stack cho mỗi loại: AR=60, SMG=70, SG=20, SR=10)
         wm.resupplyAllWeapons();
 
         // Kho dự trữ nhận đúng 2 stack mỗi loại
         assertEquals(60, wm.getAmmoInventory().getAmmo(AmmoType.AR));
         assertEquals(70, wm.getAmmoInventory().getAmmo(AmmoType.SMG));
         assertEquals(20, wm.getAmmoInventory().getAmmo(AmmoType.SHOTGUN));
+        assertEquals(10, wm.getAmmoInventory().getAmmo(AmmoType.SR));
 
         // Băng đạn của các súng cũng được nạp đầy
         assertEquals(ar.getMagazineSize(), ar.getCurrentAmmo());
@@ -289,13 +297,97 @@ public class AmmoSystemTest {
         assertEquals(new java.awt.Color(80, 220, 100), AmmoType.AR.getColor(), "AR ammo must be military green");
         assertEquals(new java.awt.Color(0, 210, 255), AmmoType.SMG.getColor(), "SMG ammo must be cyan");
         assertEquals(new java.awt.Color(255, 90, 70), AmmoType.SHOTGUN.getColor(), "Shotgun ammo must be fiery red-orange");
+        assertEquals(new java.awt.Color(185, 80, 255), AmmoType.SR.getColor(), "SR ammo must be electric violet");
 
         AmmoPickup pAR = new AmmoPickup(0, 0, AmmoType.AR, 30);
         AmmoPickup pSMG = new AmmoPickup(0, 0, AmmoType.SMG, 35);
         AmmoPickup pSG = new AmmoPickup(0, 0, AmmoType.SHOTGUN, 10);
+        AmmoPickup pSR = new AmmoPickup(0, 0, AmmoType.SR, 5);
 
         assertEquals(AmmoType.AR.getColor(), pAR.getGlowColor());
         assertEquals(AmmoType.SMG.getColor(), pSMG.getGlowColor());
         assertEquals(AmmoType.SHOTGUN.getColor(), pSG.getGlowColor());
+        assertEquals(AmmoType.SR.getColor(), pSR.getGlowColor());
+    }
+
+    @Test
+    @DisplayName("Verify isOutOfAmmo logic on Weapon, WeaponManager, and Player out of ammo warning")
+    void testOutOfAmmoWarningMechanics() {
+        WeaponManager wm = new WeaponManager();
+        AssaultRifle ar = new AssaultRifle();
+        wm.equipWeapon(ar); // Trang bị vào Slot 1
+
+        // 1. Ban đầu: Băng đạn đầy (30 viên), kho dự trữ = 0 -> chưa hết sạch đạn (vẫn còn đạn trong băng)
+        assertEquals(30, ar.getCurrentAmmo());
+        assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.AR));
+        assertFalse(ar.isOutOfAmmo(), "Weapon with rounds in magazine must not be out of ammo");
+        assertFalse(wm.isCurrentWeaponOutOfAmmo(), "WeaponManager must reflect active weapon ammo status");
+
+        // 2. Bắn hết đạn trong băng (30 viên) và kho dự trữ = 0 -> HẾT SẠCH ĐẠN!
+        for (int i = 0; i < 30; i++) {
+            ar.attack(0, 0, 0, pm, wm.getActiveSlashes());
+            ar.update(0.1); // hoàn thành cooldown bắn
+        }
+        assertEquals(0, ar.getCurrentAmmo());
+        assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.AR));
+        assertTrue(ar.isOutOfAmmo(), "Weapon with 0 magazine and 0 reserve must be out of ammo");
+        assertTrue(wm.isCurrentWeaponOutOfAmmo(), "WeaponManager must report current weapon is out of ammo");
+
+        // 3. Nhặt đạn hoặc nhận tiếp tế -> Ngay lập tức không còn hết sạch đạn
+        wm.getAmmoInventory().addAmmo(AmmoType.AR, 30);
+        assertEquals(30, wm.getAmmoInventory().getAmmo(AmmoType.AR));
+        assertFalse(ar.isOutOfAmmo(), "Weapon with reserve ammo available must not be considered out of ammo");
+        assertFalse(wm.isCurrentWeaponOutOfAmmo());
+
+        // 4. Đổi sang Pistol (vô hạn đạn) hoặc CombatKnife (cận chiến) -> không bao giờ hết sạch đạn
+        Pistol pistol = new Pistol();
+        wm.equipWeapon(pistol);
+        assertFalse(pistol.isOutOfAmmo(), "Pistol with infinite ammo reserve must never be out of ammo");
+
+        com.groupproject.game.entity.weapon.CombatKnife knife = new com.groupproject.game.entity.weapon.CombatKnife();
+        wm.equipWeapon(knife);
+        assertFalse(knife.isOutOfAmmo(), "Melee weapon must never be out of ammo");
+
+        // 5. Kiểm tra Player.renderOutOfAmmoWarning không ném ngoại lệ khi vẽ
+        com.groupproject.game.entity.player.Player player = new com.groupproject.game.entity.player.Player(100, 100);
+        com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(800, 600);
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(800, 600, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g2d = img.createGraphics();
+
+        assertDoesNotThrow(() -> player.renderOutOfAmmoWarning(g2d, camera, true));
+        assertDoesNotThrow(() -> player.renderOutOfAmmoWarning(g2d, camera, false));
+        g2d.dispose();
+    }
+
+    @Test
+    @DisplayName("Verify Sniper Rifle consumes AmmoType.SR with 30 max capacity and 5 mag capacity")
+    void testSniperRifleAmmoConsumptionAndBackpackCapacity() {
+        WeaponManager wm = new WeaponManager();
+        com.groupproject.game.entity.weapon.SniperRifle sr = new com.groupproject.game.entity.weapon.SniperRifle();
+        wm.equipWeapon(sr);
+
+        assertEquals(AmmoType.SR, sr.getAmmoType());
+        assertEquals(5, sr.getMagazineSize());
+        assertEquals(5, sr.getCurrentAmmo());
+        assertEquals(0, wm.getAmmoInventory().getAmmo(AmmoType.SR));
+        assertEquals(30, wm.getAmmoInventory().getMaxCapacity(AmmoType.SR));
+
+        // Thêm đạn SR vào kho balô
+        wm.getAmmoInventory().addAmmo(AmmoType.SR, 20);
+        assertEquals(20, wm.getAmmoInventory().getAmmo(AmmoType.SR));
+
+        // Bắn hết 5 viên
+        for (int i = 0; i < 5; i++) {
+            sr.update(1.0); // hoàn thành cooldown kéo quy lát
+            assertTrue(sr.attack(0, 0, 0, pm, null));
+        }
+        assertEquals(0, sr.getCurrentAmmo());
+        assertTrue(sr.isReloading());
+
+        // Nạp đạn xong -> rút đúng 5 viên từ kho balô (20 - 5 = 15)
+        sr.update(2.5);
+        assertEquals(5, sr.getCurrentAmmo());
+        assertEquals(15, wm.getAmmoInventory().getAmmo(AmmoType.SR));
+        assertFalse(sr.isReloading());
     }
 }

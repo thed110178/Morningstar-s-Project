@@ -49,11 +49,14 @@ public class DungeonMapTest {
         assertNotNull(map.getResetStatRoom(), "Reset Stat Room must be instantiated");
         assertEquals(Room.RoomType.RESET_STAT, map.getResetStatRoom().getRoomType());
 
+        assertNotNull(map.getUpgradeRoom(), "Upgrade Room must be instantiated");
+        assertEquals(Room.RoomType.UPGRADE, map.getUpgradeRoom().getRoomType());
+
         int combatCount = map.getCombatRooms().size();
         assertTrue(combatCount >= 3 && combatCount <= 5,
                 "Procedural dungeon must generate between 3 and 5 combat rooms, got: " + combatCount);
-        assertEquals(combatCount + 4, map.getRooms().size(),
-                "Total rooms must match combat rooms plus spawn, extract, shop, and reset stat room");
+        assertEquals(combatCount + 5, map.getRooms().size(),
+                "Total rooms must match combat rooms plus spawn, extract, shop, reset stat, and upgrade room");
     }
 
     @Test
@@ -177,10 +180,11 @@ public class DungeonMapTest {
             assertTrue(combatCount >= 3 && combatCount <= 5,
                     "Run " + run + " must generate 3 to 5 combat chambers, got: " + combatCount);
 
-            assertEquals(combatCount + 4, map.getRooms().size(),
-                    "Total room count must equal combat rooms + 4 (Spawn, Extract, Shop, and Reset Stat)");
+            assertEquals(combatCount + 5, map.getRooms().size(),
+                    "Total room count must equal combat rooms + 5 (Spawn, Extract, Shop, Reset Stat, and Upgrade)");
             assertNotNull(map.getShopRoom(), "Shop room must be present in every run");
             assertNotNull(map.getResetStatRoom(), "Reset stat room must be present in every run");
+            assertNotNull(map.getUpgradeRoom(), "Upgrade room must be present in every run");
 
             for (Room r : map.getRooms()) {
                 assertTrue(r.getGridX() >= 0 && r.getGridX() + r.getWidthInTiles() <= DungeonMap.COLS,
@@ -405,5 +409,85 @@ public class DungeonMapTest {
         }
 
         assertTrue(sawNonSpawnAdjacent, "Shop Room must appear across diverse locations, not only next to spawn room");
+    }
+
+    @Test
+    @DisplayName("Verify special rooms (Shop, Reset Stat, Upgrade) can have up to 2 entrances and act as transit crossroads")
+    void testSpecialRoomsCanHaveTwoEntrances() {
+        boolean sawDualEntrance = false;
+
+        for (int i = 0; i < 40; i++) {
+            map.generateProceduralDungeon();
+            Room[] specialRooms = new Room[] {
+                map.getShopRoom(),
+                map.getResetStatRoom(),
+                map.getUpgradeRoom()
+            };
+
+            for (Room sr : specialRooms) {
+                assertNotNull(sr);
+                int connCount = 0;
+                for (DungeonMap.RoomConnection conn : map.getActiveConnections()) {
+                    if (conn.from == sr || conn.to == sr) {
+                        connCount++;
+                    }
+                }
+                // Số lối vào/ra tối đa được phép là 2 (không bị tắc nghẽn cũng không vượt quá 2)
+                assertTrue(connCount >= 1 && connCount <= 2,
+                        "Special room " + sr.getName() + " connection count must be 1 or 2, got: " + connCount);
+
+                if (connCount == 2) {
+                    sawDualEntrance = true;
+                    // Mỗi cửa rộng 4 ô tile, nên phòng có 2 cửa sẽ có ít nhất 8 ô cửa đã lắp đặt
+                    assertTrue(sr.getDoorTiles().size() >= 8,
+                            "Dual-entrance room must have at least 8 door tiles, got: " + sr.getDoorTiles().size());
+                }
+            }
+        }
+
+        assertTrue(sawDualEntrance, "Across multiple runs, special rooms must frequently generate 2 entrances/exits when adjacent neighbors exist");
+    }
+
+    @Test
+    @DisplayName("Verify combat rooms have diverse sizes and multi-archetype tactical hard cover layouts")
+    void testCombatRoomsHaveDiverseSizesAndCoverLayouts() {
+        boolean sawDifferentWidths = false;
+        boolean sawDifferentHeights = false;
+        java.util.Set<Integer> observedLayouts = new java.util.HashSet<>();
+
+        for (int i = 0; i < 20; i++) {
+            map.generateProceduralDungeon();
+            List<Room> combatRooms = map.getCombatRooms();
+            assertTrue(combatRooms.size() >= 3 && combatRooms.size() <= 5);
+
+            for (Room cr : combatRooms) {
+                int w = cr.getWidthInTiles();
+                int h = cr.getHeightInTiles();
+                int layout = cr.getCoverLayout();
+
+                assertTrue(w >= 12 && w <= 14, "Combat room width must be between 12 and 14, got: " + w);
+                assertTrue(h >= 9 && h <= 10, "Combat room height must be between 9 and 10, got: " + h);
+                assertTrue(layout >= 0 && layout <= 5, "Cover layout index must be in [0, 5], got: " + layout);
+
+                observedLayouts.add(layout);
+                if (w != 14) sawDifferentWidths = true;
+                if (h != 10) sawDifferentHeights = true;
+
+                // Mọi ô cover cứng đều phải tuyệt đối nằm ngoài vùng cửa ra vào
+                for (int c = cr.getGridX(); c < cr.getGridX() + w; c++) {
+                    for (int r = cr.getGridY(); r < cr.getGridY() + h; r++) {
+                        Tile t = map.getTile(c, r);
+                        if (t.getType() == TileType.COVER) {
+                            assertFalse(map.isNearDoorway(cr, c, r),
+                                    String.format("Combat room %s has COVER tile at doorway (%d, %d)", cr.getName(), c, r));
+                        }
+                    }
+                }
+            }
+        }
+
+        assertTrue(sawDifferentWidths, "Combat rooms must have varied widths (not solely 14)");
+        assertTrue(sawDifferentHeights, "Combat rooms must have varied heights (not solely 10)");
+        assertTrue(observedLayouts.size() >= 3, "Combat rooms must exhibit multiple diverse tactical cover layouts");
     }
 }

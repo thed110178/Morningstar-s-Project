@@ -5,6 +5,7 @@ import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
+import com.groupproject.game.entity.weapon.WeaponSpriteManager;
 import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -128,7 +129,13 @@ public class WeaponChest {
 
     private void setupCreditsReward() {
         rewardType = ChestRewardType.CREDITS;
-        creditsReward = ThreadLocalRandom.current().nextInt(20, 36); // 20 đến 35 Credits
+        // Phân tầng tiền thưởng hòm chiến lợi phẩm theo Stage:
+        // Stage 1 giảm nhẹ (15-25 Credits) để cân bằng với các mặt hàng giảm giá; tăng dần qua các màn sau
+        creditsReward = switch (stage) {
+            case 1 -> ThreadLocalRandom.current().nextInt(15, 26); // 15 đến 25 Credits
+            case 2 -> ThreadLocalRandom.current().nextInt(25, 41); // 25 đến 40 Credits
+            default -> ThreadLocalRandom.current().nextInt(40, 61); // 40 đến 60 Credits
+        };
         droppedWeapon = null;
     }
 
@@ -297,43 +304,60 @@ public class WeaponChest {
                 }
 
             } else if (droppedWeapon != null) {
-                // VẼ MÔ HÌNH VŨ KHÍ NỔI LƠ LỬNG TRÊN MIỆNG HÒM
-                if (droppedWeapon instanceof AssaultRifle) {
-                    // Minh họa Assault Rifle (AR)
-                    g.setColor(new Color(45, 55, 65));
-                    g.fillRect(rewardCenterX - 18, rewardCenterY - 4, 34, 7); // Thân súng
-                    g.setColor(new Color(255, 30, 35));
-                    g.fillRect(rewardCenterX + 8, rewardCenterY - 2, 12, 3);  // Nòng súng
-                    g.fillRect(rewardCenterX - 6, rewardCenterY + 3, 6, 9);   // Băng đạn cong
-                    g.setColor(new Color(255, 215, 60));
-                    g.fillRect(rewardCenterX + 19, rewardCenterY - 3, 3, 5);  // Đầu nòng vàng
-                } else if (droppedWeapon instanceof Shotgun) {
-                    // Minh họa Shotgun
-                    g.setColor(new Color(139, 69, 19));
-                    g.fillRect(rewardCenterX - 14, rewardCenterY - 4, 12, 8); // Báng gỗ
-                    g.setColor(new Color(55, 60, 70));
-                    g.fillRect(rewardCenterX - 2, rewardCenterY - 5, 24, 9);  // Nòng đôi to
-                    g.setColor(new Color(255, 140, 30));
-                    g.fillRect(rewardCenterX + 21, rewardCenterY - 4, 3, 7);  // Điểm nòng cam
-                } else if (droppedWeapon instanceof SMG) {
-                    // Minh họa Submachine Gun (SMG): Thân nhỏ gọn, hộp đạn thẳng dài, nòng cyan neon
-                    g.setColor(new Color(40, 50, 62));
-                    g.fillRect(rewardCenterX - 14, rewardCenterY - 4, 24, 7); // Thân súng tiểu liên
-                    g.setColor(new Color(20, 26, 32));
-                    g.fillRect(rewardCenterX - 4, rewardCenterY + 3, 5, 10);  // Hộp tiếp đạn thẳng dài
-                    g.setColor(new Color(25, 32, 40));
-                    g.fillRect(rewardCenterX + 10, rewardCenterY - 2, 7, 3);  // Nòng ngắn
-                    g.setColor(new Color(0, 230, 255));
-                    g.fillRect(rewardCenterX + 16, rewardCenterY - 3, 3, 5);  // Đầu nòng cyan neon
+                // Vị trí tâm súng nhô cao hơn miệng hòm để hiển thị kích thước lớn rõ nét
+                int weaponDisplayY = rewardCenterY - 8;
+
+                // ĐĨA NỀN SÁNG TƯƠNG PHẢN CAO: Giúp thân súng màu tối nổi bần bật, không bị chìm vào sàn đá tối của hầm ngục
+                int basePulse = (int) (3 * Math.sin(bobbingTimer * 2.0));
+                // 1. Quầng hào quang khuếch tán bên ngoài
+                g.setColor(new Color(255, 230, 110, 60));
+                g.fillOval(rewardCenterX - 34 - basePulse, weaponDisplayY - 34 - basePulse, (34 + basePulse) * 2, (34 + basePulse) * 2);
+                // 2. Đĩa sáng ấm rực rỡ
+                g.setColor(new Color(255, 245, 185, 175));
+                g.fillOval(rewardCenterX - 26, weaponDisplayY - 26, 52, 52);
+                // 3. Lõi trắng sáng tương phản trực tiếp sau thân súng
+                g.setColor(new Color(255, 255, 250, 235));
+                g.fillOval(rewardCenterX - 18, weaponDisplayY - 18, 36, 36);
+
+                // VẼ HIỆU ỨNG ĐẶC BIỆT NẾU LÀ KHÍ TÀI HẠNG S (S-TIER LEGENDARY AURA)
+                if (droppedWeapon.isSTier()) {
+                    // 1. Quầng hào quang vàng kim hoàng gia nhấp nhô theo nhịp thở
+                    int pulse = (int) (6 * Math.sin(bobbingTimer * 2.5));
+                    int auraRadius = 38 + pulse;
+                    g.setColor(new Color(255, 215, 0, Math.clamp(85 + pulse * 4, 40, 140)));
+                    g.fillOval(rewardCenterX - auraRadius, weaponDisplayY - auraRadius, auraRadius * 2, auraRadius * 2);
+
+                    // 2. Tia sáng năng lượng lấp lánh (Sparkles) 4 góc
+                    g.setColor(new Color(255, 255, 200, 220));
+                    int sparkDist = 28 + pulse / 2;
+                    g.fillRect(rewardCenterX - 1, weaponDisplayY - sparkDist, 3, 7);
+                    g.fillRect(rewardCenterX - 1, weaponDisplayY + sparkDist - 6, 3, 7);
+                    g.fillRect(rewardCenterX - sparkDist, weaponDisplayY - 1, 7, 3);
+                    g.fillRect(rewardCenterX + sparkDist - 6, weaponDisplayY - 1, 7, 3);
+
+                    // 3. Ký hiệu huy hiệu [S] viễn tưởng bay lơ lửng góc trên súng
+                    int badgeX = rewardCenterX + 26;
+                    int badgeY = weaponDisplayY - 24;
+                    g.setColor(new Color(30, 20, 5, 230));
+                    g.fillRoundRect(badgeX - 7, badgeY - 7, 15, 15, 4, 4);
+                    g.setColor(new Color(255, 215, 0));
+                    g.setStroke(new BasicStroke(1.2f));
+                    g.drawRoundRect(badgeX - 7, badgeY - 7, 15, 15, 4, 4);
+                    g.setFont(new Font("SansSerif", Font.BOLD, 10));
+                    g.drawString("S", badgeX - 3, badgeY + 4);
                 }
+
+                // VẼ MÔ HÌNH VŨ KHÍ NỔI LƠ LỬNG TRÊN MIỆNG HÒM: Phóng to lên 58x58 pixel to rõ, đẹp mắt
+                WeaponSpriteManager.renderWeaponSprite(g, droppedWeapon, rewardCenterX, weaponDisplayY, 58, 58);
 
                 if (showPrompt) {
                     // Khi người chơi tiến vào phạm vi: Hiện ô UI Tooltip hiển thị chi tiết 3 hàng sao và thông số
-                    renderWeaponStatCard(g, rewardCenterX, rewardCenterY - 18, droppedWeapon, "NHẶT TRANG BỊ");
+                    renderWeaponStatCard(g, rewardCenterX, weaponDisplayY - 26, droppedWeapon, "NHẶT TRANG BỊ");
                 } else {
-                    // Khi đứng xa: Chỉ hiện nhãn tên súng và cấp độ cơ bản
+                    // Khi đứng xa: Chỉ hiện nhãn tên súng và cấp độ cơ bản (Có viền vàng rực nếu là S-Tier)
                     String weaponTitle = "★ " + droppedWeapon.getShortDisplayName().toUpperCase() + " ★";
-                    renderTag(g, rewardCenterX, rewardCenterY - 16, weaponTitle, new Color(255, 215, 60));
+                    Color tagColor = droppedWeapon.isSTier() ? new Color(255, 215, 0) : new Color(255, 215, 60);
+                    renderTag(g, rewardCenterX, weaponDisplayY - 24, weaponTitle, tagColor);
                 }
             }
 
@@ -403,55 +427,68 @@ public class WeaponChest {
     public static void renderWeaponStatCard(Graphics2D g, int centerX, int bottomY, Weapon weapon, String actionPrompt) {
         if (weapon == null) return;
 
-        int boxW = 230;
-        int boxH = 114;
+        boolean isSTier = weapon.isSTier();
+        int boxW = 236;
+        int boxH = isSTier ? 148 : 130;
         int boxX = centerX - boxW / 2;
         int boxY = bottomY - boxH;
 
         // 1. Nền Card bo góc bán trong suốt phong cách Tactical HUD
         g.setColor(new Color(15, 22, 35, 240));
         g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
-        g.setColor(new Color(60, 220, 160));
-        g.setStroke(new BasicStroke(1.5f));
+        Color borderColor = isSTier ? new Color(255, 215, 0) : new Color(60, 220, 160);
+        g.setColor(borderColor);
+        g.setStroke(new BasicStroke(isSTier ? 2.0f : 1.5f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
-        // 2. Tiêu đề tên súng kèm cấp độ và số lần nâng cấp (VD: ★ AR I [0/3] ★)
+        // 2. Tiêu đề tên súng kèm cấp độ và số lần nâng cấp (VD: ★ [S] AR I [0/3] ★)
         g.setFont(new Font("SansSerif", Font.BOLD, 12));
-        g.setColor(new Color(255, 215, 60));
+        g.setColor(isSTier ? new Color(255, 225, 60) : new Color(255, 215, 60));
         String title = "★ " + weapon.getShortDisplayName().toUpperCase() + " [" + weapon.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "] ★";
         FontMetrics fm = g.getFontMetrics();
         g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
 
         // Đường gạch mảnh phân cách
-        g.setColor(new Color(50, 75, 100));
+        g.setColor(isSTier ? new Color(120, 95, 30) : new Color(50, 75, 100));
         g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
 
-        // 3. 4 hàng chỉ số đo bằng sao và chí mạng
+        // 3. 5 hàng chỉ số đo bằng sao, chí mạng và DPS
         g.setFont(new Font("SansSerif", Font.PLAIN, 10));
         g.setColor(new Color(200, 220, 240));
         g.drawString("• Sát thương:", boxX + 14, boxY + 36);
         g.drawString("• Tốc ra đạn:", boxX + 14, boxY + 51);
         g.drawString("• Chính xác:", boxX + 14, boxY + 66);
         g.drawString("• Chí mạng:", boxX + 14, boxY + 81);
+        g.drawString("• Chỉ số DPS:", boxX + 14, boxY + 96);
 
-        // Giá trị sao màu vàng kim
+        // Giá trị sao màu vàng kim và thông số
         g.setFont(new Font("SansSerif", Font.BOLD, 10));
         g.setColor(new Color(255, 225, 75));
         g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", boxX + 88, boxY + 36);
         g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", boxX + 88, boxY + 51);
         g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", boxX + 88, boxY + 66);
         g.setColor(new Color(255, 130, 90));
-        g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.1f", weapon.getCritMultiplier()) + " DMG)", boxX + 88, boxY + 81);
+        g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.2f", weapon.getCritMultiplier()) + " DMG)", boxX + 88, boxY + 81);
+        g.setColor(new Color(0, 225, 255));
+        g.drawString(weapon.getNormalDPS() + " (Chí mạng: " + weapon.getCritDPS() + ")", boxX + 88, boxY + 96);
+
+        int promptY = boxY + 106;
+        if (isSTier) {
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setColor(new Color(255, 215, 0));
+            g.drawString("★ ĐẶC QUYỀN S: +1 Cấp mỗi khi qua Stage", boxX + 14, boxY + 112);
+            promptY = boxY + 122;
+        }
 
         // 4. Thanh lời nhắc phím bấm [F]
         g.setColor(new Color(25, 65, 45, 230));
-        g.fillRoundRect(boxX + 10, boxY + 91, boxW - 20, 16, 4, 4);
+        g.fillRoundRect(boxX + 10, promptY, boxW - 20, 16, 4, 4);
         g.setColor(new Color(60, 220, 160));
-        g.drawRoundRect(boxX + 10, boxY + 91, boxW - 20, 16, 4, 4);
+        g.drawRoundRect(boxX + 10, promptY, boxW - 20, 16, 4, 4);
 
         g.setFont(new Font("SansSerif", Font.BOLD, 10));
         g.setColor(new Color(255, 220, 60));
-        g.drawString("[F] " + actionPrompt, boxX + 16, boxY + 103);
+        g.drawString("[F] " + actionPrompt, boxX + 16, promptY + 12);
 
         g.setStroke(new BasicStroke(1.0f));
     }

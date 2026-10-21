@@ -56,6 +56,12 @@ public enum TileType {
     DOOR_RESET_STAT(false, new Color(220, 180, 40), "Field Gunsmith Gateway (Hazard Striped)"),
 
     /**
+     * Cổng vào Phòng Nâng Cấp Nhân Vật (Bio-Tech Augmentation Lab).
+     * Luôn mở và sở hữu dải ngưỡng cửa viền phát quang dạ quang Neon Emerald công nghệ sinh học.
+     */
+    DOOR_UPGRADE(false, new Color(40, 200, 160), "Bio-Tech Lab Gateway (Neon Emerald)"),
+
+    /**
      * Tấm lót cao su dã chiến bảo dưỡng khí tài tại tâm Xưởng Quân Khí.
      */
     REFORGE_ZONE(false, new Color(42, 48, 44), "Gunsmith Maintenance Mat"),
@@ -69,6 +75,11 @@ public enum TileType {
      * Bãi đáp trực thăng sơ tán quân sự (Helipad Extraction LZ) chuyển tiếp sang vùng tác chiến tiếp theo.
      */
     EXTRACT_ZONE(false, new Color(48, 52, 45), "Helipad Extraction LZ"),
+
+    /**
+     * Bệ sàn kim loại công nghệ sinh học tại tâm Phòng Nâng Cấp Nhân Vật (Bio-Tech Augmentation Lab).
+     */
+    UPGRADE_ZONE(false, new Color(28, 44, 52), "Bio-Tech Lab Floor"),
 
     /**
      * Void area outside of all rooms and corridors. Impassable.

@@ -6,7 +6,6 @@ import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 
@@ -37,26 +36,43 @@ public class StatReforgeStation {
     }
 
     /**
-     * Tính toán chi phí Credits cho lần hiệu chỉnh khí tài kế tiếp.
-     * Quy tắc tăng giá lũy tiến dã chiến:
-     * - Lần 1: 40 Credits
-     * - Lần 2: 65 Credits (+25)
-     * - Lần 3: 95 Credits (+30)
-     * - Lần 4: 135 Credits (+40)
-     * - Lần 5: 185 Credits (+50)
-     * - Lần 6: 245 Credits (+60)
+     * Tính toán chi phí Credits cho lần hiệu chỉnh khí tài kế tiếp dựa trên cấp độ của vũ khí.
+     * Quy tắc phân cấp:
+     * - Vũ khí Cấp 1 (Level 1): Chỉ roll lại tỉ lệ chí mạng (Critical Chance) do chưa có sao thặng dư:
+     *   + Lần 1: 15 Credits (giảm sâu từ 40 xuống 15 để người chơi khởi đầu có thể tinh chỉnh súng)
+     *   + Lần 2: 25 Credits (+10)
+     *   + Lần 3: 40 Credits (+15)
+     *   + Lần 4: 60 Credits (+20)
+     * - Vũ khí Cấp 2 trở lên (Level >= 2): Tái phân bổ sao và roll chí mạng:
+     *   + Lần 1: 30 Credits
+     *   + Lần 2: 50 Credits (+20)
+     *   + Lần 3: 75 Credits (+25)
+     *   + Lần 4: 105 Credits (+30)
+     */
+    public int getCurrentCost(Weapon weapon) {
+        boolean isLevel1 = (weapon != null && weapon.getLevel() <= 1);
+        if (isLevel1) {
+            if (reforgeCount <= 0) return 15;
+            int cost = 15;
+            for (int i = 0; i < reforgeCount; i++) {
+                cost += 10 + i * 5;
+            }
+            return cost;
+        } else {
+            if (reforgeCount <= 0) return 30;
+            int cost = 30;
+            for (int i = 0; i < reforgeCount; i++) {
+                cost += 20 + i * 5;
+            }
+            return cost;
+        }
+    }
+
+    /**
+     * Quá tải mặc định tính giá theo vũ khí cấp cao (phục vụ tương thích ngược).
      */
     public int getCurrentCost() {
-        if (reforgeCount <= 0) return 40;
-        int cost = 40;
-        for (int i = 0; i < reforgeCount; i++) {
-            if (i == 0) {
-                cost += 25;
-            } else {
-                cost += 20 + i * 10;
-            }
-        }
-        return cost;
+        return getCurrentCost(null);
     }
 
     public int getReforgeCount() {
@@ -104,7 +120,7 @@ public class StatReforgeStation {
             return false;
         }
 
-        int cost = getCurrentCost();
+        int cost = getCurrentCost(weapon);
         if (state.getPlayerCredits() < cost) {
             state.showTacticalBanner("KHÔNG ĐỦ CREDITS! (CẦN " + cost + " CREDITS - HIỆN CÓ: "
                     + state.getPlayerCredits() + ")", new Color(255, 75, 75), 2.2);
@@ -204,8 +220,9 @@ public class StatReforgeStation {
         // Chao đèn xanh quân sự rọi quầng sáng ấm xuống mặt bàn
         g2.setColor(new Color(50, 70, 55));
         g2.fillOval(screenX + 10, screenY + 2, 8, 6);
-        // Quầng sáng vàng ấm dã chiến tỏa xuống mặt bàn
-        g2.setColor(new Color(255, 235, 150, 45));
+        // Quầng sáng vàng ấm dã chiến tỏa xuống mặt bàn nhấp nháy thở nhẹ
+        int pulseAlpha = (int) (40 + 8 * Math.sin(animTimer));
+        g2.setColor(new Color(255, 235, 150, Math.clamp(pulseAlpha, 20, 60)));
         g2.fillOval(screenX - 22, screenY - 14, 44, 28);
 
         // 7. Hiệu ứng tia lửa cơ khí nhỏ khi vừa hoàn tất hiệu chỉnh
@@ -240,7 +257,7 @@ public class StatReforgeStation {
      */
     private void renderGunsmithClipboardHUD(Graphics2D g, int sx, int sy, boolean inRange,
                                             Weapon weapon, int playerCredits) {
-        int cost = getCurrentCost();
+        int cost = getCurrentCost(weapon);
         boolean canAfford = playerCredits >= cost;
 
         int boxW = inRange ? 320 : 220;
@@ -270,13 +287,15 @@ public class StatReforgeStation {
         g.drawString("★ BÀN KỸ THUẬT QUÂN KHÍ DÃ CHIẾN", boxX + 12, boxY + 18);
 
         // Dòng 2: Hướng dẫn [F] và Chi phí Credits
+        boolean isLevel1 = (weapon != null && weapon.getLevel() <= 1);
+        String actionLabel = isLevel1 ? "[F] ROLL CHÍ MẠNG SÚNG LV.1" : "[F] HIỆU CHỈNH KHÍ TÀI";
         g.setFont(new Font("SansSerif", Font.BOLD, 13));
         if (canAfford) {
             g.setColor(new Color(255, 235, 120));
-            g.drawString(String.format("[F] HIỆU CHỈNH KHÍ TÀI (%d CREDITS)", cost), boxX + 12, boxY + 36);
+            g.drawString(String.format("%s (%d CREDITS)", actionLabel, cost), boxX + 12, boxY + 36);
         } else {
             g.setColor(new Color(255, 95, 95));
-            g.drawString(String.format("[F] HIỆU CHỈNH KHÍ TÀI (%d CREDITS) - THIẾU!", cost), boxX + 12, boxY + 36);
+            g.drawString(String.format("%s (%d CREDITS) - THIẾU!", actionLabel, cost), boxX + 12, boxY + 36);
         }
 
         // Khi lại gần: Hiển thị thông số vũ khí trên tay (DMG, RPM, ACC, Crit) và ghi chú chi phí lũy tiến
@@ -285,13 +304,13 @@ public class StatReforgeStation {
             g.setColor(new Color(215, 225, 215));
 
             if (weapon != null) {
-                String weaponInfo = String.format("• Khí tài: %s (Lv.%d | DMG:%d★ RPM:%d★ ACC:%d★ | Crit: %d%%)",
+                String weaponInfo = String.format("• Khí tài: %s (Lv.%d | Crit: %d%% x%.2f | DPS: %d/%d)",
                         weapon.getShortDisplayName(),
                         weapon.getLevel(),
-                        weapon.getDamageStars(),
-                        weapon.getFireRateStars(),
-                        weapon.getAccuracyStars(),
-                        weapon.getCritChancePercent());
+                        weapon.getCritChancePercent(),
+                        weapon.getCritMultiplier(),
+                        weapon.getNormalDPS(),
+                        weapon.getCritDPS());
                 g.drawString(weaponInfo, boxX + 12, boxY + 53);
             } else {
                 g.drawString("• Chưa trang bị vũ khí trên tay", boxX + 12, boxY + 53);

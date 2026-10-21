@@ -190,6 +190,7 @@ public class PlayerHealthTest {
         double movedX = state.getPlayerX() - startX;
         // Vận tốc né là 560 px/s, trong 0.1s di chuyển 56px (nhanh hơn tốc độ chạy thường 210 px/s * 0.1 = 21px)
         assertEquals(56.0, movedX, 1.0, "Dodge burst should displace at 560 px/s");
+        assertEquals(startY, state.getPlayerY(), 0.01, "Y coordinate should remain unchanged during horizontal dodge");
 
         // 3. Test đứng yên: Chờ lượt né thứ nhất kết thúc (0.25s) và reset hồi chiêu
         state.getPlayer().update(0.25);
@@ -264,5 +265,43 @@ public class PlayerHealthTest {
 
         assertTrue(state.isPlayerDodging(), "Space key press in PlayingState must trigger dodge roll");
         assertTrue(state.getPlayer().isInvulnerable(), "Player must have i-frames active from Space dodge");
+    }
+
+    @Test
+    @DisplayName("Verify operative death sequence triggers sliding skull animation without instant game over")
+    void testPlayerDeathSlidingSkullSequence() {
+        double startX = state.getPlayerX();
+        double startY = state.getPlayerY();
+
+        // 1. Gây sát thương chí tử hạ gục người chơi (150 HP)
+        state.setInvulnerableTimer(0.0);
+        state.damagePlayer(150);
+
+        assertTrue(state.isPlayerDead(), "Player must be dead after fatal damage");
+        assertEquals(0, state.getPlayerCurrentHealth());
+        assertFalse(state.getPlayer().isDeathSequenceComplete(), "Death sequence must NOT be complete immediately");
+        assertEquals(0.0, state.getPlayer().getDeathSequenceProgress(), 0.001);
+
+        // 2. Cập nhật chuyển động trượt trong 0.5s -> Tọa độ trượt di chuyển theo quán tính
+        state.getPlayer().update(0.5, state.getDungeonMap());
+        assertFalse(state.getPlayer().isDeathSequenceComplete());
+        assertEquals(0.25, state.getPlayer().getDeathSequenceProgress(), 0.01);
+        double displacedDist = Math.hypot(state.getPlayerX() - startX, state.getPlayerY() - startY);
+        assertTrue(displacedDist > 5.0, "Skull should slide across the floor due to inertia displacement");
+
+        // 3. Cập nhật thêm 1.6s (tổng 2.1s > 2.0s) -> Hoạt cảnh trượt hoàn tất
+        state.getPlayer().update(1.6, state.getDungeonMap());
+        assertTrue(state.getPlayer().isDeathSequenceComplete(), "Death sequence must be complete after full duration");
+        assertEquals(1.0, state.getPlayer().getDeathSequenceProgress(), 0.001);
+
+        // 4. Test chức năng bỏ qua (Skip) ngay lập tức
+        state.getPlayer().reset(startX, startY);
+        assertFalse(state.isPlayerDead());
+        state.damagePlayer(150);
+        assertTrue(state.isPlayerDead());
+        assertFalse(state.getPlayer().isDeathSequenceComplete());
+
+        state.getPlayer().completeDeathSequence();
+        assertTrue(state.getPlayer().isDeathSequenceComplete(), "completeDeathSequence must finish transition immediately");
     }
 }

@@ -23,7 +23,8 @@ public class Room {
         COMBAT,
         EXTRACT,
         SHOP,
-        RESET_STAT
+        RESET_STAT,
+        UPGRADE
     }
 
     /**
@@ -44,6 +45,7 @@ public class Room {
 
     private RoomStatus status = RoomStatus.UNVISITED;
     private final List<Tile> doorTiles = new ArrayList<>();
+    private boolean discovered = false;
 
     // Hệ thống phân chia đợt quái (Phase 1, Phase 2) cho phòng chiến đấu
     private int totalPhases = 1;
@@ -85,15 +87,18 @@ public class Room {
         }
     }
 
+    // Bố cục che chắn chiến thuật được chỉ định cho phòng combat này
+    private int coverLayout = 0;
+
     /**
      * Engages combat lockdown by closing and solidifying all entrance/exit blast gates.
      */
     public void lockdown() {
-        if (roomType == RoomType.SHOP || roomType == RoomType.RESET_STAT || status == RoomStatus.CLEARED) return; // Shop & Reset Stat never lock down
+        if (roomType == RoomType.SHOP || roomType == RoomType.RESET_STAT || roomType == RoomType.UPGRADE || status == RoomStatus.CLEARED) return; // Special rooms never lock down
 
         this.status = RoomStatus.ACTIVE_LOCKDOWN;
         for (Tile door : doorTiles) {
-            if (door.getType() != TileType.DOOR_SHOP && door.getType() != TileType.DOOR_RESET_STAT) {
+            if (door.getType() != TileType.DOOR_SHOP && door.getType() != TileType.DOOR_RESET_STAT && door.getType() != TileType.DOOR_UPGRADE) {
                 door.setType(TileType.DOOR_CLOSED);
             }
         }
@@ -105,7 +110,7 @@ public class Room {
     public void unlock() {
         this.status = RoomStatus.CLEARED;
         for (Tile door : doorTiles) {
-            if (door.getType() != TileType.DOOR_SHOP) {
+            if (door.getType() != TileType.DOOR_SHOP && door.getType() != TileType.DOOR_RESET_STAT && door.getType() != TileType.DOOR_UPGRADE) {
                 door.setType(TileType.DOOR_OPEN);
             }
         }
@@ -121,16 +126,33 @@ public class Room {
     public void reset() {
         this.status = RoomStatus.UNVISITED;
         this.currentPhase = 1;
+        this.discovered = false;
         if (roomType == RoomType.COMBAT) {
             this.totalPhases = java.util.concurrent.ThreadLocalRandom.current().nextBoolean() ? 2 : 1;
         } else {
             this.totalPhases = 1;
         }
         for (Tile door : doorTiles) {
-            if (door.getType() != TileType.DOOR_SHOP) {
+            if (door.getType() != TileType.DOOR_SHOP && door.getType() != TileType.DOOR_RESET_STAT && door.getType() != TileType.DOOR_UPGRADE) {
                 door.setType(TileType.DOOR_OPEN);
             }
         }
+    }
+
+    public int getCoverLayout() {
+        return coverLayout;
+    }
+
+    public void setCoverLayout(int coverLayout) {
+        this.coverLayout = coverLayout;
+    }
+
+    public boolean isDiscovered() {
+        return discovered;
+    }
+
+    public void setDiscovered(boolean discovered) {
+        this.discovered = discovered;
     }
 
     public int getTotalPhases() {

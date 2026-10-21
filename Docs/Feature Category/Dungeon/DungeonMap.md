@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 09/10/2026
+Cập nhật mới nhất vào ngày: 20/10/2026
 
 # DungeonMap.java - Hệ Thống Hầm Ngục Lưới 4 Hướng (12h, 3h, 6h, 9h) Liền Kề & Kiểm Tra Va Chạm Lưới
 
@@ -92,7 +92,14 @@ Hệ thống hầm ngục được xây dựng theo **Kiến trúc Lưới Phòn
   - Thêm `TileType.DESTRUCTIBLE_COVER`: Thùng gỗ che chắn chiến thuật có 40 HP, bị phá hủy thành `FLOOR` khi bị đạn bắn hoặc cận chiến chém trúng.
   - Sinh ngẫu nhiên từ 3-5 ô cover tạm thời trong các phòng combat và 8 ô trong Boss Arena tại các vị trí an toàn.
   - Loại bỏ hoàn toàn các khối cover cứng cũ nằm sát mép cửa; đảm bảo 100% lối ra vào và hành lang của các phòng thông thoáng tuyệt đối.
-* **09/10/2026 (Lần 6 - Cover Cứng Song Hành Cover Tạm Thời & Sửa Lỗi Enemy Spawn Vào Cover)**:
-  - Bổ sung `spawnSolidCovers(Room room)`: Bố trí các cột cover cứng kiên cố (`COVER`) tại các góc chiến thuật an toàn của phòng thường, kết hợp với các thùng gỗ cover tạm thời (`DESTRUCTIBLE_COVER`) sinh ngẫu nhiên.
-  - Cả hai loại cover xuất hiện đồng thời trong mọi phòng chiến đấu, nhưng được kiểm tra nghiêm ngặt qua `isNearDoorway` để đảm bảo tuyệt đối không sinh ở gần cửa ra vào của phòng.
-  - Khắc phục triệt để lỗi Enemy bị spawn đè lên các ô cover: Tích hợp thuật toán `isSafeEnemySpawnPoint` và `findSafeSpawnLocation` (spiral search) trong `PlayingState`, đảm bảo 100% mục tiêu chiến đấu được sinh trên ô sàn trống (`FLOOR`), hoàn toàn cách ly khỏi các ô cover cứng, cover tạm thời và tường.
+* **20/10/2026 (Lần 7 - Phòng Đặc Biệt 2 Lối Vào/Ra & Đa Dạng Hóa Kích Thước Bố Cục Cover Phòng Combat)**:
+  - **Phòng đặc biệt 2 lối vào/ra (Dual-Entrance Transit Crossroads)**: Các phòng tiện ích chiến thuật gồm Cửa hàng (`SHOP`), Xưởng Chế tạo Tẩy luyện Chỉ số (`RESET_STAT`) và Phòng Nghiên cứu Sinh học (`UPGRADE`) được ưu tiên đặt tại các nút giao kề nhiều phòng (ngã ba/ngã tư) và tự động kết nối tối đa 2 hành lang nếu có phòng kề cận. Nhờ đó, người chơi có thể đi xuyên qua phòng đặc biệt như một lối tắt trung chuyển, xóa bỏ cảm giác phòng cụt và gia tăng tính cơ động chiến thuật.
+  - **Cổng Bio-Tech Lab Gateway (`DOOR_UPGRADE`)**: Lắp đặt cổng cửa Neon Emerald đặc trưng ở các lối vào của phòng Upgrade, tích hợp cơ chế luôn mở và miễn nhiễm hoàn toàn với combat lockdown.
+  - **Đa dạng hóa kích thước và bố cục cover phòng combat**: Thay vì kích thước 14x10 đơn điệu và chỉ có 1 kiểu trụ 4 góc, các phòng combat nay được cấu hình theo 6 bộ Archetypes linh hoạt:
+    + Archetype 0: Tactical Arena ($14 \times 10$) - Bố cục Cột 4 góc kiên cố.
+    + Archetype 1: CQC Bunker ($12 \times 9$) - Boong-ke 2 trụ trung tâm áp sát tầm gần.
+    + Archetype 2: Assault Gallery ($14 \times 9$) - 2 bức tường song song phân làn hỏa lực.
+    + Archetype 3: Crossfire Chamber ($13 \times 10$) - Công sự góc chữ L chéo góc phòng thủ.
+    + Archetype 4: Tactical Killzone ($13 \times 9$) - Bàn cờ đan xen so le che chắn đa hướng.
+    + Archetype 5: Divided Bastion ($14 \times 10$) - Chiến hào phân đôi cánh bảo vệ hai sườn.
+  - Mọi bố cục cover cứng đều được kiểm tra nghiêm ngặt qua `isNearDoorway(room, c, r)` đối với tất cả các cửa thực tế đã lắp đặt, đảm bảo 100% lối đi hành lang và tâm phòng luôn thông thoáng.

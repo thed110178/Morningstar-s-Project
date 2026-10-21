@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 18/10/2026
+Cập nhật mới nhất vào ngày: 21/10/2026
 
 # AssaultRifle.java - Súng Trường Tấn Công (Slot 1)
 
@@ -29,7 +29,7 @@ Cập nhật mới nhất vào ngày: 18/10/2026
 * **Tốc độ bắn (`fireRateCooldown`)**: $60.0 / 700.0 \approx 0.0857$ giây/viên (tương đương 700 RPM)
 * **Dung lượng băng đạn (`magazineSize`)**: 30 viên
 * **Thời gian nạp đạn (`reloadDuration`)**: 1.8 giây
-* **Vận tốc đạn (`BULLET_SPEED`)**: 820 px/giây (vận tốc đầu nòng lớn hơn súng lục)
+* **Vận tốc đạn (`BULLET_SPEED`)**: 900 px/giây (vận tốc đầu nòng lớn hơn súng lục)
 * **Thời gian sống của đạn (`BULLET_LIFETIME`)**: 1.2 giây (tầm bay tối đa ~984 px)
 * **Góc lệch cơ sở (`baseSpreadAngle`)**: $\pm 0.04$ radian
 
@@ -64,6 +64,10 @@ Cập nhật mới nhất vào ngày: 18/10/2026
   - Tự động hồi phục độ chính xác khi nhả cò/ngừng bắn trong $\sim 0.25$ giây.
   - Tỉ lệ nghịch với số sao Accuracy: Sao càng cao thì viên đầu càng chụm và độ lệch tối đa khi sấy càng ít, và ngược lại.
   - Bổ sung 2 unit test trong `WeaponSystemTest` đỗ $100\%$.
+* **21/10/2026**: Tích hợp hình ảnh minh họa Sprite 32x32 (`Auto AR.png`) thông qua `WeaponSpriteManager`:
+  - Hiển thị trên thẻ vũ khí Balo PDA (`BackpackUI`).
+  - Hiển thị mô hình nổi lơ lửng khi mở nắp Hòm tiếp tế (`WeaponChest`).
+  - Trưng bày trên bệ bán vũ khí trong Cửa hàng dã chiến (`ShopItem`).
 
 ---
 

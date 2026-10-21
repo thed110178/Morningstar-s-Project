@@ -23,7 +23,7 @@ public class AssaultRifle extends Weapon {
     private static final double FIRE_RATE = 60.0 / 700.0; // ~0.0857s/viên tương đương 700 RPM
     private static final int MAG_CAPACITY = 30;           // Băng đạn tiêu chuẩn 30 viên
     private static final double RELOAD_TIME = 1.8;        // 1.8s nạp đạn
-    private static final double BULLET_SPEED = 820.0;     // Đạn AR bay nhanh (820 px/s)
+    private static final double BULLET_SPEED = 900.0;     // Đạn AR bay nhanh (900 px/s)
     private static final double BULLET_LIFETIME = 1.2;    // Đạn bay xa tới 984 px
     private static final double SPREAD_ANGLE = 0.04;      // Độ giật rung ngẫu nhiên (+- 2.3 độ)
 

@@ -19,10 +19,10 @@ import com.groupproject.game.entity.projectile.ExplosionVisual;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.shop.ShopItem;
+import com.groupproject.game.entity.station.CharacterUpgradeStation;
 import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.MeleeSlash;
-import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.player.Player;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
@@ -32,15 +32,12 @@ import com.groupproject.game.input.KeyBindings.GameAction;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import com.groupproject.game.ui.BackpackUI;
+import com.groupproject.game.ui.CharacterUpgradeUI;
+import com.groupproject.game.ui.MinimapHUD;
 import com.groupproject.game.ui.PauseMenuUI;
 import com.groupproject.game.ui.PlayingHUD;
-import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.GradientPaint;
 import java.awt.Graphics2D;
-import java.awt.Paint;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
@@ -110,10 +107,16 @@ public class PlayingState extends GameState {
     private double screenShakeTimer = 0.0;
     private final List<HealthPickup> healthPickups = new CopyOnWriteArrayList<>();
 
-    // Giao diện Balo chiến thuật (Tab) và Hệ thống HUD
+    // Giao diện Balo chiến thuật (Tab), Bản đồ thu nhỏ Minimap và Hệ thống HUD
     private final BackpackUI backpackUI = new BackpackUI();
     private final PlayingHUD playingHUD = new PlayingHUD();
+    private final MinimapHUD minimapHUD = new MinimapHUD();
     private boolean isBackpackOpen = false;
+
+    // Hệ thống Cắt cảnh Giới thiệu Boss & Chuyển màn Điện ảnh
+    private final com.groupproject.game.ui.BossIntroCinematic bossIntroCinematic = new com.groupproject.game.ui.BossIntroCinematic();
+    private boolean bossIntroTriggered = false;
+    private final com.groupproject.game.ui.ScreenTransition stageTransition = new com.groupproject.game.ui.ScreenTransition();
 
     // Menu Tạm dừng (Pause Menu UI) và Trạng thái Tạm dừng
     private final PauseMenuUI pauseMenuUI = new PauseMenuUI();
@@ -123,6 +126,11 @@ public class PlayingState extends GameState {
     private int playerCredits = 0;
     private final List<ShopItem> shopItems = new CopyOnWriteArrayList<>();
     private StatReforgeStation statReforgeStation;
+
+    // Hệ thống Phòng Nâng Cấp Nhân Vật (Character Upgrade Stations & Modal UI)
+    private CharacterUpgradeStation basicUpgradeStation;
+    private CharacterUpgradeStation specialUpgradeStation;
+    private final CharacterUpgradeUI characterUpgradeUI = new CharacterUpgradeUI();
 
     /**
      * Constructs the playing state, builds the dungeon facility, camera, and combat managers.
@@ -136,6 +144,7 @@ public class PlayingState extends GameState {
         this.projectileManager = new ProjectileManager();
         this.weaponManager = new WeaponManager();
         this.player = new Player(0, 0);
+        this.weaponManager.bindPlayerBuffManager(this.player.getBuffManager());
     }
 
     /**
@@ -150,6 +159,17 @@ public class PlayingState extends GameState {
 
     public static boolean isSpawnDirectlyInBossRoom() {
         return spawnDirectlyInBossRoom;
+    }
+
+    // Danh sách vũ khí chuyển giao từ The Range vào Dungeon
+    private static java.util.List<Weapon> transferredHubWeapons = null;
+
+    public static void transferWeaponsFromHub(java.util.List<Weapon> weapons) {
+        transferredHubWeapons = (weapons != null) ? new java.util.ArrayList<>(weapons) : null;
+    }
+
+    public static java.util.List<Weapon> getTransferredHubWeapons() {
+        return transferredHubWeapons;
     }
 
     @Override
@@ -192,9 +212,20 @@ public class PlayingState extends GameState {
         this.bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
         this.bossMinionWaveCount = 0;
         this.weaponManager.reset();
+        this.player.getBuffManager().reset();
+        this.weaponManager.bindPlayerBuffManager(this.player.getBuffManager());
+
+        // Đảm bảo cấm mang vũ khí thử nghiệm và vũ khí Lv 10 từ The Range vào Stage 1.
+        // Mọi chiến dịch khởi đầu đều bắt đầu bằng trang bị tiêu chuẩn (Pistol Slot 3 + Knife Slot 4).
+        transferredHubWeapons = null;
 
         populateShopItems();
         populateResetStatStation();
+        populateUpgradeStations();
+
+        // Reset cắt cảnh: run mới không được giữ lại intro Boss/transition của run trước
+        bossIntroTriggered = false;
+        bossIntroCinematic.skip();
 
         showBanner("STAGE 1", new Color(60, 220, 160), 2.0);
 
@@ -265,11 +296,17 @@ public class PlayingState extends GameState {
         weaponManager.addWeapon(sg);
 
         weaponManager.resupplyAmmoPackage(5); // Tiếp tế tối đa đạn dự trữ cho toàn bộ vũ khí
+        weaponManager.bindPlayerBuffManager(player.getBuffManager());
 
         populateShopItems();
         populateResetStatStation();
+        populateUpgradeStations();
 
         showBanner("STAGE 4: BOSS ARENA", new Color(255, 60, 60), 2.0);
+
+        // Spawn thẳng vào phòng Boss: boss đã được sinh ở trên nên phát cắt cảnh giới thiệu ngay
+        bossIntroTriggered = false;
+        tryStartBossIntro();
 
         // Center camera on operative immediately on mission start
         camera.update(player.getCenterX(), player.getCenterY());
@@ -277,9 +314,11 @@ public class PlayingState extends GameState {
 
     /**
      * Chuyển tiếp người chơi sang stage tiếp theo trong Biome mà vẫn bảo lưu trang bị / balo.
+     * Tự động thăng thêm 1 Cấp (+1 Level) cho tất cả các khí tài Hạng S (S-Tier Legendary) mà người chơi đang sở hữu.
      */
-    private void advanceToNextStage() {
+    public void advanceToNextStage() {
         currentStage++;
+        bossIntroTriggered = false; // Stage mới -> cho phép phát lại intro khi gặp Boss
         dungeonMap.generateStage(currentStage);
 
         Room spawnRoom = dungeonMap.getSpawnRoom();
@@ -303,26 +342,93 @@ public class PlayingState extends GameState {
         isStandingOnExtract = false;
         player.setInvulnerableTimer(0.0);
         screenShakeTimer = 0.0;
+        weaponManager.bindPlayerBuffManager(player.getBuffManager());
+
+        // Kiểm tra và tự động thăng cấp (+1 Level) cho các khí tài Hạng S (S-Tier Legendary)
+        java.util.List<String> sTierUpgrades = new java.util.ArrayList<>();
+        for (Weapon w : weaponManager.getAllWeapons()) {
+            if (w != null && w.isSTier()) {
+                String upgradedStat = w.autoAdvanceStageLevel();
+                if (upgradedStat != null) {
+                    sTierUpgrades.add(w.getShortDisplayName() + " (+" + upgradedStat + ")");
+                }
+            }
+        }
 
         populateShopItems();
         populateResetStatStation();
+        populateUpgradeStations();
 
         camera.update(player.getCenterX(), player.getCenterY());
 
-        if (currentStage == BOSS_STAGE) {
+        if (!sTierUpgrades.isEmpty()) {
+            String msg = "★ KHÍ TÀI HẠNG S TỰ LÊN CẤP: " + String.join(", ", sTierUpgrades) + " ★";
+            showBanner(msg, new Color(255, 215, 60), 3.5);
+        } else if (currentStage == BOSS_STAGE) {
             showBanner("STAGE 4: BOSS ARENA", new Color(255, 70, 70), 2.0);
         } else {
             showBanner("STAGE " + currentStage, new Color(60, 220, 160), 2.0);
         }
     }
 
+    /** Bỏ qua tức thì cắt cảnh giới thiệu Boss (dùng cho test và debug). */
+    public void skipBossIntro() {
+        bossIntroCinematic.skip();
+    }
+
+    /** @return true nếu cắt cảnh giới thiệu Boss đang chạy (gameplay đang bị đóng băng). */
+    public boolean isBossIntroActive() {
+        return bossIntroCinematic.isActive();
+    }
+
+    /** @return true nếu hiệu ứng Fade chuyển stage đang chạy. */
+    public boolean isStageTransitionActive() {
+        return stageTransition.isActive();
+    }
+
     /**
-     * Khởi tạo các quầy hàng buôn bán trong Room Shop nếu có.
-     * Cân bằng kinh tế theo đúng quy luật thiết kế:
-     * - Bàn nâng cấp súng 1 cấp: 80 Credits (nâng từ I -> II hoặc II -> III).
-     * - Quầy mua súng Level III ngẫu nhiên: 135 Credits (80C < 135C < 160C).
-     * - Quầy nạp đầy toàn bộ đạn dược: 70 Credits.
-     * - Quầy hồi phục HP: Ẩn hoàn toàn (chưa show).
+     * Chuyển sang stage kế tiếp kèm hiệu ứng Fade + banner tên tầng.
+     *
+     * <p>WHY: {@link #advanceToNextStage()} dựng lại toàn bộ map ngay lập tức nên gây "giật cảnh".
+     * Ở đây map chỉ được dựng khi màn hình đã tối hẳn (callback HOLD của {@link ScreenTransition}).
+     * Giữ nguyên advanceToNextStage() đồng bộ để test và code cũ không bị ảnh hưởng.
+     */
+    private void requestAdvanceToNextStage() {
+        if (stageTransition.isActive()) {
+            return;
+        }
+        int nextStage = currentStage + 1;
+        boolean toBoss = nextStage == BOSS_STAGE;
+        String title = toBoss ? "STAGE " + nextStage + ": BOSS ARENA" : "STAGE " + nextStage;
+        String subtitle = toBoss ? "CẢNH BÁO: PHÁT HIỆN MỤC TIÊU CƠ GIỚI HẠNG NẶNG" : "TIẾP TỤC TIẾN SÂU VÀO CƠ SỞ";
+        Color accent = toBoss ? new Color(255, 70, 70) : new Color(60, 220, 160);
+        stageTransition.start(0.45, 0.35, this::advanceToNextStage, title, subtitle, accent);
+    }
+
+    /**
+     * Phát cắt cảnh giới thiệu Boss đúng 1 lần mỗi stage Boss, khi Boss đã tồn tại và còn sống.
+     * Cắt cảnh đóng băng gameplay (xem nhánh đầu {@link #update}) để Boss không tấn công khi camera đang lia.
+     */
+    private void tryStartBossIntro() {
+        if (bossIntroTriggered || currentStage != BOSS_STAGE || bossDummy == null || !bossDummy.isAlive()) {
+            return;
+        }
+        bossIntroTriggered = true;
+        bossIntroCinematic.start(bossDummy, player);
+    }
+
+    /**
+     * Bố trí các quầy hàng và trạm nâng cấp vũ khí trong Phòng Cửa Hàng (Shop Room).
+     *
+     * <p>Cân bằng kinh tế tác chiến theo đúng quy luật thiết kế phân tầng theo Stage:
+     * - Stage 1 (Khởi đầu):
+     *   + Súng Shop: Level 3 (90 Credits) - Đảm bảo đủ hỏa lực càn quét 2 sector kế tiếp (Sector 2 & 3).
+     *   + Bàn nâng cấp súng 1 cấp: 45 Credits.
+     *   + Hộp cứu thương: 35 Credits; Hộp tiếp đạn: 30 Credits.
+     * - Stage 2 (Tăng tiến):
+     *   + Súng Shop: Level 4 (135 Credits); Bàn nâng cấp: 65 Credits; Hộp máu: 55 Credits; Hộp đạn: 50 Credits.
+     * - Stage 3+ / Boss (Thử thách):
+     *   + Súng Shop: Level 5+ (175 Credits); Bàn nâng cấp: 85 Credits; Hộp máu: 75 Credits; Hộp đạn: 70 Credits.
      */
     private void populateShopItems() {
         shopItems.clear();
@@ -332,28 +438,46 @@ public class PlayingState extends GameState {
         double cx = shop.getCenterWorldX();
         double cy = shop.getCenterWorldY();
 
-        // 1. Quầy bán súng chính ngẫu nhiên: Tỉ lệ chí mạng càng cao thì tỉ lệ ra càng ít
+        // 1. Quầy bán súng chính ngẫu nhiên: Súng mua ở shop là súng tiêu chuẩn Level (currentStage + 2)
+        // Ở Stage 1: Bán súng Level 3 tiêu chuẩn, đủ hỏa lực tác chiến tới hết Stage 3.
         Weapon randomWeapon = Weapon.getRandomDropWeapon();
-        // Quy tắc: Súng bán ở shop = stage + 2 (tỉ lệ nhỏ 20% là stage + 3)
-        int shopWeaponLevel = currentStage + 2;
-        if (ThreadLocalRandom.current().nextInt(100) < 20) {
-            shopWeaponLevel = currentStage + 3;
-        }
+        int shopWeaponLevel = currentStage + 2; // Stage 1 bán Lv.3 bình thường, Stage 2 bán Lv.4...
         randomWeapon.configureLevel(shopWeaponLevel);
-        // Định giá súng shop: Chênh 2 cấp so với stage rơi có giá 135 Credits; chênh 3 cấp có giá 170 Credits
-        int weaponPrice = 65 + (shopWeaponLevel - currentStage) * 35;
+
+        // Định giá súng shop theo Stage: Nâng giá tương xứng với giá trị súng Lv.3 (Stage 1 = 90 Credits thay vì giá 75 Credits ban đầu quá rẻ)
+        int weaponPrice = switch (currentStage) {
+            case 1 -> 90;
+            case 2 -> 135;
+            default -> 175;
+        };
         shopItems.add(ShopItem.createWeaponItem(cx - 110, cy, randomWeapon, weaponPrice));
 
-        // 2. Bàn nâng cấp vũ khí (ngay giữa trung tâm phòng shop): Phí 80 Credits/cấp
-        shopItems.add(ShopItem.createUpgradeStation(cx, cy, 80));
+        // 2. Bàn nâng cấp vũ khí (ngay giữa trung tâm phòng shop):
+        // Stage 1 ưu đãi 45 Credits/cấp; Stage 2 là 65C; Stage 3+ là 85C
+        int upgradeStationCost = switch (currentStage) {
+            case 1 -> 45;
+            case 2 -> 65;
+            default -> 85;
+        };
+        shopItems.add(ShopItem.createUpgradeStation(cx, cy, upgradeStationCost));
 
         // 3. Quầy tiếp tế (bên phải tâm phòng 110px):
-        // QUY TẮC: Xuất hiện ngẫu nhiên giữa Hộp Tiếp Đạn và Hộp Cứu Thương, có thể thay thế nhau cho mỗi stage
+        // QUY TẮC: Xuất hiện ngẫu nhiên giữa Hộp Tiếp Đạn và Hộp Cứu Thương
         boolean spawnMedkit = ThreadLocalRandom.current().nextBoolean();
         if (spawnMedkit) {
-            shopItems.add(ShopItem.createHealthItem(cx + 110, cy, 75));
+            int healthPrice = switch (currentStage) {
+                case 1 -> 35;
+                case 2 -> 55;
+                default -> 75;
+            };
+            shopItems.add(ShopItem.createHealthItem(cx + 110, cy, healthPrice));
         } else {
-            shopItems.add(ShopItem.createAmmoItem(cx + 110, cy, 70));
+            int ammoPrice = switch (currentStage) {
+                case 1 -> 30;
+                case 2 -> 50;
+                default -> 70;
+            };
+            shopItems.add(ShopItem.createAmmoItem(cx + 110, cy, ammoPrice));
         }
     }
 
@@ -367,6 +491,22 @@ public class PlayingState extends GameState {
             double cx = reforgeRoom.getCenterWorldX();
             double cy = reforgeRoom.getCenterWorldY();
             this.statReforgeStation = new StatReforgeStation(cx, cy);
+        }
+    }
+
+    /**
+     * Khởi tạo 2 Trạm Nâng Cấp Nhân Vật (Cơ bản & Đặc biệt) trong Phòng Nâng Cấp nếu có.
+     * Bố trí 2 bệ máy đối xứng qua tâm phòng (khoảng cách 70px mỗi bên).
+     */
+    private void populateUpgradeStations() {
+        this.basicUpgradeStation = null;
+        this.specialUpgradeStation = null;
+        Room upgradeRoom = dungeonMap.getUpgradeRoom();
+        if (upgradeRoom != null) {
+            double cx = upgradeRoom.getCenterWorldX();
+            double cy = upgradeRoom.getCenterWorldY();
+            this.basicUpgradeStation = new CharacterUpgradeStation(cx - 70, cy, CharacterUpgradeStation.StationType.BASIC_STATS);
+            this.specialUpgradeStation = new CharacterUpgradeStation(cx + 70, cy, CharacterUpgradeStation.StationType.SPECIAL_PERKS);
         }
     }
 
@@ -543,6 +683,7 @@ public class PlayingState extends GameState {
     /**
      * Sinh một kẻ địch tiêu chuẩn một cách an toàn vào danh sách (xen kẽ Cận chiến và Tầm xa).
      */
+    @SuppressWarnings("unused")
     private void spawnEnemySafely(Room arena, double preferredX, double preferredY, int health) {
         if (combatTargets.size() % 2 == 0) {
             spawnMeleeEnemySafely(arena, preferredX, preferredY, health);
@@ -622,6 +763,7 @@ public class PlayingState extends GameState {
     /**
      * Sinh các mục tiêu chiến đấu an toàn cho từng phòng combat (mặc định lấy phase hiện tại của phòng).
      */
+    @SuppressWarnings("unused")
     private void spawnTargetsForRoom(Room arena) {
         int phase = (arena != null) ? arena.getCurrentPhase() : 1;
         spawnTargetsForRoomPhase(arena, phase);
@@ -710,6 +852,20 @@ public class PlayingState extends GameState {
      */
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        // --- -1. Chuyển màn & Giới thiệu Boss (Cinematic) ---
+        // WHY: Khi đang fade chuyển stage hoặc đang lia camera giới thiệu Boss, toàn bộ gameplay
+        // bị đóng băng để người chơi không bị đánh/di chuyển khi chưa nhìn thấy gì.
+        stageTransition.update(deltaTime);
+        if (stageTransition.isBlockingInput()) {
+            return;
+        }
+        if (bossIntroCinematic.isActive()) {
+            bossIntroCinematic.handleInput(keyH, mouseH); // Intro Boss được phép skip
+            bossIntroCinematic.update(deltaTime);
+            camera.update(bossIntroCinematic.getCameraFocusX(), bossIntroCinematic.getCameraFocusY());
+            return;
+        }
+
         // --- 0. Pause Menu Handling & Updates ---
         // WHY: Khi tạm dừng, toàn bộ tiến trình chiến đấu bị đóng băng. Người chơi có 3 tùy chọn:
         // TIẾP TỤC (Resume), CÀI ĐẶT (Settings - Keybinds), THOÁT RA MENU (Exit to Menu).
@@ -732,21 +888,41 @@ public class PlayingState extends GameState {
             return; // Đóng băng toàn bộ hoạt động chiến trường khi đang tạm dừng
         }
 
-        // --- Handle Player Death (Game Over Sequence) ---
-        if (player.isDead()) {
-            if (bannerTimer > 0) {
-                bannerTimer -= deltaTime;
-            }
-            if (keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || keyH.isKeyPressedOnce(KeyEvent.VK_R)) {
-                init(); // Tái xuất phát run mới từ đầu
-            } else if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
-                gsm.setState(GameStateManager.StateType.MENU);
-            }
+        // --- 0.5. Handle Character Upgrade Modal UI ---
+        // WHY: Khi đang mở Bảng Nâng Cấp Nhân Vật, đóng băng vòng lặp chiến đấu để người chơi tương tác an toàn
+        if (characterUpgradeUI.isVisible()) {
+            characterUpgradeUI.update(keyH, mouseH, this, deltaTime);
             return;
         }
 
-        // Cập nhật bộ đếm bất tử của người chơi và rung camera
-        player.update(deltaTime);
+        // --- Handle Player Death (Game Over Sequence) ---
+        if (player.isDead()) {
+            // Cập nhật hoạt cảnh đầu lâu trượt ma sát trên sàn và va chạm tường
+            player.update(deltaTime, dungeonMap);
+
+            // Camera vẫn mượt mà bám theo đầu lâu đang trượt
+            camera.update(player.getCenterX(), player.getCenterY());
+
+            if (bannerTimer > 0) {
+                bannerTimer -= deltaTime;
+            }
+
+            // Khi hoạt cảnh trượt đã kết thúc (sau 2.0s):
+            if (player.isDeathSequenceComplete()) {
+                if (keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || keyH.isKeyPressedOnce(KeyEvent.VK_R)) {
+                    init(); // Tái xuất phát run mới từ đầu
+                } else if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+                    gsm.setState(GameStateManager.StateType.MENU);
+                }
+            }
+            // Trong 2.0s đầu lâu đang trượt: KHÔNG nhận phím nào (ENTER/SPACE/R/ESC) để người chơi
+            // xem trọn hoạt cảnh tử trận; chỉ sau khi hoàn tất mới cho Chơi lại / Thoát ra menu.
+            return;
+        }
+
+        // Cập nhật bộ đếm bất tử của người chơi, rung camera và bộ đếm kỹ năng Buff
+        player.update(deltaTime, dungeonMap);
+        player.getBuffManager().update(deltaTime, player, weaponManager);
         if (screenShakeTimer > 0) {
             screenShakeTimer -= deltaTime;
         }
@@ -779,7 +955,7 @@ public class PlayingState extends GameState {
                 isBackpackOpen = false;
                 return;
             }
-            boolean closeRequested = backpackUI.update(keyH, mouseH, weaponManager, deltaTime);
+            boolean closeRequested = backpackUI.update(keyH, mouseH, weaponManager, player, deltaTime);
             if (closeRequested) {
                 isBackpackOpen = false;
             }
@@ -845,6 +1021,10 @@ public class PlayingState extends GameState {
                 dungeonMap
         );
 
+        // --- 3. Cập nhật Sương Mù Khám Phá (Fog of War) và Minimap Radar ---
+        dungeonMap.updateDiscovery(player.getCenterX(), player.getCenterY());
+        minimapHUD.update(deltaTime);
+
         // --- 4. Multi-Chamber Combat Lockdown & Detection ---
         if (activeCombatRoom == null) {
             for (Room cr : dungeonMap.getCombatRooms()) {
@@ -866,6 +1046,7 @@ public class PlayingState extends GameState {
                     cr.setCurrentPhase(1);
                     cr.lockdown();
                     spawnTargetsForRoomPhase(cr, 1);
+                    tryStartBossIntro(); // Chỉ có tác dụng ở Stage Boss
 
                     int idx = dungeonMap.getCombatRooms().indexOf(cr) + 1;
                     int total = dungeonMap.getCombatRooms().size();
@@ -910,7 +1091,10 @@ public class PlayingState extends GameState {
             }
         }
         if (shouldTriggerAttack) {
-            weaponManager.attack(player.getCenterX(), player.getCenterY(), aimAngle, projectileManager);
+            boolean fired = weaponManager.attack(player.getCenterX(), player.getCenterY(), aimAngle, projectileManager);
+            if (fired && currentWeapon instanceof com.groupproject.game.entity.weapon.SemiCarbineRifle scr && scr.getContinuousShots() >= 2) {
+                triggerScreenShake(0.08);
+            }
         }
 
         // --- 7.1. Quick-Melee Strike ---
@@ -960,7 +1144,12 @@ public class PlayingState extends GameState {
                 screenShakeTimer = 0.20;
             } else {
                 activeCombatRoom.unlock();
-                int clearReward = (currentStage == BOSS_STAGE) ? 25 : 15; // Giảm tiền thưởng khi dọn sạch phòng chiến đấu
+                int clearReward = switch (currentStage) {
+                    case 1 -> 10; // Giảm nhẹ ở màn 1 (10 Credits thay vì 15)
+                    case 2 -> 16; // Tăng dần ở màn 2 (16 Credits)
+                    case 3 -> 22; // Tăng dần ở màn 3 (22 Credits)
+                    default -> 30; // Boss Stage / Thử thách cao cấp (30 Credits)
+                };
                 addCredits(clearReward);
 
                 long clearedCount = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
@@ -1080,12 +1269,33 @@ public class PlayingState extends GameState {
             }
         }
 
+        // --- 11.7. Handle Character Upgrade Stations Interaction [F] ---
+        boolean upgradeInteracted = false;
+        if (basicUpgradeStation != null) {
+            basicUpgradeStation.update(deltaTime);
+            if (basicUpgradeStation.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
+                if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
+                    characterUpgradeUI.open(basicUpgradeStation, player.getBuffManager());
+                    upgradeInteracted = true;
+                }
+            }
+        }
+        if (!upgradeInteracted && specialUpgradeStation != null) {
+            specialUpgradeStation.update(deltaTime);
+            if (specialUpgradeStation.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
+                if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
+                    characterUpgradeUI.open(specialUpgradeStation, player.getBuffManager());
+                    upgradeInteracted = true;
+                }
+            }
+        }
+
         // --- 12. Check Extraction Zone Interaction [F] ---
         // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract or advance stage
         isStandingOnExtract = dungeonMap.isIntersectsExtractZone(player.getX(), player.getY(), player.getSize(), player.getSize());
-        if (!chestInteracted && !shopInteracted && !healthInteracted && !reforgeInteracted && isStandingOnExtract && KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
+        if (!chestInteracted && !shopInteracted && !healthInteracted && !reforgeInteracted && !upgradeInteracted && isStandingOnExtract && KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
             if (currentStage < MAX_STAGES) {
-                advanceToNextStage();
+                requestAdvanceToNextStage();
             } else {
                 isExtracting = true;
                 extractTransitionTimer = 0.0;
@@ -1094,12 +1304,16 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Tỉ lệ nhỏ rơi tiền tệ Credits khi tiêu diệt một mục tiêu (quái).
-     * Chỉ có ~20% cơ hội rơi tiền, mỗi lần rơi từ 3 đến 8 Credits.
+     * Tỉ lệ nhỏ (~20%) rơi tiền tệ Credits khi tiêu diệt một mục tiêu (quái).
+     * Phân tầng theo Stage: Màn 1 giảm nhẹ và tăng dần qua các màn sau.
      */
     private void tryDropEnemyCredits() {
         if (ThreadLocalRandom.current().nextInt(100) < 20) {
-            int dropped = ThreadLocalRandom.current().nextInt(3, 9);
+            int dropped = switch (currentStage) {
+                case 1 -> ThreadLocalRandom.current().nextInt(2, 6); // 2 đến 5 Credits ở Stage 1
+                case 2 -> ThreadLocalRandom.current().nextInt(4, 9); // 4 đến 8 Credits ở Stage 2
+                default -> ThreadLocalRandom.current().nextInt(6, 13); // 6 đến 12 Credits ở Stage 3+
+            };
             addCredits(dropped);
         }
     }
@@ -1116,6 +1330,7 @@ public class PlayingState extends GameState {
                 case AR -> ThreadLocalRandom.current().nextInt(6, 11);
                 case SMG -> ThreadLocalRandom.current().nextInt(8, 15);
                 case SHOTGUN -> ThreadLocalRandom.current().nextInt(2, 5);
+                case SR -> ThreadLocalRandom.current().nextInt(2, 5);
             };
             ammoPickups.add(new AmmoPickup(x, y, chosen, amount));
         }
@@ -1153,20 +1368,25 @@ public class PlayingState extends GameState {
             if (p.isPlayerBullet()) {
                 // Đạn của Operative trúng mục tiêu thù địch (bỏ qua kẻ địch đang chuẩn bị spawn trong portal)
                 for (TargetDummy dummy : combatTargets) {
-                    if (dummy.isAlive() && !dummy.isSpawning() && p.getBounds().intersects(dummy.getBounds())) {
+                    if (dummy.isAlive() && !dummy.isSpawning() && p.canHit(dummy) && p.getBounds().intersects(dummy.getBounds())) {
                         double impulse = p.isCritical() ? 190.0 : 130.0;
-                        dummy.takeDamage(p.getDamage(), p.getAngle(), impulse, p.isCritical());
+                        int damageDealt = p.getDamage();
+                        dummy.takeDamage(damageDealt, p.getAngle(), impulse, p.isCritical());
                         if (p.isCritical()) {
-                            activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), p.getDamage()));
+                            activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), damageDealt));
                             screenShakeTimer = Math.max(screenShakeTimer, 0.08);
                         }
-                        p.deactivate(); // Bullet spent
+                        // Ghi nhận va chạm mục tiêu: tiêu hao 1 lượt xuyên và giảm sát thương cho kẻ địch kế tiếp
+                        p.onHitTarget(dummy);
                         if (!dummy.isAlive()) {
                             double fatalAngle = p.getAngle();
                             double fatalForce = p.isCritical() ? 480.0 : 360.0;
                             onEnemyEliminated(dummy, fatalAngle, fatalForce);
                         }
-                        break;
+                        // Nếu đạn đã hết lượt xuyên và bị tiêu biến thì dừng xét các mục tiêu phía sau
+                        if (!p.isActive()) {
+                            break;
+                        }
                     }
                 }
             } else {
@@ -1247,10 +1467,17 @@ public class PlayingState extends GameState {
             ammoPickups.add(new AmmoPickup(dummy.getX() - 36, dummy.getY(), AmmoType.AR, 30));
             ammoPickups.add(new AmmoPickup(dummy.getX() + 36, dummy.getY(), AmmoType.SMG, 35));
             ammoPickups.add(new AmmoPickup(dummy.getX(), dummy.getY() + 36, AmmoType.SHOTGUN, 10));
+            ammoPickups.add(new AmmoPickup(dummy.getX() - 25, dummy.getY() + 25, AmmoType.SR, 5));
             healthPickups.add(new HealthPickup(dummy.getX(), dummy.getY() - 36, HealthPickup.HealthSize.LARGE));
         } else {
             tryDropEnemyCredits(); // Tỉ lệ nhỏ rơi tiền khi tiêu diệt mục tiêu
             tryDropEnemyAmmo(dummy.getX(), dummy.getY()); // Tỉ lệ nhỏ rơi hộp đạn khi tiêu diệt mục tiêu
+        }
+
+        // Diệt địch hồi máu (+2.5 HP tích lũy từ Kỹ năng Buff)
+        int killHeal = player.getBuffManager().onEnemyKilled();
+        if (killHeal > 0) {
+            healPlayer(killHeal);
         }
     }
 
@@ -1314,9 +1541,18 @@ public class PlayingState extends GameState {
                     weaponManager.getActiveWeapon(), playerCredits);
         }
 
+        // 3.8 Render 2 Trạm Nâng Cấp Nhân Vật (Basic Stats & Special Perks)
+        if (basicUpgradeStation != null) {
+            basicUpgradeStation.render(g, camera, player.getX(), player.getY(), player.getSize());
+        }
+        if (specialUpgradeStation != null) {
+            specialUpgradeStation.render(g, camera, player.getX(), player.getY(), player.getSize());
+        }
+
         // 4. Render Player Operative (Screen Space)
         player.render(g, camera);
         player.renderReloadIndicator(g, camera, weaponManager.getActiveWeapon());
+        player.renderOutOfAmmoWarning(g, camera, weaponManager.isCurrentWeaponOutOfAmmo());
 
         // 5. Render Equipped Weapon & Melee Slash VFX
         weaponManager.render(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
@@ -1331,8 +1567,12 @@ public class PlayingState extends GameState {
         playingHUD.renderPlayerHealthHUD(g, player);
         playingHUD.renderDodgeHUD(g, player);
         playingHUD.renderCreditsHUD(g, playerCredits);
+        playingHUD.renderBuffsHUD(g, player);
         long activeMinions = combatTargets.stream().filter(d -> d.isAlive() && !d.isBoss()).count();
         playingHUD.renderBossHealthBar(g, bossDummy, activeMinions, bossMinionRespawnTimer);
+
+        // 6.5 Render Minimap Radar HUD (Fog of War & Real-Time Exploration)
+        minimapHUD.render(g, dungeonMap, player, currentStage);
 
         // 7. Render Bottom Weapon & Ammunition HUD
         weaponManager.renderHUD(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
@@ -1362,19 +1602,34 @@ public class PlayingState extends GameState {
 
         // 10.6 Màn hình Game Over khi tử trận
         if (player.isDead()) {
-            long cleared = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
-            playingHUD.renderGameOverScreen(g, currentStage, MAX_STAGES, playerCredits, cleared, weaponManager.getWeaponSlots().size());
+            if (player.isDeathSequenceComplete()) {
+                long cleared = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
+                playingHUD.renderGameOverScreen(g, currentStage, MAX_STAGES, playerCredits, cleared, weaponManager.getWeaponSlots().size());
+            } else {
+                // Trong thời gian 2.0s đầu lâu đang trượt:
+                // Phủ hiệu ứng chuyển cảnh điện ảnh mờ tối và viền đỏ bi tráng
+                playingHUD.renderDeathVignetteTransition(g, player.getDeathSequenceProgress());
+            }
         }
 
         // 11. Giao diện Balo chiến thuật (TAB Overlay)
         if (isBackpackOpen) {
-            backpackUI.render(g, weaponManager, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
+            backpackUI.render(g, weaponManager, player, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         }
 
         // 12. Giao diện Menu Tạm dừng (Pause Menu UI Overlay)
         if (isPaused) {
             pauseMenuUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         }
+
+        // 13. Giao diện Bảng Nâng Cấp Nhân Vật (Character Upgrade Modal UI Overlay)
+        if (characterUpgradeUI.isVisible()) {
+            characterUpgradeUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, this);
+        }
+
+        // 14. Cắt cảnh giới thiệu Boss (Letterbox + banner) và hiệu ứng Fade chuyển stage — luôn vẽ trên cùng
+        bossIntroCinematic.render(g);
+        stageTransition.render(g);
     }
 
     public boolean isStandingOnExtract() {
@@ -1679,5 +1934,21 @@ public class PlayingState extends GameState {
 
     public int getBossMinionWaveCount() {
         return bossMinionWaveCount;
+    }
+
+    public CharacterUpgradeStation getBasicUpgradeStation() {
+        return basicUpgradeStation;
+    }
+
+    public CharacterUpgradeStation getSpecialUpgradeStation() {
+        return specialUpgradeStation;
+    }
+
+    public CharacterUpgradeUI getCharacterUpgradeUI() {
+        return characterUpgradeUI;
+    }
+
+    public MinimapHUD getMinimapHUD() {
+        return minimapHUD;
     }
 }

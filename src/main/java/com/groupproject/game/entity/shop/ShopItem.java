@@ -6,6 +6,7 @@ import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
+import com.groupproject.game.entity.weapon.WeaponSpriteManager;
 import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -209,19 +210,34 @@ public class ShopItem {
 
         // Hiệu ứng nhấp nhô lơ lửng
         int bobOffset = (int) (Math.sin(bobbingTimer) * 4.0);
-        int itemY = screenY - 14 + bobOffset;
+        int itemY = (type == ShopItemType.PRIMARY_WEAPON) ? (screenY - 26 + bobOffset) : (screenY - 14 + bobOffset);
 
         // 1. Vẽ bệ đứng trưng bày công nghệ cao (Pedestal Base)
+        int baseRadiusX = (type == ShopItemType.PRIMARY_WEAPON) ? 38 : 24;
+        int baseRadiusY = (type == ShopItemType.PRIMARY_WEAPON) ? 12 : 9;
         g.setColor(new Color(25, 32, 45, 230));
-        g.fillOval(screenX - 24, screenY - 6, 48, 18);
+        g.fillOval(screenX - baseRadiusX, screenY - baseRadiusY + 3, baseRadiusX * 2, baseRadiusY * 2);
         g.setColor(purchased ? new Color(70, 80, 95) : new Color(255, 215, 60, 180));
         g.setStroke(new BasicStroke(1.8f));
-        g.drawOval(screenX - 24, screenY - 6, 48, 18);
+        g.drawOval(screenX - baseRadiusX, screenY - baseRadiusY + 3, baseRadiusX * 2, baseRadiusY * 2);
 
         // Hào quang chiếu từ bệ lên
         if (!purchased) {
-            g.setColor(new Color(255, 215, 60, 45));
-            g.fillOval(screenX - 18, itemY - 6, 36, 26);
+            if (type == ShopItemType.PRIMARY_WEAPON) {
+                // ĐĨA NỀN SÁNG TƯƠNG PHẢN CAO (LIGHT BACKDROP): Giúp thân súng màu tối nổi bần bật, không bị chìm vào sàn phòng shop
+                // 1. Quầng hào quang vàng ấm khuếch tán bên ngoài
+                g.setColor(new Color(255, 220, 90, 50));
+                g.fillOval(screenX - 44, itemY - 26, 88, 72);
+                // 2. Đĩa sáng năng lượng vàng nhạt rực rỡ
+                g.setColor(new Color(255, 245, 180, 160));
+                g.fillOval(screenX - 35, itemY - 20, 70, 56);
+                // 3. Lõi ánh sáng trắng sáng tương phản trực tiếp sau lưng thân súng
+                g.setColor(new Color(255, 255, 245, 230));
+                g.fillOval(screenX - 25, itemY - 15, 50, 42);
+            } else {
+                g.setColor(new Color(255, 215, 60, 45));
+                g.fillOval(screenX - 18, itemY - 6, 36, 26);
+            }
         }
 
         Color accentColor = new Color(255, 215, 60);
@@ -230,42 +246,19 @@ public class ShopItem {
         if (type == ShopItemType.PRIMARY_WEAPON && weapon != null) {
             accentColor = new Color(255, 215, 60);
             if (!purchased) {
-                // Mô hình súng nổi lơ lửng
-                if (weapon instanceof AssaultRifle) {
-                    g.setColor(new Color(45, 55, 65));
-                    g.fillRect(screenX - 18, itemY - 4, 34, 7);
-                    g.setColor(new Color(25, 30, 35));
-                    g.fillRect(screenX + 8, itemY - 2, 12, 3);
-                    g.fillRect(screenX - 6, itemY + 3, 6, 9);
-                    g.setColor(new Color(255, 215, 60));
-                    g.fillRect(screenX + 19, itemY - 3, 3, 5);
-                } else if (weapon instanceof Shotgun) {
-                    g.setColor(new Color(139, 69, 19));
-                    g.fillRect(screenX - 14, itemY - 4, 12, 8);
-                    g.setColor(new Color(55, 60, 70));
-                    g.fillRect(screenX - 2, itemY - 5, 24, 9);
-                    g.setColor(new Color(255, 140, 30));
-                    g.fillRect(screenX + 21, itemY - 4, 3, 7);
-                } else if (weapon instanceof SMG) {
-                    g.setColor(new Color(40, 50, 62));
-                    g.fillRect(screenX - 14, itemY - 4, 24, 7);
-                    g.setColor(new Color(20, 26, 32));
-                    g.fillRect(screenX - 4, itemY + 3, 5, 10);
-                    g.setColor(new Color(25, 32, 40));
-                    g.fillRect(screenX + 10, itemY - 2, 7, 3);
-                    g.setColor(new Color(0, 230, 255));
-                    g.fillRect(screenX + 16, itemY - 3, 3, 5);
-                }
+                // Mô hình súng nổi lơ lửng trên bệ: Phóng to lên 76x76 pixel to rõ, hoành tráng
+                int weaponDisplaySize = 76;
+                WeaponSpriteManager.renderWeaponSprite(g, weapon, screenX, itemY, weaponDisplaySize, weaponDisplaySize);
 
                 // Khi lại gần: Hiển thị thẻ chỉ số vũ khí chi tiết
                 if (showPrompt) {
-                    WeaponChest.renderWeaponStatCard(g, screenX, itemY - 18, weapon,
+                    WeaponChest.renderWeaponStatCard(g, screenX, itemY - 38, weapon,
                             "MUA " + weapon.getShortDisplayName().toUpperCase() + " (" + price + "C)");
                 }
             } else {
                 // Đã mua xong (Sold out)
                 g.setColor(new Color(80, 90, 105));
-                g.fillRect(screenX - 12, itemY - 2, 24, 4);
+                g.fillRect(screenX - 20, itemY - 2, 40, 4);
             }
 
         } else if (type == ShopItemType.WEAPON_UPGRADE) {

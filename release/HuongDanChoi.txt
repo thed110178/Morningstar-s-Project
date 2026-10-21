@@ -25,7 +25,7 @@
 - [R]                : Nạp lại băng đạn (Reload magazine).
 - [1, 2, Q]          : Chọn slot vũ khí chính 1, slot 2 hoặc đổi nhanh 2 vũ khí.
 - [3, 4]             : Chọn súng lục phụ (Slot 3) hoặc dao găm cận chiến (Slot 4).
-- [F]                : Tương tác nhặt đồ / Dùng hộp cứu thương / Mua đồ ở Shop.
+- [F]                : Tương tác nhặt đồ / Dùng hộp cứu thương / Mua đồ ở Shop / Mở Bảng Nâng Cấp Nhân Vật.
 - [Tab] hoặc [B]     : Mở/Đóng Balo chiến thuật (Xem vũ khí và trữ lượng đạn).
 - [Esc]              : TẠM DỪNG TRÒ CHƠI / Menu Tùy chọn (Tiếp tục, Cài đặt phím, Thoát).
 - [F11 / Alt+Enter]  : Bật / Tắt chế độ Toàn màn hình (Full Screen).
@@ -35,10 +35,21 @@
 
 3. TÍNH NĂNG NỔI BẬT:
 ---------------------
-- Lối chơi hành động Rogue-lite góc nhìn từ trên xuống (Tham chiếu cơ chế hầm ngục từ Soul Knight và góc ngắm 360 độ từ POBG).
-- 4 loại vũ khí: Súng lục (vô hạn đạn), Súng trường AR (150 viên), Tiểu liên SMG (180 viên), Shotgun (50 viên).
+- Lối chơi hành động Rogue-lite góc nhìn từ trên xuống (Tham chiếu cơ chế hầm ngục từ Soul Knight và cơ chế xạ kích 360 độ, nhặt đạn, phá hòm từ Surviv.io).
+- 6 loại khí tài tác chiến chuyên nghiệp:
+  + Súng lục P-9 (vô hạn đạn, 7 viên/băng).
+  + Súng trường tấn công Viper AR (30 viên/băng, tốc độ 700 RPM, đạn súng trường 150 viên).
+  + Súng tiểu liên Spectre SMG (35 viên/băng, tốc độ 900 RPM, đạn SMG 180 viên).
+  + Súng bắn đạn hoa cải Bulldog SG (8 viên/băng, 6 viên chì/phát, đạn shotgun 50 viên).
+  + SÚNG BẮN TỈA SR BOLT ACTION (5 viên/băng, đạn 1450 px/s, xuyên qua nhiều kẻ địch & cover tạm thời, đạn SR 30 viên).
+  + Dao găm chiến thuật Tactical Knife (cận chiến khẩn cấp, đẩy lùi cực mạnh, chặt gãy thùng gỗ).
+- Hệ thống đạn dược dự trữ độc lập: Đạn Súng trường (150 viên), Đạn SMG (180 viên), Đạn Shotgun (50 viên), Đạn Bắn tỉa SR (30 viên).
+- PHÒNG NÂNG CẤP NHÂN VẬT (Bio-Tech Augmentation Laboratory):
+  + Trạm Nâng Cấp Chỉ Số: Tăng % Máu, Tấn công, Tốc độ, Phòng thủ, Giảm hồi chiêu né, May mắn nhặt đồ.
+  + Trạm Kỹ Năng Đặc Biệt: Khiên chặn đòn 10s CD, Diệt địch hồi 2.5 HP, Né xuyên vật cản, Thu nhỏ 30% hitbox, Tiếp đạn chu kỳ 30s, Băng đạn mở rộng, Bậc thầy chí mạng (+15% crit).
+  + Rút 3 thẻ bài ngẫu nhiên, mua bằng Credits bằng phím [1], [2], [3] hoặc chuột.
 - Cửa phòng chiến đấu tự động phong tỏa khi có quái và mở ra khi dọn sạch phòng.
 - AI quái cận chiến áp sát chém móng vuốt và lính súng lục biết lùi xe giữ cự ly bắn tỉa.
-- Boss khổng lồ Titan Mecha Dummy máu trâu ở Stage 3.
-- Cửa hàng Shop đổi bục tiếp tế ngẫu nhiên mỗi màn chơi.
+- Boss khổng lồ Chiến Xa Titan (Boss Tank) bắn đại pháo bộc phá AoE và húc đâm xuyên cover ở Stage 4.
+- Cửa hàng Shop và Xưởng Quân Khí Tẩy Luyện Chỉ Số ngẫu nhiên mỗi màn chơi.
 ====================================================================

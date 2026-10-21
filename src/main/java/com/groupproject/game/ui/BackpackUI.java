@@ -1,10 +1,14 @@
 package com.groupproject.game.ui;
 
+import com.groupproject.game.entity.buff.CharacterBuff;
+import com.groupproject.game.entity.buff.PlayerBuffManager;
+import com.groupproject.game.entity.player.Player;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
+import com.groupproject.game.entity.weapon.WeaponSpriteManager;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import java.awt.BasicStroke;
@@ -16,21 +20,39 @@ import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 
 /**
- * Giao diện Balo chiến thuật (Tactical Backpack / Inventory UI Overlay).
+ * Giao diện Balo chiến thuật (Tactical Backpack / Tactical Field PDA Overlay).
  *
- * <p>WHY: Cho phép người chơi bấm phím [Tab] để tạm dừng quan sát kho trang bị,
- * kiểm tra chi tiết các chỉ số vũ khí (Damage, Ammo, RPM, Chế độ bắn) và đặc biệt
- * là hoán đổi vị trí linh hoạt giữa 2 vũ khí chính ở Slot [1] và Slot [2] thông qua
- * click chuột hoặc phím tắt [SPACE] / [S].
+ * <p>WHY: Đóng gói toàn bộ giao diện quản lý trang bị và hồ sơ tác chiến của người chơi.
+ * Hỗ trợ bố cục Chuyển Tab (Tabbed View) chuyển đổi linh hoạt qua phím tắt [Q / E] hoặc click chuột:
+ * <ul>
+ * <li>Tab 1 - Kho Khí Tài & Đạn Dược (WEAPONS): Quản lý 4 slot vũ khí chính/phụ, đổi vị trí Slot 1 & 2 [SPACE/S],
+ *     hiển thị thông số sao, DPS, đạn và số lượng đạn dự trữ.</li>
+ * <li>Tab 2 - Hồ Sơ Chiến Binh & Perks (CHARACTER_PERKS): Hiển thị chi tiết tình trạng sinh tồn (Máu, Công %, Tốc %,
+ *     Giảm thương %, Hồi né %), toàn bộ 6 chỉ số nâng cấp cơ bản (Basic Stats) và danh mục 7 Kỹ năng đặc biệt (Special Perks)
+ *     với trạng thái kích hoạt trực quan.</li>
+ * </ul>
  */
 public class BackpackUI {
 
-    // Kích thước bảng Balo
+    /**
+     * Danh mục các Tab hiển thị trong Sổ tay tác chiến dã chiến.
+     */
+    public enum BackpackTab {
+        WEAPONS,
+        CHARACTER_PERKS
+    }
+
+    // Kích thước bảng Balo dã chiến
     private final int panelW = 740;
     private final int panelH = 490;
 
+    // Quản lý Tab hiện tại
+    private BackpackTab activeTab = BackpackTab.WEAPONS;
+
     // Các vùng nhấn chuột (Bounding boxes)
     private final Rectangle closeBtnBounds = new Rectangle();
+    private final Rectangle tabWeaponsBounds = new Rectangle();
+    private final Rectangle tabPerksBounds = new Rectangle();
     private final Rectangle swapBtnBounds = new Rectangle();
     private final Rectangle slot1Bounds = new Rectangle();
     private final Rectangle slot2Bounds = new Rectangle();
@@ -40,15 +62,33 @@ public class BackpackUI {
     // Hiệu ứng phản hồi tương tác
     private boolean isSwapHovered = false;
     private boolean isCloseHovered = false;
+    private boolean isTabWeaponsHovered = false;
+    private boolean isTabPerksHovered = false;
     private String feedbackMessage = "";
     private double feedbackTimer = 0.0;
 
+    public BackpackTab getActiveTab() {
+        return activeTab;
+    }
+
+    public void setActiveTab(BackpackTab tab) {
+        this.activeTab = (tab != null) ? tab : BackpackTab.WEAPONS;
+    }
+
+    public Rectangle getTabWeaponsBounds() {
+        return tabWeaponsBounds;
+    }
+
+    public Rectangle getTabPerksBounds() {
+        return tabPerksBounds;
+    }
+
     /**
-     * Cập nhật các tương tác chuột và bàn phím bên trong giao diện Balo.
+     * Cập nhật các tương tác chuột và bàn phím bên trong giao diện Balo (có truyền Player).
      *
      * @return {@code true} nếu người chơi yêu cầu đóng Balo (nhấn nút [X] hoặc ESC/TAB).
      */
-    public boolean update(KeyboardHandler keyH, MouseHandler mouseH, WeaponManager weaponManager, double deltaTime) {
+    public boolean update(KeyboardHandler keyH, MouseHandler mouseH, WeaponManager weaponManager, Player player, double deltaTime) {
         if (feedbackTimer > 0) {
             feedbackTimer -= deltaTime;
             if (feedbackTimer <= 0) {
@@ -61,54 +101,83 @@ public class BackpackUI {
 
         isSwapHovered = swapBtnBounds.contains(mouseX, mouseY);
         isCloseHovered = closeBtnBounds.contains(mouseX, mouseY);
+        isTabWeaponsHovered = tabWeaponsBounds.contains(mouseX, mouseY);
+        isTabPerksHovered = tabPerksBounds.contains(mouseX, mouseY);
 
-        // 1. Phím tắt hoán đổi nhanh vũ khí [1] & [2]
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_SPACE) || keyH.isKeyPressedOnce(KeyEvent.VK_S)) {
-            triggerSwap(weaponManager);
+        // 0. Phím tắt chuyển đổi Tab: [Q] -> Khí Tài, [E] -> Hồ Sơ & Perks
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_Q)) {
+            activeTab = BackpackTab.WEAPONS;
         }
-
-        // 2. Phím tắt trang bị trực tiếp vào tay
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
-            weaponManager.selectSlot(1);
-        }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
-            weaponManager.selectSlot(2);
-        }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
-            weaponManager.selectSlot(3);
-        }
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_4) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD4)) {
-            weaponManager.selectSlot(4);
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_E)) {
+            activeTab = BackpackTab.CHARACTER_PERKS;
         }
 
-        // 3. Tương tác chuột trái
+        // 1. Tương tác nhấn chuột trái
         if (mouseH.isLeftClickedOnce()) {
             if (isCloseHovered) {
                 return true; // Yêu cầu đóng Balo
             }
 
-            if (isSwapHovered) {
-                triggerSwap(weaponManager);
+            if (isTabWeaponsHovered) {
+                activeTab = BackpackTab.WEAPONS;
+                return false;
+            }
+            if (isTabPerksHovered) {
+                activeTab = BackpackTab.CHARACTER_PERKS;
                 return false;
             }
 
-            if (slot1Bounds.contains(mouseX, mouseY)) {
-                if (weaponManager.getWeaponInSlot(1) != null) weaponManager.selectSlot(1);
-            } else if (slot2Bounds.contains(mouseX, mouseY)) {
-                if (weaponManager.getWeaponInSlot(2) != null) weaponManager.selectSlot(2);
-            } else if (slot3Bounds.contains(mouseX, mouseY)) {
+            // Chỉ xử lý tương tác vũ khí khi đang ở Tab WEAPONS
+            if (activeTab == BackpackTab.WEAPONS) {
+                if (isSwapHovered) {
+                    triggerSwap(weaponManager);
+                    return false;
+                }
+
+                if (slot1Bounds.contains(mouseX, mouseY)) {
+                    if (weaponManager.getWeaponInSlot(1) != null) weaponManager.selectSlot(1);
+                } else if (slot2Bounds.contains(mouseX, mouseY)) {
+                    if (weaponManager.getWeaponInSlot(2) != null) weaponManager.selectSlot(2);
+                } else if (slot3Bounds.contains(mouseX, mouseY)) {
+                    weaponManager.selectSlot(3);
+                } else if (slot4Bounds.contains(mouseX, mouseY)) {
+                    weaponManager.selectSlot(4);
+                }
+            }
+        }
+
+        // 2. Phím tắt thao tác trang bị vũ khí (khi đang ở Tab WEAPONS)
+        if (activeTab == BackpackTab.WEAPONS) {
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_SPACE) || keyH.isKeyPressedOnce(KeyEvent.VK_S)) {
+                triggerSwap(weaponManager);
+            }
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
+                weaponManager.selectSlot(1);
+            }
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
+                weaponManager.selectSlot(2);
+            }
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
                 weaponManager.selectSlot(3);
-            } else if (slot4Bounds.contains(mouseX, mouseY)) {
+            }
+            if (keyH.isKeyPressedOnce(KeyEvent.VK_4) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD4)) {
                 weaponManager.selectSlot(4);
             }
         }
 
-        // Đóng balo khi bấm phím ESC (phím TAB / B được toggle trực tiếp từ PlayingState)
+        // Đóng balo khi bấm phím ESC (phím TAB được toggle trực tiếp từ PlayingState)
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Overload tương thích ngược khi không truyền Player.
+     */
+    public boolean update(KeyboardHandler keyH, MouseHandler mouseH, WeaponManager weaponManager, double deltaTime) {
+        return update(keyH, mouseH, weaponManager, null, deltaTime);
     }
 
     private void triggerSwap(WeaponManager weaponManager) {
@@ -122,19 +191,19 @@ public class BackpackUI {
     }
 
     /**
-     * Vẽ giao diện Balo chiến thuật với phong cách Sci-Fi Cyber Tactical Glassmorphism.
+     * Vẽ giao diện Balo chiến thuật đầy đủ cả 2 Tab với phong cách Sci-Fi Tactical Glassmorphism.
      */
-    public void render(Graphics2D g, WeaponManager weaponManager, int screenWidth, int screenHeight) {
+    public void render(Graphics2D g, WeaponManager weaponManager, Player player, int screenWidth, int screenHeight) {
         // 1. Phủ mờ toàn màn hình
         g.setColor(new Color(5, 10, 20, 215));
         g.fillRect(0, 0, screenWidth, screenHeight);
 
-        // Tọa độ trung tâm bảng
+        // Tọa độ trung tâm bảng PDA
         int panelX = (screenWidth - panelW) / 2;
         int panelY = (screenHeight - panelH) / 2;
 
         // Cập nhật vùng nút đóng
-        closeBtnBounds.setBounds(panelX + panelW - 44, panelY + 14, 30, 30);
+        closeBtnBounds.setBounds(panelX + panelW - 44, panelY + 12, 30, 30);
 
         // Thân máy tính quân sự dã chiến
         g.setColor(new Color(18, 22, 20, 252));
@@ -148,13 +217,9 @@ public class BackpackUI {
         g.drawRoundRect(panelX + 3, panelY + 3, panelW - 6, panelH - 6, 14, 14);
 
         // 3. Header Tiêu đề Sổ tay Tác chiến
-        g.setFont(new Font("SansSerif", Font.BOLD, 20));
+        g.setFont(new Font("SansSerif", Font.BOLD, 17));
         g.setColor(new Color(245, 215, 80));
-        g.drawString("📋 SỔ TAY TÁC CHIẾN DÃ CHIẾN // TACTICAL FIELD PDA", panelX + 25, panelY + 38);
-
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        g.setColor(new Color(185, 200, 185));
-        g.drawString("QUẢN LÝ KHÍ TÀI & TẢI TRỌNG TRANG BỊ QUÂN SỰ", panelX + 25, panelY + 56);
+        g.drawString("📋 SỔ TAY TÁC CHIẾN DÃ CHIẾN // TACTICAL FIELD PDA", panelX + 25, panelY + 32);
 
         // Nút đóng [X]
         g.setColor(isCloseHovered ? new Color(255, 60, 60) : new Color(50, 65, 85));
@@ -163,15 +228,84 @@ public class BackpackUI {
         g.setFont(new Font("SansSerif", Font.BOLD, 16));
         g.drawString("X", closeBtnBounds.x + 9, closeBtnBounds.y + 21);
 
-        // Đường gạch ngang phân cách
-        g.setColor(new Color(40, 60, 85));
-        g.drawLine(panelX + 25, panelY + 68, panelX + panelW - 25, panelY + 68);
+        // 3.5. THANH 2 TAB ĐIỀU HƯỚNG [Q / E]
+        int tabY = panelY + 42;
+        int tabH = 28;
+        int tab1W = 200;
+        int tab2W = 225;
+        tabWeaponsBounds.setBounds(panelX + 25, tabY, tab1W, tabH);
+        tabPerksBounds.setBounds(panelX + 235, tabY, tab2W, tabH);
 
-        // 4. KHU VỰC VŨ KHÍ CHÍNH (SLOT 1 & SLOT 2)
+        // Tab 1: KHO KHÍ TÀI & ĐẠN
+        boolean isTab1Active = (activeTab == BackpackTab.WEAPONS);
+        Color tab1Bg = isTab1Active ? new Color(30, 48, 70, 240) : (isTabWeaponsHovered ? new Color(25, 38, 55, 220) : new Color(18, 26, 35, 180));
+        Color tab1Border = isTab1Active ? new Color(60, 220, 160) : new Color(50, 70, 95);
+        g.setColor(tab1Bg);
+        g.fillRoundRect(tabWeaponsBounds.x, tabWeaponsBounds.y, tabWeaponsBounds.width, tabWeaponsBounds.height, 6, 6);
+        g.setColor(tab1Border);
+        g.setStroke(new BasicStroke(isTab1Active ? 2.0f : 1.0f));
+        g.drawRoundRect(tabWeaponsBounds.x, tabWeaponsBounds.y, tabWeaponsBounds.width, tabWeaponsBounds.height, 6, 6);
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(isTab1Active ? new Color(255, 225, 80) : new Color(155, 175, 200));
+        drawCenteredString(g, "[Q] ⚔ KHO KHÍ TÀI & ĐẠN", tabWeaponsBounds.x + tabWeaponsBounds.width / 2, tabWeaponsBounds.y + 19);
+
+        // Tab 2: HỒ SƠ CHIẾN BINH & PERKS
+        boolean isTab2Active = (activeTab == BackpackTab.CHARACTER_PERKS);
+        Color tab2Bg = isTab2Active ? new Color(35, 55, 45, 240) : (isTabPerksHovered ? new Color(28, 45, 38, 220) : new Color(18, 26, 35, 180));
+        Color tab2Border = isTab2Active ? new Color(60, 220, 160) : new Color(50, 70, 95);
+        g.setColor(tab2Bg);
+        g.fillRoundRect(tabPerksBounds.x, tabPerksBounds.y, tabPerksBounds.width, tabPerksBounds.height, 6, 6);
+        g.setColor(tab2Border);
+        g.setStroke(new BasicStroke(isTab2Active ? 2.0f : 1.0f));
+        g.drawRoundRect(tabPerksBounds.x, tabPerksBounds.y, tabPerksBounds.width, tabPerksBounds.height, 6, 6);
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(isTab2Active ? new Color(255, 225, 80) : new Color(155, 175, 200));
+        drawCenteredString(g, "[E] 🧬 HỒ SƠ & PERKS", tabPerksBounds.x + tabPerksBounds.width / 2, tabPerksBounds.y + 19);
+
+        // Đường gạch ngang phân cách header
+        g.setColor(new Color(40, 60, 85));
+        g.drawLine(panelX + 25, panelY + 76, panelX + panelW - 25, panelY + 76);
+
+        // 4. VẼ NỘI DUNG THEO TAB ĐANG KÍCH HOẠT
+        if (activeTab == BackpackTab.WEAPONS) {
+            renderWeaponsTab(g, weaponManager, panelX, panelY);
+        } else {
+            renderCharacterPerksTab(g, player, panelX, panelY);
+        }
+
+        // 5. Chân bảng hướng dẫn thao tác (Footer Guide)
+        g.setColor(new Color(40, 60, 85));
+        g.drawLine(panelX + 25, panelY + 440, panelX + panelW - 25, panelY + 440);
+
+        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.setColor(new Color(160, 185, 215));
+        if (activeTab == BackpackTab.WEAPONS) {
+            drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [Q / E] Đổi Tab  |  [SPACE / Click ⇄] Đổi vị trí Slot 1 & 2  |  [1, 2, 3, 4] Cầm vũ khí",
+                    panelX + panelW / 2, panelY + 465);
+        } else {
+            drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [Q / E] Đổi Tab  |  Ghé Phòng Nâng Cấp (Upgrade Room) để mở khóa thêm Buff & Perk",
+                    panelX + panelW / 2, panelY + 465);
+        }
+
+        g.setStroke(new BasicStroke(1.0f));
+    }
+
+    /**
+     * Overload tương thích ngược khi không truyền Player.
+     */
+    public void render(Graphics2D g, WeaponManager weaponManager, int screenWidth, int screenHeight) {
+        render(g, weaponManager, null, screenWidth, screenHeight);
+    }
+
+    /**
+     * Render Nội dung Tab 1: KHO KHÍ TÀI & ĐẠN DƯỢC.
+     */
+    private void renderWeaponsTab(Graphics2D g, WeaponManager weaponManager, int panelX, int panelY) {
+        // KHU VỰC VŨ KHÍ CHÍNH (SLOT 1 & SLOT 2)
         int slotW = 270;
-        int slotH = 200;
+        int slotH = 195;
         int slot1X = panelX + 35;
-        int slot1Y = panelY + 85;
+        int slot1Y = panelY + 86;
         int slot2X = panelX + panelW - 35 - slotW;
         int slot2Y = slot1Y;
 
@@ -205,11 +339,11 @@ public class BackpackUI {
         g.setColor(isSwapHovered ? Color.WHITE : new Color(180, 200, 220));
         drawCenteredString(g, "[SPACE / S]", swapX + swapW / 2, swapY + 48);
 
-        // 5. KHU VỰC VŨ KHÍ PHỤ & CẬN CHIẾN (SLOT 3 & SLOT 4)
+        // KHU VỰC VŨ KHÍ PHỤ & CẬN CHIẾN (SLOT 3 & SLOT 4)
         int subSlotW = 325;
-        int subSlotH = 100;
+        int subSlotH = 95;
         int slot3X = panelX + 35;
-        int slot3Y = panelY + 300;
+        int slot3Y = panelY + 295;
         int slot4X = panelX + panelW - 35 - subSlotW;
         int slot4Y = slot3Y;
 
@@ -222,54 +356,341 @@ public class BackpackUI {
         renderSubCard(g, slot3X, slot3Y, subSlotW, subSlotH, 3, "SÚNG LỤC PHỤ (SIDEARM)", w3, activeW == w3);
         renderSubCard(g, slot4X, slot4Y, subSlotW, subSlotH, 4, "VŨ KHÍ CẬN CHIẾN (MELEE)", w4, activeW == w4);
 
-        // 5.5. KHU VỰC THỐNG KÊ KHO ĐẠN DỰ TRỮ (AMMO RESERVES HUD)
+        // KHU VỰC THỐNG KÊ KHO ĐẠN DỰ TRỮ (AMMO RESERVES HUD)
         com.groupproject.game.entity.item.AmmoInventory ammoInv = weaponManager.getAmmoInventory();
-        int ammoBarY = panelY + 410;
-        int barW = 195;
+        int ammoBarY = panelY + 402;
+        int barW = 155;
         int barH = 22;
+        int badgeGap = 16;
 
-        // AR Ammo Badge
+        // 1. Rifle Ammo Badge (Đạn súng trường)
         int arX = panelX + 35;
         g.setColor(new Color(20, 35, 30, 220));
         g.fillRoundRect(arX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(60, 220, 120));
         g.drawRoundRect(arX, ammoBarY, barW, barH, 6, 6);
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
-        g.drawString("• ĐẠN AR: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) + " / 150", arX + 12, ammoBarY + 15);
+        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.drawString("• SÚNG TRƯỜNG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) + " / 150", arX + 8, ammoBarY + 15);
 
-        // SMG Ammo Badge
-        int smgX = arX + barW + 25;
+        // 2. SMG Ammo Badge
+        int smgX = arX + barW + badgeGap;
         g.setColor(new Color(15, 30, 45, 220));
         g.fillRoundRect(smgX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(0, 210, 255));
         g.drawRoundRect(smgX, ammoBarY, barW, barH, 6, 6);
         g.drawString("• ĐẠN SMG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SMG) + " / 180", smgX + 12, ammoBarY + 15);
 
-        // Shotgun Ammo Badge
-        int sgX = smgX + barW + 25;
+        // 3. Shotgun Ammo Badge
+        int sgX = smgX + barW + badgeGap;
         g.setColor(new Color(40, 20, 20, 220));
         g.fillRoundRect(sgX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(255, 90, 70));
         g.drawRoundRect(sgX, ammoBarY, barW, barH, 6, 6);
-        g.drawString("• ĐẠN SHOTGUN: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) + " / 50", sgX + 12, ammoBarY + 15);
+        g.drawString("• ĐẠN SHOTGUN: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) + " / 50", sgX + 10, ammoBarY + 15);
 
-        // 6. Thông báo phản hồi thao tác hoán đổi
+        // 4. SR Sniper Ammo Badge
+        int srX = sgX + barW + badgeGap;
+        g.setColor(new Color(35, 18, 48, 220));
+        g.fillRoundRect(srX, ammoBarY, barW, barH, 6, 6);
+        g.setColor(new Color(185, 80, 255));
+        g.drawRoundRect(srX, ammoBarY, barW, barH, 6, 6);
+        g.drawString("• BẮN TỈA (SR): " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SR) + " / 30", srX + 10, ammoBarY + 15);
+
+        // Thông báo phản hồi thao tác hoán đổi
         if (!feedbackMessage.isEmpty() && feedbackTimer > 0) {
             g.setFont(new Font("SansSerif", Font.BOLD, 13));
             g.setColor(new Color(255, 220, 80));
-            drawCenteredString(g, feedbackMessage, panelX + panelW / 2, panelY + 400);
+            drawCenteredString(g, feedbackMessage, panelX + panelW / 2, panelY + 395);
+        }
+    }
+
+    /**
+     * Render Nội dung Tab 2: HỒ SƠ CHIẾN BINH & PERKS (Hiển thị đầy đủ 6 chỉ số nâng cấp và 7 Kỹ năng đặc biệt).
+     */
+    private void renderCharacterPerksTab(Graphics2D g, Player player, int panelX, int panelY) {
+        if (player == null) {
+            g.setFont(new Font("SansSerif", Font.ITALIC, 14));
+            g.setColor(new Color(150, 175, 200));
+            drawCenteredString(g, "[ Không có dữ liệu hồ sơ chiến binh ]", panelX + panelW / 2, panelY + 240);
+            return;
         }
 
-        // 7. Chân bảng hướng dẫn thao tác (Footer Guide)
-        g.setColor(new Color(40, 60, 85));
-        g.drawLine(panelX + 25, panelY + 440, panelX + panelW - 25, panelY + 440);
+        PlayerBuffManager bm = player.getBuffManager();
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        g.setColor(new Color(160, 185, 215));
-        drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [SPACE / Click ⇄] Đổi vị trí Slot 1 & 2  |  [1, 2, 3, 4] Trang bị lên tay",
-                panelX + panelW / 2, panelY + 465);
+        // 1. THANH TÌNH TRẠNG CHIẾN BINH TỔNG HỢP (OPERATIVE VITALS SUMMARY)
+        int vitalsY = panelY + 84;
+        g.setColor(new Color(16, 24, 30, 240));
+        g.fillRoundRect(panelX + 25, vitalsY, panelW - 50, 32, 6, 6);
+        g.setColor(new Color(45, 75, 65));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRoundRect(panelX + 25, vitalsY, panelW - 50, 32, 6, 6);
 
-        g.setStroke(new BasicStroke(1.0f));
+        // Máu hiện tại / Máu tối đa kèm Mini Health Bar
+        int hpX = panelX + 35;
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setColor(new Color(255, 95, 95));
+        g.drawString("❤ MÁU:", hpX, vitalsY + 20);
+
+        int hpBarX = hpX + 50;
+        int hpBarW = 60;
+        int hpBarH = 10;
+        g.setColor(new Color(50, 20, 20));
+        g.fillRect(hpBarX, vitalsY + 11, hpBarW, hpBarH);
+        double hpRatio = Math.clamp((double) player.getCurrentHealth() / Math.max(1, player.getMaxHealth()), 0.0, 1.0);
+        g.setColor(new Color(60, 220, 120));
+        g.fillRect(hpBarX, vitalsY + 11, (int) Math.round(hpBarW * hpRatio), hpBarH);
+        g.setColor(new Color(160, 190, 180));
+        g.drawRect(hpBarX, vitalsY + 11, hpBarW, hpBarH);
+        g.setColor(Color.WHITE);
+        g.drawString(player.getCurrentHealth() + "/" + player.getMaxHealth(), hpBarX + hpBarW + 6, vitalsY + 20);
+
+        // Các chỉ số chiến thuật tính toán từ Buff
+        int statX = hpBarX + hpBarW + 68;
+        g.setColor(new Color(255, 215, 60));
+        g.drawString("⚔ CÔNG: +" + Math.round((bm.getAttackMultiplier() - 1.0) * 100) + "%", statX, vitalsY + 20);
+        statX += 95;
+        g.setColor(new Color(0, 225, 255));
+        g.drawString("👟 TỐC: +" + Math.round((bm.getSpeedMultiplier() - 1.0) * 100) + "%", statX, vitalsY + 20);
+        statX += 88;
+        g.setColor(new Color(140, 200, 255));
+        g.drawString("🛡 THỦ: -" + Math.round(bm.getDamageReduction() * 100) + "%", statX, vitalsY + 20);
+        statX += 88;
+        g.setColor(new Color(255, 140, 90));
+        g.drawString("⚡ HỒI NÉ: +" + Math.round((bm.getDodgeCooldownFactor() - 1.0) * 100) + "%", statX, vitalsY + 20);
+        statX += 105;
+        g.setColor(new Color(255, 220, 75));
+        g.drawString("🎲 MAY: +" + Math.round(bm.getLootLuckRatio() * 100) + "%", statX, vitalsY + 20);
+
+        // 2. KHỐI 6 CHỈ SỐ CƠ BẢN (BASIC ATTRIBUTES)
+        int basicY = panelY + 122;
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(new Color(255, 215, 60));
+        g.drawString("⚡ CƯỜNG HÓA CHỈ SỐ CƠ BẢN (BASIC ATTRIBUTES)", panelX + 28, basicY + 11);
+
+        g.setColor(new Color(16, 24, 30, 220));
+        g.fillRoundRect(panelX + 25, basicY + 16, panelW - 50, 102, 8, 8);
+        g.setColor(new Color(45, 65, 80));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRoundRect(panelX + 25, basicY + 16, panelW - 50, 102, 8, 8);
+
+        // Cột Trái (3 chỉ số: Máu, Tấn công, Tốc độ)
+        int col1X = panelX + 38;
+        int rowH = 30;
+        int r1Y = basicY + 34;
+        renderBasicStatRow(g, col1X, r1Y, CharacterBuff.MAX_HEALTH, "• MÁU TỐI ĐA (MAX HP)",
+                bm.getLevel(CharacterBuff.MAX_HEALTH), CharacterBuff.MAX_HEALTH.getMaxLevel(),
+                "+20% Máu/cấp (Hiện tại: +" + Math.round((bm.getMaxHealthMultiplier() - 1.0) * 100) + "% HP)");
+
+        renderBasicStatRow(g, col1X, r1Y + rowH, CharacterBuff.ATTACK_DAMAGE, "• TẤN CÔNG (ATTACK)",
+                bm.getLevel(CharacterBuff.ATTACK_DAMAGE), CharacterBuff.ATTACK_DAMAGE.getMaxLevel(),
+                "+10% Sát thương/cấp (Hiện tại: +" + Math.round((bm.getAttackMultiplier() - 1.0) * 100) + "% DMG)");
+
+        renderBasicStatRow(g, col1X, r1Y + rowH * 2, CharacterBuff.MOVE_SPEED, "• TỐC ĐỘ CHẠY (SPEED)",
+                bm.getLevel(CharacterBuff.MOVE_SPEED), CharacterBuff.MOVE_SPEED.getMaxLevel(),
+                "+5% Tốc độ/cấp (Hiện tại: +" + Math.round((bm.getSpeedMultiplier() - 1.0) * 100) + "% SPD)");
+
+        // Cột Phải (3 chỉ số: Phòng thủ, Hồi chiêu né, May mắn)
+        int col2X = panelX + 380;
+        renderBasicStatRow(g, col2X, r1Y, CharacterBuff.DEFENSE, "• PHÒNG THỦ (DEFENSE)",
+                bm.getLevel(CharacterBuff.DEFENSE), CharacterBuff.DEFENSE.getMaxLevel(),
+                "Giảm 10% sát thương/cấp (Hiện tại: -" + Math.round(bm.getDamageReduction() * 100) + "% DMG)");
+
+        renderBasicStatRow(g, col2X, r1Y + rowH, CharacterBuff.DODGE_COOLDOWN, "• HỒI CHIÊU NÉ (DODGE)",
+                bm.getLevel(CharacterBuff.DODGE_COOLDOWN), CharacterBuff.DODGE_COOLDOWN.getMaxLevel(),
+                "Nhanh hơn 1.5 lần (Hiện tại: +" + Math.round((bm.getDodgeCooldownFactor() - 1.0) * 100) + "% CD)");
+
+        renderBasicStatRow(g, col2X, r1Y + rowH * 2, CharacterBuff.LOOT_LUCK, "• MAY MẮN NHẶT ĐỒ",
+                bm.getLevel(CharacterBuff.LOOT_LUCK), CharacterBuff.LOOT_LUCK.getMaxLevel(),
+                "+25% Tỉ lệ súng 4-5★ & Súng Đỏ (Hiện tại: +" + Math.round(bm.getLootLuckRatio() * 100) + "%)");
+
+        // 3. KHỐI 7 KỸ NĂNG ĐẶC BIỆT & PERKS (SPECIAL PERKS)
+        int perkY = panelY + 246;
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setColor(new Color(60, 220, 160));
+        g.drawString("💎 KỸ NĂNG ĐẶC BIỆT & PERKS CHIẾN THUẬT (SPECIAL PERKS)", panelX + 28, perkY + 11);
+
+        g.setColor(new Color(16, 24, 30, 220));
+        g.fillRoundRect(panelX + 25, perkY + 16, panelW - 50, 168, 8, 8);
+        g.setColor(new Color(40, 75, 65));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRoundRect(panelX + 25, perkY + 16, panelW - 50, 168, 8, 8);
+
+        // Lưới 7 Perks chia 2 cột:
+        // Cột Trái (4 perks): Giáp chặn đòn, Diệt địch hồi máu, Né xuyên vật cản, Thu nhỏ thân thể
+        int pCol1X = panelX + 35;
+        int pColW = 330;
+        int pRowH1 = 38;
+        int pStart1Y = perkY + 22;
+
+        renderSpecialPerkCard(g, pCol1X, pStart1Y, pColW, 34,
+                "GIÁP CHẶN ĐÒN (BARRIER)", "Chặn 100% 1 lần sát thương bất kỳ, hồi lại sau 10s.",
+                bm.hasOneHitBarrier());
+
+        renderSpecialPerkCard(g, pCol1X, pStart1Y + pRowH1, pColW, 34,
+                "DIỆT ĐỊCH HỒI MÁU (KILL HEAL)", "Hồi ngay +2.5 HP sinh lực với mỗi kẻ địch bị tiêu diệt.",
+                bm.hasKillHeal());
+
+        renderSpecialPerkCard(g, pCol1X, pStart1Y + pRowH1 * 2, pColW, 34,
+                "NÉ XUYÊN VẬT CẢN (PHASE DODGE)", "Lướt né [SPACE] đi xuyên thùng gỗ và giữ I-frame an toàn.",
+                bm.hasPhaseDodge());
+
+        renderSpecialPerkCard(g, pCol1X, pStart1Y + pRowH1 * 3, pColW, 34,
+                "THU NHỎ THÂN THỂ (SHRINK)", "Giảm 30% kích thước hitbox nhân vật, né đạn siêu cơ động.",
+                bm.hasShrinkHitbox());
+
+        // Cột Phải (3 perks): Băng đạn tiếp tế, Băng đạn mở rộng, Bậc thầy chí mạng
+        int pCol2X = panelX + 375;
+        int pRowH2 = 51;
+        int pStart2Y = perkY + 22;
+
+        renderSpecialPerkCard(g, pCol2X, pStart2Y, pColW, 46,
+                "BĂNG ĐẠN TIẾP TẾ (PERIODIC AMMO)", "Cứ mỗi 30 giây tự động tiếp tế +2 băng đạn dự trữ cho vũ khí chính.",
+                bm.hasPeriodicAmmo());
+
+        renderSpecialPerkCard(g, pCol2X, pStart2Y + pRowH2, pColW, 46,
+                "BĂNG ĐẠN MỞ RỘNG (EXTENDED MAG)", "Tăng đạn 1 băng: Rifle 40v, SCR 28v, SMG 60v, Súng ngắm 8v, Lục 12v.",
+                bm.hasExtendedMagazine());
+
+        renderSpecialPerkCard(g, pCol2X, pStart2Y + pRowH2 * 2, pColW, 46,
+                "BẬC THẦY CHÍ MẠNG (CRIT MASTER)", "+15% Tỉ lệ crit. Sát thương crit: Rifle 150%, SMG & Lục 120%, Dao 200%.",
+                bm.hasCriticalMastery());
+    }
+
+    /**
+     * Vẽ một dòng hiển thị chỉ số cơ bản gồm tên, cấp độ badge, thanh ô vuông pips và mô tả chi tiết.
+     */
+    private void renderBasicStatRow(Graphics2D g, int x, int y, CharacterBuff buff, String title,
+                                    int level, int maxLevel, String desc) {
+        // Tên chỉ số
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setColor(level > 0 ? new Color(255, 230, 90) : new Color(200, 215, 230));
+        g.drawString(title, x, y);
+
+        // Badge cấp độ: Lv.X/Y
+        int badgeX = x + 160;
+        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setColor(level >= maxLevel ? new Color(255, 215, 60) : (level > 0 ? new Color(60, 220, 160) : new Color(130, 145, 160)));
+        g.drawString("Lv." + level + "/" + maxLevel, badgeX, y);
+
+        // Thanh tiến trình Pips (ô vuông nhỏ 11x6px)
+        int pipStartX = badgeX + 48;
+        int pipW = 10;
+        int pipH = 6;
+        int pipGap = 3;
+        for (int i = 1; i <= maxLevel; i++) {
+            int px = pipStartX + (i - 1) * (pipW + pipGap);
+            int py = y - 8;
+            if (i <= level) {
+                g.setColor(new Color(255, 215, 60));
+                g.fillRect(px, py, pipW, pipH);
+                g.setColor(new Color(255, 245, 150));
+                g.drawRect(px, py, pipW, pipH);
+            } else {
+                g.setColor(new Color(30, 40, 50));
+                g.fillRect(px, py, pipW, pipH);
+                g.setColor(new Color(55, 70, 85));
+                g.drawRect(px, py, pipW, pipH);
+            }
+        }
+
+        // Mô tả chi tiết
+        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setColor(level > 0 ? new Color(175, 210, 230) : new Color(130, 145, 165));
+        g.drawString(desc, x + 8, y + 14);
+    }
+
+    /**
+     * Vẽ một ô thẻ Kỹ Năng Đặc Biệt / Perk với viền dạ quang và trạng thái kích hoạt trực quan.
+     */
+    private void renderSpecialPerkCard(Graphics2D g, int x, int y, int w, int h, String name, String desc, boolean isUnlocked) {
+        if (isUnlocked) {
+            // ĐÃ KÍCH HOẠT: Nền xanh đen dạ quang
+            g.setColor(new Color(15, 38, 28, 230));
+            g.fillRoundRect(x, y, w, h, 6, 6);
+            g.setColor(new Color(60, 220, 160));
+            g.setStroke(new BasicStroke(1.5f));
+            g.drawRoundRect(x, y, w, h, 6, 6);
+
+            // Tên Perk vàng kim nổi bật
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setColor(new Color(255, 225, 75));
+            g.drawString("★ " + name, x + 8, y + 13);
+
+            // Badge ĐÃ KÍCH HOẠT
+            g.setFont(new Font("SansSerif", Font.BOLD, 9));
+            g.setColor(new Color(60, 240, 140));
+            FontMetrics fm = g.getFontMetrics();
+            String badge = "[ĐÃ KÍCH HOẠT]";
+            g.drawString(badge, x + w - fm.stringWidth(badge) - 8, y + 13);
+
+            // Mô tả hiệu ứng
+            g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            g.setColor(new Color(190, 230, 215));
+            if (h > 40) {
+                // Tách 2 dòng nếu mô tả dài
+                drawWrappedDescription(g, desc, x + 8, y + 26, w - 16);
+            } else {
+                g.drawString(desc, x + 8, y + 26);
+            }
+
+        } else {
+            // CHƯA SỞ HỮU: Nền tối viền xám mờ
+            g.setColor(new Color(18, 22, 28, 190));
+            g.fillRoundRect(x, y, w, h, 6, 6);
+            g.setColor(new Color(45, 55, 68));
+            g.setStroke(new BasicStroke(1.0f));
+            g.drawRoundRect(x, y, w, h, 6, 6);
+
+            // Tên Perk màu xám bạc
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setColor(new Color(140, 155, 170));
+            g.drawString("☆ " + name, x + 8, y + 13);
+
+            // Badge CHƯA CÓ
+            g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            g.setColor(new Color(110, 125, 140));
+            FontMetrics fm = g.getFontMetrics();
+            String badge = "[CHƯA CÓ]";
+            g.drawString(badge, x + w - fm.stringWidth(badge) - 8, y + 13);
+
+            // Mô tả hiệu ứng mờ
+            g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            g.setColor(new Color(105, 120, 135));
+            if (h > 40) {
+                drawWrappedDescription(g, desc, x + 8, y + 26, w - 16);
+            } else {
+                g.drawString(desc, x + 8, y + 26);
+            }
+        }
+    }
+
+    private void drawWrappedDescription(Graphics2D g, String text, int x, int y, int maxW) {
+        FontMetrics fm = g.getFontMetrics();
+        if (fm.stringWidth(text) <= maxW) {
+            g.drawString(text, x, y);
+            return;
+        }
+
+        String[] words = text.split(" ");
+        StringBuilder line1 = new StringBuilder();
+        StringBuilder line2 = new StringBuilder();
+        boolean line1Full = false;
+
+        for (String word : words) {
+            if (!line1Full) {
+                if (fm.stringWidth(line1 + word + " ") <= maxW) {
+                    line1.append(word).append(" ");
+                } else {
+                    line1Full = true;
+                    line2.append(word).append(" ");
+                }
+            } else {
+                line2.append(word).append(" ");
+            }
+        }
+
+        g.drawString(line1.toString().trim(), x, y);
+        g.drawString(line2.toString().trim(), x, y + 12);
     }
 
     private void renderWeaponCard(Graphics2D g, int x, int y, int w, int h, int slot, String slotTitle,
@@ -296,51 +717,55 @@ public class BackpackUI {
             }
             g.drawString(titleText, x + 15, y + 48);
 
-            // Minh họa hình dạng vũ khí thu nhỏ
-            int iconCenterX = x + w - 45;
-            int iconCenterY = y + 42;
-            if (weapon instanceof AssaultRifle) {
-                g.setColor(new Color(50, 60, 70));
-                g.fillRect(iconCenterX - 18, iconCenterY - 4, 34, 7);
-                g.setColor(new Color(255, 215, 60));
-                g.fillRect(iconCenterX + 16, iconCenterY - 3, 3, 5);
-                g.setColor(new Color(30, 35, 40));
-                g.fillRect(iconCenterX - 6, iconCenterY + 3, 6, 8);
-            } else if (weapon instanceof Shotgun) {
-                g.setColor(new Color(139, 69, 19));
-                g.fillRect(iconCenterX - 16, iconCenterY - 4, 12, 8);
-                g.setColor(new Color(60, 65, 75));
-                g.fillRect(iconCenterX - 4, iconCenterY - 5, 24, 9);
-            } else if (weapon instanceof SMG) {
-                g.setColor(new Color(40, 50, 62));
-                g.fillRect(iconCenterX - 14, iconCenterY - 4, 24, 7);
-                g.setColor(new Color(20, 26, 32));
-                g.fillRect(iconCenterX - 4, iconCenterY + 3, 5, 10);
-                g.setColor(new Color(0, 230, 255));
-                g.fillRect(iconCenterX + 10, iconCenterY - 3, 3, 5);
-            }
+            // Minh họa hình dạng vũ khí thu nhỏ: Phóng to lên 56x56 pixel trong khung nền sáng tương phản 64x64
+            int iconBoxSize = 64;
+            int iconSize = 56;
+            int iconCenterX = x + w - 46;
+            int iconCenterY = y + 46;
 
-            // Thông số chi tiết đo lường bằng sao và chí mạng
+            // TẤM NỀN SÁNG TƯƠNG PHẢN (LIGHT CONTRAST BACKDROP): Tôn vinh hình khối súng tối màu
+            g.setColor(new Color(215, 230, 245, 240)); // Trắng bạc ánh xanh băng sáng rực rỡ
+            g.fillRoundRect(iconCenterX - iconBoxSize / 2, iconCenterY - iconBoxSize / 2, iconBoxSize, iconBoxSize, 8, 8);
+            g.setColor(new Color(255, 255, 255, 220)); // Quầng sáng trắng tâm
+            g.fillOval(iconCenterX - 22, iconCenterY - 22, 44, 44);
+            g.setColor(new Color(75, 130, 190));
+            g.setStroke(new BasicStroke(1.5f));
+            g.drawRoundRect(iconCenterX - iconBoxSize / 2, iconCenterY - iconBoxSize / 2, iconBoxSize, iconBoxSize, 8, 8);
+
+            WeaponSpriteManager.renderWeaponSprite(g, weapon, iconCenterX, iconCenterY, iconSize, iconSize);
+
+            // Thông số chi tiết đo lường bằng sao, chí mạng và DPS
+            boolean isSniper = (weapon instanceof com.groupproject.game.entity.weapon.SniperRifle);
             g.setFont(new Font("SansSerif", Font.PLAIN, 10));
             g.setColor(new Color(185, 205, 230));
-            g.drawString("• Sát thương:", x + 15, y + 68);
-            g.drawString("• Tốc ra đạn:", x + 15, y + 84);
-            g.drawString("• Chính xác:", x + 15, y + 100);
-            g.drawString("• Chí mạng:", x + 15, y + 116);
+            g.drawString("• Sát thương:", x + 15, y + 66);
+            g.drawString("• Tốc ra đạn:", x + 15, y + 80);
+            g.drawString(isSniper ? "• Độ xuyên:" : "• Chính xác:", x + 15, y + 94);
+            g.drawString("• Chí mạng:", x + 15, y + 108);
+            g.drawString("• Chỉ số DPS:", x + 15, y + 122);
             String ammoText = "• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize();
             if (weapon.getAmmoType() != null) {
                 ammoText += " [Kho: " + weapon.getReserveAmmo() + "/" + weapon.getAmmoType().getMaxCapacity() + "]";
             }
-            g.drawString(ammoText, x + 15, y + 134);
+            g.drawString(ammoText, x + 15, y + 137);
 
             // Các cột sao hiển thị màu vàng kim và thông số thực tế
             g.setFont(new Font("SansSerif", Font.BOLD, 10));
             g.setColor(new Color(255, 225, 75));
-            g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", x + 88, y + 68);
-            g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", x + 88, y + 84);
-            g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", x + 88, y + 100);
+            g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", x + 88, y + 66);
+            g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", x + 88, y + 80);
+            if (isSniper) {
+                com.groupproject.game.entity.weapon.SniperRifle sr = (com.groupproject.game.entity.weapon.SniperRifle) weapon;
+                g.drawString(Weapon.formatStars(sr.getPierceStars()) + " (" + sr.getMaxPierces() + " mục tiêu | -" + sr.getPierceFalloffPercent() + "%)", x + 88, y + 94);
+            } else if (weapon instanceof com.groupproject.game.entity.weapon.SemiCarbineRifle scr) {
+                g.drawString(Weapon.formatStars(scr.getAccuracyStars()) + " (Đầu " + scr.getFormattedInitialSpread() + " | Max " + scr.getFormattedSpread() + ")", x + 88, y + 94);
+            } else {
+                g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", x + 88, y + 94);
+            }
             g.setColor(new Color(255, 130, 90));
-            g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.1f", weapon.getCritMultiplier()) + " DMG)", x + 88, y + 116);
+            g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.2f", weapon.getCritMultiplier()) + " DMG)", x + 88, y + 108);
+            g.setColor(new Color(0, 225, 255));
+            g.drawString(weapon.getNormalDPS() + " (Chí mạng: " + weapon.getCritDPS() + ")", x + 88, y + 122);
 
             // Nhãn trạng thái trang bị
             if (isEquipped) {
@@ -377,50 +802,74 @@ public class BackpackUI {
         g.setStroke(new BasicStroke(isEquipped ? 2.0f : 1.0f));
         g.drawRoundRect(x, y, w, h, 10, 10);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        // Dòng 1: Tiêu đề Slot
+        g.setFont(new Font("SansSerif", Font.BOLD, 11));
         g.setColor(new Color(255, 200, 60));
-        g.drawString(String.format("[%d] %s", slot, slotTitle), x + 12, y + 22);
+        g.drawString(String.format("[%d] %s", slot, slotTitle), x + 12, y + 19);
 
         if (weapon != null) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 14));
+            // Dòng 2: Tên vũ khí và Badge CRIT tự động căn khoảng cách
+            String nameText = weapon.getShortDisplayName().toUpperCase();
+            g.setFont(new Font("SansSerif", Font.BOLD, 13));
             g.setColor(weapon.isMelee() ? Color.WHITE : new Color(255, 220, 75));
-            g.drawString(weapon.getShortDisplayName().toUpperCase(), x + 12, y + 40);
+            g.drawString(nameText, x + 12, y + 36);
 
-            // Badge tỉ lệ chí mạng nổi bật góc phải
-            int badgeW = 95;
-            int badgeH = 18;
-            int badgeX = x + w - badgeW - 12;
-            int badgeY = y + 26;
+            int nameW = g.getFontMetrics().stringWidth(nameText);
+            int badgeW = 75;
+            int badgeH = 17;
+            int badgeX = x + 12 + nameW + 8;
+            int badgeY = y + 23;
             g.setColor(new Color(45, 20, 20, 220));
-            g.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 6, 6);
+            g.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 5, 5);
             g.setColor(new Color(255, 95, 80));
-            g.drawRoundRect(badgeX, badgeY, badgeW, badgeH, 6, 6);
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
-            g.drawString("CRIT: " + weapon.getCritChancePercent() + "%", badgeX + 12, badgeY + 13);
+            g.drawRoundRect(badgeX, badgeY, badgeW, badgeH, 5, 5);
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.drawString("CRIT: " + weapon.getCritChancePercent() + "%", badgeX + 7, badgeY + 12);
 
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
-            g.setColor(new Color(180, 205, 230));
+            // Minh họa Sprite vũ khí phụ (Pistol / Knife): Khung nền sáng tương phản 58x58 ở góc phải
+            int subBoxSize = 58;
+            int subIconSize = 50;
+            int subIconCenterX = x + w - 42;
+            int subIconCenterY = y + 47;
+
+            // TẤM NỀN SÁNG TƯƠNG PHẢN (LIGHT CONTRAST BACKDROP): Giúp Pistol và Dao găm tối màu nổi bần bật
+            g.setColor(new Color(215, 230, 245, 240)); // Trắng bạc ánh xanh băng sáng rực
+            g.fillRoundRect(subIconCenterX - subBoxSize / 2, subIconCenterY - subBoxSize / 2, subBoxSize, subBoxSize, 8, 8);
+            g.setColor(new Color(255, 255, 255, 220)); // Quầng sáng trắng tâm
+            g.fillOval(subIconCenterX - 18, subIconCenterY - 18, 36, 36);
+            g.setColor(new Color(75, 130, 190));
+            g.setStroke(new BasicStroke(1.5f));
+            g.drawRoundRect(subIconCenterX - subBoxSize / 2, subIconCenterY - subBoxSize / 2, subBoxSize, subBoxSize, 8, 8);
+
+            WeaponSpriteManager.renderWeaponSprite(g, weapon, subIconCenterX, subIconCenterY, subIconSize, subIconSize);
+
+            // Bố cục thông số chi tiết bên trái (gọn gàng, hoàn toàn không chạm vào khung súng bên phải)
+            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            g.setColor(new Color(185, 205, 230));
+
+            // Dòng 3: Sát thương và DPS (loại bỏ lặp lại CRIT để tránh dài dòng đè vào khung ảnh)
+            g.drawString(String.format("• Sát thương: %d HP   • DPS: %d (Crit: %d)",
+                    weapon.getDamage(), weapon.getNormalDPS(), weapon.getCritDPS()), x + 12, y + 53);
+
+            // Dòng 4: Băng đạn và Tốc bắn / Tốc vung
             if (weapon.isMelee()) {
-                g.drawString(String.format("• Sát thương: %d HP  • Chí mạng: %d%% (x2.0 DMG)",
-                        weapon.getDamage(), weapon.getCritChancePercent()), x + 12, y + 57);
-                g.drawString(String.format("• Tốc vung: %s  • Loại: Cận chiến (∞)",
-                        weapon.getFormattedRPM()), x + 12, y + 73);
+                g.drawString(String.format("• Tốc vung: %s   • Loại: Cận chiến (∞)",
+                        weapon.getFormattedRPM()), x + 12, y + 69);
             } else {
                 String subAmmo = weapon.hasInfiniteAmmo() ? " (∞)" : "";
-                g.drawString(String.format("• Sát thương: %d HP  • Chí mạng: %d%% (x2.0 DMG)",
-                        weapon.getDamage(), weapon.getCritChancePercent()), x + 12, y + 57);
-                g.drawString(String.format("• Băng đạn: %d/%d%s  • Tốc bắn: %s",
-                        weapon.getCurrentAmmo(), weapon.getMagazineSize(), subAmmo, weapon.getFormattedRPM()), x + 12, y + 73);
+                g.drawString(String.format("• Băng đạn: %d/%d%s   • Tốc: %s",
+                        weapon.getCurrentAmmo(), weapon.getMagazineSize(), subAmmo, weapon.getFormattedRPM()), x + 12, y + 69);
             }
 
+            // Dòng 5: Trạng thái cầm
             if (isEquipped) {
                 g.setColor(new Color(60, 220, 160));
                 g.setFont(new Font("SansSerif", Font.BOLD, 11));
-                g.drawString("★ ĐANG CẦM", x + 12, y + 89);
+                g.drawString("★ ĐANG CẦM", x + 12, y + 86);
             } else {
                 g.setColor(new Color(130, 155, 185));
                 g.setFont(new Font("SansSerif", Font.PLAIN, 11));
-                g.drawString("[Click hoặc nhấn " + slot + " để cầm]", x + 12, y + 89);
+                g.drawString("[Click hoặc nhấn " + slot + " để cầm]", x + 12, y + 86);
             }
         }
     }

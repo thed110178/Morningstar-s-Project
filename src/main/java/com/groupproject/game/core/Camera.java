@@ -25,6 +25,9 @@ public class Camera {
      */
     private final double lerpFactor = 0.1;
 
+    private double maxWorldWidth = GameConfig.WORLD_WIDTH;
+    private double maxWorldHeight = GameConfig.WORLD_HEIGHT;
+
     /**
      * Initializes camera dimensions matching the current screen resolution.
      *
@@ -32,10 +35,30 @@ public class Camera {
      * @param viewportHeight Vertical height of the visible window.
      */
     public Camera(int viewportWidth, int viewportHeight) {
-        this.viewportWidth = viewportWidth;
-        this.viewportHeight = viewportHeight;
+        this.viewportWidth = (viewportWidth > 0) ? viewportWidth : GameConfig.SCREEN_WIDTH;
+        this.viewportHeight = (viewportHeight > 0) ? viewportHeight : GameConfig.SCREEN_HEIGHT;
         this.x = 0;
         this.y = 0;
+    }
+
+    /**
+     * Thiết lập kích thước thế giới tùy biến cho các phân cảnh đặc thù (như The Range).
+     */
+    public void setCustomWorldBounds(double worldWidth, double worldHeight) {
+        this.maxWorldWidth = Math.max(viewportWidth, worldWidth);
+        this.maxWorldHeight = Math.max(viewportHeight, worldHeight);
+        clamp();
+    }
+
+    /**
+     * Snap camera lập tức vào tâm mục tiêu mà không chờ hiệu ứng Lerp.
+     */
+    public void snapTo(double focusX, double focusY) {
+        targetX = focusX - (viewportWidth / 2.0);
+        targetY = focusY - (viewportHeight / 2.0);
+        x = targetX;
+        y = targetY;
+        clamp();
     }
 
     /**
@@ -63,11 +86,11 @@ public class Camera {
     private void clamp() {
         if (x < 0) x = 0;
         if (y < 0) y = 0;
-        if (x > GameConfig.WORLD_WIDTH - viewportWidth) {
-            x = GameConfig.WORLD_WIDTH - viewportWidth;
+        if (x > maxWorldWidth - viewportWidth) {
+            x = Math.max(0, maxWorldWidth - viewportWidth);
         }
-        if (y > GameConfig.WORLD_HEIGHT - viewportHeight) {
-            y = GameConfig.WORLD_HEIGHT - viewportHeight;
+        if (y > maxWorldHeight - viewportHeight) {
+            y = Math.max(0, maxWorldHeight - viewportHeight);
         }
     }
 

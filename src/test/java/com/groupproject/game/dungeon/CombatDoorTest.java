@@ -243,6 +243,13 @@ public class CombatDoorTest {
         keyH.update();
 
         state.update(0.016, keyH, mouseH);
+        assertTrue(state.isStageTransitionActive(), "Pressing [F] must start the stage fade transition");
+        assertEquals(1, state.getCurrentStage(), "Stage must not change until the screen is fully dark");
+        // Chạy hết hiệu ứng Fade (0.45s out + 0.35s hold + 0.45s in)
+        for (int i = 0; i < 20; i++) {
+            state.update(0.1, keyH, mouseH);
+        }
+        assertFalse(state.isStageTransitionActive(), "Transition must finish");
         assertEquals(2, state.getCurrentStage(), "Pressing [F] on extraction pad in Stage 1 must advance to Stage 2");
 
         // 3. Set to Stage 3 (Final Bossfight Stage) and place on extract pad
@@ -260,6 +267,9 @@ public class CombatDoorTest {
 
         state.update(0.016, keyH2, mouseH);
         assertTrue(state.isExtracting(), "Pressing [F] on extraction pad in Final Stage must activate victory sequence");
+
+        // Người chơi đứng trong phòng Boss nên intro Boss đã kích hoạt -> bỏ qua để test màn hình tổng kết
+        state.skipBossIntro();
 
         // 4. Skip black screen by pressing [ENTER]
         java.awt.event.KeyEvent pressEnter = new java.awt.event.KeyEvent(
@@ -363,6 +373,9 @@ public class CombatDoorTest {
         // Di chuyển người chơi vào phòng Grand Boss Arena để kích hoạt lockdown
         state.setPlayerPosition(bossRoom.getCenterWorldX() - 14, bossRoom.getCenterWorldY() - 14);
         state.update(0.016, keyH, mouseH);
+        // Vào phòng Boss sẽ phát cắt cảnh giới thiệu (đóng băng gameplay) -> bỏ qua để test logic Boss
+        assertTrue(state.isBossIntroActive(), "Entering the boss room must trigger the boss intro cinematic");
+        state.skipBossIntro();
 
         // Kiểm tra bossDummy được sinh ra
         TargetDummy boss = state.getBossDummy();

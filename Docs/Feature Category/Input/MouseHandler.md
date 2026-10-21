@@ -3,7 +3,7 @@ Cập nhật mới nhất vào ngày: 02/10/2026
 # MouseHandler.java - Bộ Lắng Nghe Chuột & Hỗ Trợ Ngắm Bắn 360 Độ
 
 ## 1. Mô tả
-`MouseHandler.java` kế thừa từ `java.awt.event.MouseAdapter`, quản lý tọa độ con trỏ chuột trên màn hình (`screenX`, `screenY`), các trạng thái nhấn giữ và nhấp một lần của chuột trái (Chuột 1 - Bắn súng) và chuột phải (Chuột 3 - Kỹ năng/Ngắm). Đây là nền tảng cốt lõi cho tính năng xoay súng tự do 360 độ phong cách Soul Knight và POBG.
+`MouseHandler.java` kế thừa từ `java.awt.event.MouseAdapter`, quản lý tọa độ con trỏ chuột trên màn hình (`screenX`, `screenY`), các trạng thái nhấn giữ và nhấp một lần của chuột trái (Chuột 1 - Bắn súng) và chuột phải (Chuột 3 - Kỹ năng/Ngắm). Đây là nền tảng cốt lõi cho tính năng xoay súng tự do 360 độ phong cách Soul Knight và Surviv.io.
 
 ---
 

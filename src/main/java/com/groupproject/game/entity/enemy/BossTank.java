@@ -12,7 +12,6 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -47,7 +46,6 @@ public class BossTank extends TargetDummy {
 
     private TankState state = TankState.PATROL_REPOSITION;
     private double stateTimer = 0.50; // Tấn công dồn dập sau 0.50s mở màn
-    private double actionCooldown = 0.35;
 
     // --- 3-Layer Decoupled Rotations ---
     private double chassisAngle = 0.0; // Layer 3: Góc xoay khung gầm & xích xe (đồng nhất hướng di chuyển)

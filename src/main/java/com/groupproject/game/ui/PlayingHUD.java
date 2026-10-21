@@ -159,6 +159,97 @@ public class PlayingHUD {
     }
 
     /**
+     * Hiển thị trạng thái Khiên Chặn Đòn (Aegis Barrier) và các Huy hiệu Buff đang kích hoạt trên HUD.
+     */
+    public void renderBuffsHUD(Graphics2D g, Player player) {
+        if (player == null || player.getBuffManager() == null) return;
+        com.groupproject.game.entity.buff.PlayerBuffManager bm = player.getBuffManager();
+
+        int startX = 20;
+        int startY = 108;
+        int barW = 210;
+
+        // 1. Nếu có Khiên Chặn Đòn (ONE_HIT_BARRIER)
+        if (bm.hasOneHitBarrier()) {
+            int barH = 15;
+            g.setColor(new Color(12, 16, 24, 220));
+            g.fillRoundRect(startX, startY, barW, barH, 4, 4);
+            g.setColor(new Color(65, 55, 30));
+            g.setStroke(new BasicStroke(1.0f));
+            g.drawRoundRect(startX, startY, barW, barH, 4, 4);
+
+            boolean ready = bm.isBarrierReady();
+            double cd = bm.getBarrierCooldownTimer();
+            if (ready) {
+                g.setColor(new Color(255, 185, 40));
+                g.fillRoundRect(startX + 2, startY + 2, barW - 4, barH - 4, 3, 3);
+                g.setColor(new Color(255, 255, 255, 90));
+                g.fillRect(startX + 2, startY + 2, barW - 4, 2);
+            } else {
+                double progress = 1.0 - (cd / com.groupproject.game.entity.buff.PlayerBuffManager.BARRIER_COOLDOWN);
+                int fillW = (int) ((barW - 4) * Math.max(0.0, Math.min(1.0, progress)));
+                if (fillW > 0) {
+                    g.setColor(new Color(180, 110, 20));
+                    g.fillRoundRect(startX + 2, startY + 2, fillW, barH - 4, 3, 3);
+                }
+            }
+
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            FontMetrics fm = g.getFontMetrics();
+            String barrierText = ready ? "🛡 KHIÊN CHẶN ĐÒN : SẴN SÀNG" : String.format("🛡 HỒI PHỤC KHIÊN: %.1fs", cd);
+            int textW = fm.stringWidth(barrierText);
+            int textX = startX + (barW - textW) / 2;
+            int textY = startY + 11;
+
+            if (ready) {
+                g.setColor(new Color(10, 10, 10));
+            } else {
+                g.setColor(new Color(245, 220, 180));
+            }
+            g.drawString(barrierText, textX, textY);
+            startY += 20;
+        }
+
+        // 2. Mini badge các buff chỉ số kích hoạt
+        java.util.List<String> activeBadges = new java.util.ArrayList<>();
+        if (bm.getAttackMultiplier() > 1.0) {
+            activeBadges.add(String.format("⚔ +%d%%", (int) Math.round((bm.getAttackMultiplier() - 1.0) * 100)));
+        }
+        if (bm.getDamageReduction() > 0) {
+            activeBadges.add(String.format("🛡 -%d%%", (int) Math.round(bm.getDamageReduction() * 100)));
+        }
+        if (bm.getSpeedMultiplier() > 1.0) {
+            activeBadges.add(String.format("🏃 +%d%%", (int) Math.round((bm.getSpeedMultiplier() - 1.0) * 100)));
+        }
+        if (bm.hasCriticalMastery()) {
+            activeBadges.add("🎯 CRIT 15%");
+        }
+        if (bm.hasShrinkHitbox()) {
+            activeBadges.add("✨ -30% BOX");
+        }
+        if (bm.hasPhaseDodge()) {
+            activeBadges.add("👻 NÉ XUYÊN");
+        }
+
+        if (!activeBadges.isEmpty()) {
+            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            FontMetrics fm = g.getFontMetrics();
+            int curX = startX;
+            for (String badge : activeBadges) {
+                int bW = fm.stringWidth(badge) + 8;
+                if (curX + bW > startX + barW + 80) break;
+                g.setColor(new Color(15, 25, 38, 200));
+                g.fillRoundRect(curX, startY, bW, 16, 4, 4);
+                g.setColor(new Color(50, 160, 220, 180));
+                g.drawRoundRect(curX, startY, bW, 16, 4, 4);
+                g.setColor(new Color(180, 225, 255));
+                g.drawString(badge, curX + 4, startY + 12);
+                curX += bW + 5;
+            }
+        }
+    }
+
+    /**
      * Hiển thị bảng HUD số dư tiền tệ Credits ở góc trên bên phải màn hình.
      *
      * @param g             Đối tượng đồ họa Graphics2D.
@@ -523,6 +614,47 @@ public class PlayingHUD {
         g.fillRect(0, GameConfig.SCREEN_HEIGHT - thickness, GameConfig.SCREEN_WIDTH, thickness);
         g.fillRect(0, 0, thickness, GameConfig.SCREEN_HEIGHT);
         g.fillRect(GameConfig.SCREEN_WIDTH - thickness, 0, thickness, GameConfig.SCREEN_HEIGHT);
+    }
+
+    /**
+     * Hiển thị hiệu ứng chuyển cảnh điện ảnh tử trận (Cinematic Death Vignette & Fade).
+     * Khi chiến binh ngã xuống biến thành đầu lâu trượt trên sàn, màn hình từ từ phủ bóng tối
+     * và viền đỏ bi tráng, không che mất hoạt cảnh đầu lâu trượt ma sát.
+     *
+     * @param g        Đối tượng đồ họa Graphics2D.
+     * @param progress Tiến độ tử trận từ 0.0 (vừa chết) đến 1.0 (hoàn tất trượt).
+     */
+    public void renderDeathVignetteTransition(Graphics2D g, double progress) {
+        int w = GameConfig.SCREEN_WIDTH;
+        int h = GameConfig.SCREEN_HEIGHT;
+
+        // 1. Phủ mờ tối điện ảnh tăng dần từ 0 đến 135 alpha (không che khuất tầm nhìn)
+        int darkAlpha = (int) (135 * progress);
+        if (darkAlpha > 0) {
+            g.setColor(new Color(10, 5, 8, darkAlpha));
+            g.fillRect(0, 0, w, h);
+        }
+
+        // 2. Viền đỏ rực (Vignette) bo 4 cạnh tạo cảm giác bi tráng
+        int edgeAlpha = (int) (170 * progress);
+        if (edgeAlpha > 0) {
+            g.setColor(new Color(180, 25, 25, edgeAlpha));
+            int edgeThickness = (int) (24 + 18 * progress);
+            g.fillRect(0, 0, w, edgeThickness);
+            g.fillRect(0, h - edgeThickness, w, edgeThickness);
+            g.fillRect(0, 0, edgeThickness, h);
+            g.fillRect(w - edgeThickness, 0, edgeThickness, h);
+        }
+
+        // 3. Dòng thông báo trạng thái (hoạt cảnh tử trận không thể bỏ qua)
+        if (progress > 0.35) {
+            g.setFont(new Font("SansSerif", Font.ITALIC, 14));
+            FontMetrics fm = g.getFontMetrics();
+            String hint = "[ Đang hoàn tất dữ liệu tử trận... ]";
+            int hintAlpha = (int) Math.min(255, (progress - 0.35) / 0.65 * 200);
+            g.setColor(new Color(255, 210, 210, hintAlpha));
+            g.drawString(hint, (w - fm.stringWidth(hint)) / 2, h - 45);
+        }
     }
 
     /**

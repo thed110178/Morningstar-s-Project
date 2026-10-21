@@ -33,7 +33,7 @@ Developing a responsive, high-performance 2D game in pure Java without third-par
 3. **Procedural Consistency & Ballistics**: Generating balanced, non-overlapping dungeons and simulating realistic gunplay (spread, recoil, projectiles, bullet collisions) requires robust mathematical modeling and strict Object-Oriented design.
 
 ## 2.2. Motivation
-This project bridges the gap between theoretical software engineering principles (OOP, SOLID, Design Patterns) and high-performance interactive computing. By engineering **DontKnow**—an original top-down roguelite shooter taking mechanical reference from the procedural room-clearing dungeon exploration of Soul Knight and the intense 360° tactical ballistics of POBG—we prove that pure Java (Java 21 LTS + Swing/Graphics2D) can host a commercial-grade, smooth 60 FPS / 60 UPS gaming experience when engineered with rigorous architecture.
+This project bridges the gap between theoretical software engineering principles (OOP, SOLID, Design Patterns) and high-performance interactive computing. By engineering **DontKnow**—an original top-down roguelite shooter taking mechanical reference and inspiration from the procedural room-clearing dungeon exploration of Soul Knight and the responsive 360° tactical ballistics and survival mechanics of Surviv.io—we prove that pure Java (Java 21 LTS + Swing/Graphics2D) can host a commercial-grade, smooth 60 FPS / 60 UPS gaming experience when engineered with rigorous architecture.
 
 ## 2.3. Objectives
 * Build a **decoupled multi-threaded game engine** maintaining a solid 60 UPS (Updates Per Second) and 60 FPS (Frames Per Second) with minimal jitter.

@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 20/10/2026
+﻿Cập nhật mới nhất vào ngày: 21/10/2026
 
 # PlayerHealthSystem.md - Hệ Thống Sinh Lực (HP), Kỹ Năng Né Đòn (Dodge Roll) & Vật Phẩm Hồi Phục
 
@@ -72,13 +72,22 @@ Tài liệu đặc tả kiến trúc quản lý sinh lực của nhân vật ng�
 * **Hiệu quả**: Hồi phục **`+50 HP`** khi bấm `[F]`.
 * **Cơ chế bảo vệ**: Nếu máu đang đầy (100 HP), từ chối giao dịch và không trừ Credits.
 
-### 2.6 Màn Hình Tử Trận (Game Over Screen)
+### 2.6 Chuỗi Hoạt Cảnh Tử Trận & Màn Hình Kết Quả (Death Slide Sequence & Game Over)
 * Khi `playerCurrentHealth == 0`:
-  * Kích hoạt `isPlayerDead = true`.
-  * Đóng băng di chuyển và bắn súng.
-  * Phủ màn mờ đỏ đen kịch tính, hiển thị tiêu đề `☠ CHIẾN BINH TỬ TRẬN ☠ (OPERATIVE KIA)`.
-  * Bảng thống kê chi tiết ván đấu: Stage đạt được, Credits thu thập, số phòng combat dọn sạch, số vũ khí trong kho.
-  * Phím điều hướng: Bấm `[ENTER]` hoặc `[R]` để tái xuất phát run mới; bấm `[ESC]` để trở về Menu chính.
+  * Kích hoạt `isPlayerDead = true` và khởi động chuỗi hoạt cảnh tử trận kéo dài **`2.0 giây`**.
+  * **Tuyệt đối KHÔNG hiện màn hình Game Over đột ngột**: Người chơi có thời gian chứng kiến nhân vật của mình ngã xuống chiến trường.
+  * **Đầu Lâu Trượt Trên Mặt Đất (Sliding Skull)**:
+    * Nhân vật lập tức biến thành hình ảnh **Đầu lâu chiến binh (Fallen Operative Skull)** màu trắng ngà xương với 2 hốc mắt to màu đen sâu thẳm le lói đốm lửa ma trơi, hốc mũi tam giác, hàng răng xương trắng và vết nứt sọ chiến trường bi tráng.
+    * Đầu lâu trượt và xoay lăn trên mặt đất theo quán tính di chuyển hoặc lực hất văng từ đòn đánh cuối cùng ($v_0 \approx 280\text{ px/s}$).
+    * Tốc độ trượt giảm dần theo lực ma sát sàn hầm ngục, để lại các vệt khói bụi tro ma sát (`SkidParticle`) cọ xát sau lưng.
+    * Va chạm địa hình: Nếu trượt chạm vào tường đá, đầu lâu dội nhẹ lại rồi tiếp tục giảm tốc tự nhiên, không bị kẹt hay xuyên tường.
+    * Camera tiếp tục mượt mà bám theo đầu lâu đang trượt.
+  * **Hiệu ứng chuyển cảnh điện ảnh (Cinematic Death Fade & Vignette)**:
+    * Màn hình từ từ phủ bóng tối mờ ảo và viền đỏ bi tráng quanh 4 cạnh (`renderDeathVignetteTransition`).
+    * Từ 21/10/2026: hoạt cảnh trượt 2.0s KHÔNG thể bỏ qua bằng bất kỳ phím nào; chỉ sau khi kết thúc mới nhấn [ENTER]/[R] chơi lại hoặc [ESC] ra menu.
+  * **Màn hình Game Over chính thức**:
+    * Khi đầu lâu đã dừng trượt hẳn (sau 2.0s) hoặc khi người chơi nhấn bỏ qua, bảng thống kê Game Over mới xuất hiện đầy đủ: Stage đạt được, Credits thu thập, số phòng combat dọn sạch, số vũ khí trong kho.
+    * Phím điều hướng: Bấm `[ENTER]` hoặc `[R]` để tái xuất phát run mới; bấm `[ESC]` để trở về Menu chính.
 
 ---
 
@@ -109,6 +118,11 @@ Tài liệu đặc tả kiến trúc quản lý sinh lực của nhân vật ng�
 ---
 
 ## 4. Sửa đổi / Cập nhật
+* **21/10/2026**:
+  - Triển khai hoạt cảnh tử trận (Death Slide Sequence): Khi người chơi chết, không hiện bảng Game Over đột ngột mà kích hoạt 2.0 giây chuyển cảnh bi tráng.
+  - Nhân vật biến thành Đầu lâu chiến binh (Fallen Operative Skull) trượt ma sát trên sàn hầm ngục, để lại vệt cọ xát bụi tro `SkidParticle` và xoay lăn theo quán tính.
+  - Tích hợp hiệu ứng điện ảnh chuyển mờ tối và viền đỏ bi tráng `renderDeathVignetteTransition`.
+  - (Đã bỏ 21/10/2026) Hoạt cảnh trượt không còn cho phép skip.
 * **20/10/2026**:
   - Tích hợp kỹ năng né đòn chiến thuật (Combat Dash / Dodge Roll) kích hoạt bằng phím `[SPACE]`.
   - Bổ sung cơ chế bất tử (i-frames) trong suốt 0.22s lướt né, vô hiệu hóa 100% sát thương từ mọi nguồn đạn và va chạm.

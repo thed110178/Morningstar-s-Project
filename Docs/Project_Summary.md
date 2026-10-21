@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 19/10/2026
+Cập nhật mới nhất vào ngày: 21/10/2026
 
 # TỔNG QUAN DỰ ÁN: PROJECT DONTKNOW
 *An unplanned top-down roguelite shooter*
@@ -7,7 +7,7 @@ Cập nhật mới nhất vào ngày: 19/10/2026
 
 ## 1. Giới thiệu Dự án
 * **Tên dự án**: Project DontKnow
-* **Thể loại**: 2D Top-Down Roguelite Shooter (Lấy cảm hứng và tham chiếu cơ chế phòng ngẫu nhiên từ Soul Knight và góc bắn 360 độ từ POBG).
+* **Thể loại**: 2D Top-Down Roguelite Shooter (Lấy cảm hứng và học tập từ Soul Knight về cơ chế hầm ngục thủ tục và Surviv.io về cơ chế xạ kích 360 độ, kho đạn và sinh tồn dã chiến).
 * **Nền tảng công nghệ**:
   * Ngôn ngữ: **Java 21 LTS**
   * Đồ họa & GUI: **Java Swing + Graphics2D + Double Buffering**
