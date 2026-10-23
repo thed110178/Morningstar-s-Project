@@ -20,7 +20,7 @@
 | 1 | **Trưởng Nhóm** | *(Student ID 1)* | **Lead Engine Architect & Level Designer**: Kiến trúc vòng lặp game đa luồng (`GameLoop`), Thuật toán sinh hầm ngục lưới 4 hướng (`DungeonMap`), Phòng đặc biệt 2 lối vào/ra, Cơ chế khóa cửa giao tranh đa pha (`Room`), Quản lý trạng thái game (`StateManager`). | 25% |
 | 2 | **Thành viên 2** | *(Student ID 2)* | **Combat & Weapon Systems Engineer**: Khung đa xạ kích $360^\circ$ (`Weapon`, `WeaponManager`), Mô phỏng độ giật nở tâm AR, Hệ thống đạn đạo vật lý (`ProjectileManager`), Đạn phân mảnh Shotgun, Trạm tẩy luyện chỉ số súng (`StatReforgeStation`). | 25% |
 | 3 | **Thành viên 3** | *(Student ID 3)* | **Enemy AI & Encounter Systems Engineer**: Trí tuệ nhân tạo tìm đường BFS trên lưới ô tile, Cảm biến xúc tu đa hướng tránh vật cản (`Steering Feelers`), Thiết kế Boss Tank 3 lớp xoay độc lập (`BossTank`), Cổng cảnh báo triệu hồi (`Spawn Telegraph`). | 25% |
-| 4 | **Thành viên 4** | *(Student ID 4)* | **Bio-Tech Systems, UI & QA Engineer**: Trạm nâng cấp nhân vật & 7 Perk đặc biệt (`CharacterUpgradeStation`, `CharacterBuffSystem`), Giao diện Balo tác chiến 2 Tab (`BackpackUI`), Bản đồ chiến thuật Radar (`MinimapHUD`), Bộ kiểm thử tự động 170 Unit Tests JUnit 5. | 25% |
+| 4 | **Thành viên 4** | *(Student ID 4)* | **Bio-Tech Systems, UI & QA Engineer**: Trạm nâng cấp nhân vật & 7 Perk đặc biệt (`CharacterUpgradeStation`, `CharacterBuffSystem`), Giao diện Balo tác chiến 2 Tab (`BackpackUI`), Bản đồ chiến thuật Radar (`MinimapHUD`), Bộ kiểm thử tự động 209 Unit Tests JUnit 5. | 25% |
 
 ---
 
@@ -36,7 +36,7 @@
 8. **Design (Thiết kế hướng đối tượng, SOLID & Mẫu thiết kế)**
 9. **Implementation (Chi tiết hiện thực hóa mã nguồn)**
 10. **Technical Details (Chi tiết kỹ thuật chuyên sâu: Đa luồng, GUI, Không gian, FP)**
-11. **Testing (Kiểm thử tự động JUnit 5 với 170 bài test)**
+11. **Testing (Kiểm thử tự động JUnit 5 với 209 bài test)**
 12. **Experimental Results (Kết quả thực nghiệm & Đo lường hiệu năng)**
 13. **Discussion (Thảo luận & Đánh giá)**
 14. **Novelty and Contributions (Tính mới & Đóng góp kỹ thuật)**
@@ -65,10 +65,10 @@ Mục tiêu cốt lõi của dự án là chứng minh khả năng hiện thực
 Hệ thống tích hợp các giải thuật kỹ thuật chuyên sâu nổi bật:
 1. **Thuật toán sinh bản đồ hầm ngục thủ tục (Procedural Dungeon Generation)** dựa trên lưới logic 4 hướng kề cận (12h, 3h, 6h, 9h) với cơ chế phòng đặc biệt 2 lối vào/ra (Transit Hub Crossroads) và 6 cấu trúc phòng chiến đấu (Combat Archetypes) đa dạng kích thước từ $12 \times 9$ đến $14 \times 10$ cùng 6 bố cục che chắn kiên cố (Hard Cover Layouts).
 2. **Hệ thống điều khiển xạ kích đa hướng $360^\circ$** kết hợp mô hình vật lý đạn đạo thực tế, đường cong giật nở tâm (Bloom Recoil Dispersion), phân loại đạn dự trữ và cơ chế cận chiến dao găm khẩn cấp.
-3. **Trí tuệ nhân tạo (AI) kẻ địch đa tầng**: Tích hợp thuật toán tìm đường trên lưới ô tile (Tile-based BFS Pathfinding), mảng cảm biến xúc tu góc quét đa hướng (Multi-Angle Steering Feelers) để chủ động luồn lách qua chướng ngại vật, cơ chế thả diều kẹp góc (Tactical Kiting & Flanking), và trùm cuối Titan Boss Tank sở hữu 3 tầng xoay độc lập (Decoupled 3-Layer Rotations) cùng bộ chiêu thức đâm húc rocket nghiền nát vật cản và pháo xung kích dẫn đường siêu thanh.
-4. **Hệ thống kinh tế & Sinh trắc học chuyên sâu**: Trạm nâng cấp nhân vật Bio-Tech với 6 chỉ số thuộc tính và 7 Perk kỹ năng sinh tồn, kết hợp Trạm tẩy luyện chỉ số vũ khí (Field Gunsmith Workshop) và Giao diện Balo tác chiến dã chiến 2 Tab (Field Tactical PDA) thao tác mượt mà.
+3. **Trí tuệ nhân tạo (AI) kẻ địch đa tầng**: Tích hợp thuật toán tìm đường trên lưới ô tile (Tile-based BFS Pathfinding), mảng cảm biến xúc tu góc quét đa hướng (Multi-Angle Steering Feelers), quái hỗ trợ Quân y (`MedicEnemy`) sở hữu hào quang nano đỏ hồi phục và cơ chế ưu tiên cứu thương đồng đội yếu máu, quái công binh (`GrenadierEnemy`) ném lựu đạn hẹn giờ đúng $2.0\text{ s}$ nổ diện rộng ép góc người chơi, và trùm cuối Titan Boss Tank sở hữu 3 tầng xoay độc lập (Decoupled 3-Layer Rotations) cùng bộ chiêu thức đâm húc rocket nghiền nát vật cản và pháo xung kích dẫn đường siêu thanh.
+4. **Hệ thống kinh tế & Sinh trắc học chuyên sâu**: Trạm nâng cấp nhân vật Bio-Tech với 6 chỉ số thuộc tính và 7 Perk kỹ năng sinh tồn, kết hợp Trạm tẩy luyện chỉ số vũ khí (Field Gunsmith Workshop), Sảnh chờ & Trường bắn thử nghiệm (The Range), và Giao diện Balo tác chiến dã chiến 2 Tab (Field Tactical PDA) thao tác mượt mà.
 
-Toàn bộ hệ thống được thẩm định độ tin cậy thông qua bộ kiểm thử tự động toàn diện gồm **170 ca kiểm thử đơn vị (Unit Tests)** trên nền tảng **JUnit 5**, đạt tỷ lệ vượt qua tuyệt đối (**100% PASS**). Trò chơi duy trì ổn định chuẩn **60.0 FPS / 60.0 UPS**, thời gian xử lý khung hình trung bình $\approx 16.58\text{ ms}$, dung lượng bộ nhớ Heap tối ưu chỉ dao động từ $65\text{ MB}$ đến $110\text{ MB}$, và được đóng gói hoàn chỉnh thành phiên bản di động All-In-One nhúng sẵn JRE độc lập.
+Toàn bộ hệ thống được thẩm định độ tin cậy thông qua bộ kiểm thử tự động toàn diện gồm **209 ca kiểm thử đơn vị (Unit Tests)** trên nền tảng **JUnit 5**, đạt tỷ lệ vượt qua tuyệt đối (**100% PASS**). Trò chơi duy trì ổn định chuẩn **60.0 FPS / 60.0 UPS**, thời gian xử lý khung hình trung bình $\approx 16.58\text{ ms}$, dung lượng bộ nhớ Heap tối ưu chỉ dao động từ $65\text{ MB}$ đến $110\text{ MB}$, và được đóng gói hoàn chỉnh thành phiên bản di động All-In-One nhúng sẵn JRE độc lập.
 
 ---
 
@@ -259,14 +259,17 @@ com.groupproject.game
 ├── entity/                                  # Thực thể sống trong game
 │   ├── player/Player.java                   # Nhân vật chính, lướt né, I-frames, sinh mệnh
 │   ├── enemy/                               # Hệ thống kẻ địch và trùm
-│   │   ├── Enemy.java                       # Lớp cơ sở trừu tượng cho kẻ địch
+│   │   ├── TargetDummy.java                 # Lớp cơ sở trừu tượng cho bia/kẻ địch, thanh máu đỏ, heal()
 │   │   ├── MeleeEnemy.java                  # Quái cận chiến, tìm đường BFS, xúc tu né vật cản
-│   │   ├── RangedEnemy.java                 # Quái xạ thủ, lùi kẹp góc, lạng sườn
+│   │   ├── RangedPistolEnemy.java           # Quái xạ thủ, lùi kẹp góc, lạng sườn né đạn
+│   │   ├── MedicEnemy.java                  # Quái quân y hỗ trợ, né người chơi, hào quang đỏ cứu thương
+│   │   ├── GrenadierEnemy.java              # Quái công binh, ném lựu đạn hẹn giờ 2.0s ép góc
 │   │   └── BossTank.java                    # Trùm Titan Tank 3 tầng xoay, húc rocket, pháo laser
 │   ├── weapon/                              # Hệ thống khí tài và đạn dược
 │   │   ├── Weapon.java                      # Lớp trừu tượng vũ khí, độ giật, nạp đạn
 │   │   ├── WeaponManager.java               # Quản lý 4 slot khí tài, đổi súng, rơi đồ
 │   │   ├── AssaultRifle.java                # Súng trường tấn công Viper AR
+│   │   ├── SemiCarbineRifle.java            # Súng trường bán tự động SCR (băng 20 viên, sát thương cao)
 │   │   ├── SniperRifle.java                 # Súng bắn tỉa kéo quy lát SR Bolt Action
 │   │   ├── Shotgun.java                     # Súng bắn đạn hoa cải Bulldog SG
 │   │   ├── SMG.java                         # Súng tiểu liên tốc độ cao Spectre SMG
@@ -274,7 +277,11 @@ com.groupproject.game
 │   │   └── CombatKnife.java                 # Dao găm cận chiến khẩn cấp
 │   ├── projectile/                          # Hệ thống đạn đạo
 │   │   ├── Projectile.java                  # Thực thể đạn bay, sát thương, tầm bắn
+│   │   ├── EnemyGrenade.java                # Lựu đạn hẹn giờ 2.0s, cảnh báo AoE 78px, phá hủy cover
 │   │   └── ProjectileManager.java           # Quản lý hàng trăm viên đạn, va chạm vật lý
+│   ├── hub/                                 # Sảnh chờ huấn luyện & Trường bắn dã chiến
+│   │   ├── HubRangeState.java               # Trạng thái trường bắn The Range thử nghiệm vũ khí
+│   │   └── RecoilTracerManager.java         # Vẽ vệt dạ quang phân tích mẫu giật đạn đạo
 │   ├── buff/                                # Hệ sinh thái bùa chú & Nâng cấp
 │   │   ├── CharacterBuff.java               # Enum định nghĩa 6 chỉ số và 7 Perk
 │   │   └── PlayerBuffManager.java           # Quản lý tiến trình cấp độ buff và áp dụng hiệu ứng
@@ -311,12 +318,16 @@ Bản đồ được biểu diễn bằng ma trận $80 \times 45$ ô gạch, ch
 1. **Ngắm bắn $360^\circ$ lượng giác**: Góc bắn được xác định chính xác theo thời gian thực bằng góc cực giữa tọa độ con trỏ chuột trong thế giới $(wx, wy)$ và tâm nhân vật $(px, py)$:
    $$\theta = \operatorname{atan2}(wy - py, wx - px)$$
 2. **Đường cong giật nở tâm (Bloom Recoil Curve)**: Khẩu súng trường Viper AR sở hữu độ chính xác tuyệt đối ở những phát đạn đầu tiên. Khi người chơi giữ chặt chuột trái để sấy liên thanh, góc lệch ngẫu nhiên $\Delta\theta$ sẽ nở rộng dần theo thời gian và chỉ hồi phục về ban đầu khi ngừng bắn. Phẩm cấp sao càng cao (Star Level 1 đến 5), độ tản mát cực đại càng được thu hẹp.
-3. **Cơ chế hoán đổi và rơi súng xuống đất**: Người chơi sở hữu 4 slot vũ khí. Khi đổi một khẩu súng mới từ hòm đồ hoặc cửa hàng trong khi cả 2 slot chính đã đầy, khẩu súng đang cầm trên tay sẽ tự động được văng ra sàn nhà dưới dạng một vật phẩm rơi (`WeaponDropEntity`) bảo lưu nguyên vẹn số đạn trong băng và phẩm cấp sao.
+3. **Súng trường bán tự động Semi-Carbine Rifle (SCR)**: Băng đạn chuẩn 20 viên, sát thương cơ sở cực cao $34\text{ HP}$ và vận tốc đạn $1150\text{ px/s}$. SCR sở hữu cơ chế giật nặng (Heavy Recoil): chỉ duy nhất viên đầu tiên chuẩn xác tuyệt đối, ngay từ phát thứ 2 độ tản mát tăng vọt lên tới $\pm 22.9^\circ$ cùng thuật toán chống trúng may mắn (Anti-Lucky Recoil Jitter), buộc người chơi phải căn nhịp nhấp chuột chiến thuật.
+4. **Cơ chế hoán đổi và rơi súng xuống đất**: Người chơi sở hữu 4 slot vũ khí. Khi đổi một khẩu súng mới từ hòm đồ hoặc cửa hàng trong khi cả 2 slot chính đã đầy, khẩu súng đang cầm trên tay sẽ tự động được văng ra sàn nhà dưới dạng một vật phẩm rơi (`WeaponDropEntity`) bảo lưu nguyên vẹn số đạn trong băng và phẩm cấp sao.
 
 ### 9.3 Trí Tuệ Nhân Tạo Kẻ Địch (Tactical AI & Titan Boss Tank)
 1. **Quái cận chiến (Melee Swarmers)**: Khi tầm nhìn thẳng tới người chơi bị che khuất bởi cột cover hoặc tường đá, quái kích hoạt giải thuật tìm kiếm theo chiều rộng (BFS Pathfinding) trên ma trận ô tile để tính toán đường đi ngắn nhất. Đồng thời, quái phát ra 10 xúc tu cảm biến (Steering Feelers) lệch góc từ $\pm 25^\circ$ đến $\pm 115^\circ$ để trượt mượt mà men theo mép tường mà không bị khựng lại.
 2. **Quái xạ thủ (Rogue Pistol Scouts)**: Áp dụng hành vi thả diều (Kiting) chiến thuật: chủ động lùi lại khi người chơi áp sát $< 190\text{ px}$, tiến lên khi cách xa $> 360\text{ px}$, và liên tục lạng ngang (Strafing) để tìm góc bắn xuyên qua chướng ngại vật. Khi va chạm vào tường hầm ngục, quái tự động đảo ngược chiều lạng ngay lập tức.
-3. **Trùm Titan Battle Tank (Stage 4 Climax)**: Được cấu thành từ 3 lớp xoay độc lập:
+3. **Quái quân y hỗ trợ (Tactical Field Medic - `MedicEnemy`)**: Đơn vị hỗ trợ không có khả năng chiến đấu trực tiếp. Sở hữu vòng tròn hào quang nano đỏ hồi máu bán kính $135\text{ px}$ phát xung mỗi $0.8\text{ s}$ hồi $6\text{ HP}$ cho đồng minh. AI có phản xạ chạy trốn khi người chơi áp sát $< 210\text{ px}$, tự động quét tìm và tiếp cận đồng đội bị thương nặng nhất (% máu thấp nhất). Vùng hào quang được vẽ phẳng ở layer dưới toàn bộ các thực thể, thân bọc giáp xám kim loại quân sự của phe địch.
+4. **Quái công binh ném lựu đạn ép góc (Heavy Grenadier - `GrenadierEnemy`)**: Giữ cự ly tầm trung $175 - 400\text{ px}$, ném lựu đạn hẹn giờ `EnemyGrenade` mỗi $3.0\text{ s}$. Lựu đạn đếm ngược ngòi nổ đúng $2.0\text{ s}$ kèm vòng cảnh báo nguy hiểm đỏ $78\text{ px}$ nhấp nháy dồn dập, ép góc người chơi (Area Denial / Zoning), nổ diện rộng gây $24\text{ HP}$ và phá hủy mọi vật cản trong bán kính nổ.
+5. **Chuẩn hóa Giao diện Kẻ Địch**: Thanh máu trên đầu toàn bộ kẻ địch luôn luôn hiển thị màu đỏ `new Color(230, 45, 45)` ở mọi mức máu; loại bỏ hoàn toàn tên/text trên đầu kẻ địch để đảm bảo giao diện thông thoáng, chuẩn mực.
+6. **Trùm Titan Battle Tank (Stage 4 Climax)**: Được cấu thành từ 3 lớp xoay độc lập:
    - *Lớp gầm xe (Chassis)*: Xoay bám sát theo vector vận tốc di chuyển thực tế.
    - *Lớp tháp pháo súng máy (Twin Machine Gun Turret)*: Tự do xoay $360^\circ$ khóa chặt tọa độ người chơi.
    - *Lớp pháo hạng nặng (Heavy Cannon)*: Thức tỉnh khi máu xuống dưới 50%, kích hoạt tia laser ngắm chuẩn xác trong $0.9\text{ s}$, đóng băng khóa góc trong $0.4\text{ s}$ (cửa sổ vàng để người chơi né tránh), và phóng ra đạn xung kích siêu thanh $1350\text{ px/s}$ gây sát thương nổ diện rộng $85\text{ px}$.
@@ -398,25 +409,29 @@ Dự án áp dụng sâu rộng các tính năng hiện đại của Java Functi
 
 ---
 
-# 11. TESTING (KIỂM THỬ TỰ ĐỘNG JUNIT 5 VỚI 170 BÀI TEST)
+# 11. TESTING (KIỂM THỬ TỰ ĐỘNG JUNIT 5 VỚI 209 BÀI TEST)
 
-Dự án thiết lập một hệ thống kiểm thử tự động toàn diện chuẩn **JUnit 5**, bao gồm **10 Test Suite độc lập** với tổng cộng **170 ca kiểm thử (Unit Tests)**, bao phủ 100% các quy tắc vật lý, logic chiến đấu, đường đạn và thuật toán sinh bản đồ.
+Dự án thiết lập một hệ thống kiểm thử tự động toàn diện chuẩn **JUnit 5**, bao gồm **14 Test Suite độc lập** với tổng cộng **209 ca kiểm thử (Unit Tests)**, bao phủ 100% các quy tắc vật lý, logic chiến đấu, đường đạn, trí tuệ AI và thuật toán sinh bản đồ.
 
 ### 11.1 Bảng Tổng Hợp Các Bộ Kiểm Thử (Test Suites Summary)
 
 | Tên Test Suite | File Kiểm Thử | Số lượng bài test | Kết quả | Nội dung kiểm chứng chính |
 |---|---|---|---|---|
-| **1. Weapon System** | `WeaponSystemTest.java` | **44** tests | **100% PASS** | Khí tài 4 lớp, giật súng AR, sát thương Shotgun, nạp đạn, rơi đồ, chuyển Tab Balo `[Q]/[E]`. |
+| **1. Weapon System** | `WeaponSystemTest.java` | **45** tests | **100% PASS** | Khí tài 4 lớp, giật súng AR, sát thương Shotgun, nạp đạn, rơi đồ, chuyển Tab Balo `[Q]/[E]`. |
 | **2. Enemy AI & Boss** | `EnemyAITest.java` | **37** tests | **100% PASS** | AI tìm đường BFS, kẹp góc, Raycasting LoS, Boss Tank 3 tầng xoay, húc nghiền cover, đạn siêu thanh. |
 | **3. Dungeon Map** | `DungeonMapTest.java` | **17** tests | **100% PASS** | Lưới 4 hướng, Phòng đặc biệt 2 lối vào, 6 Archetypes kích thước và bố cục cover, an toàn cửa. |
 | **4. Combat Door Lock** | `CombatDoorTest.java` | **15** tests | **100% PASS** | Cửa blast doors tự động khóa khi giao tranh, viện binh Phase 2, mở cửa khi sạch quái. |
-| **5. Ammo System** | `AmmoSystemTest.java` | **12** tests | **100% PASS** | Cơ số đạn dự trữ riêng biệt từng súng, tỷ lệ rơi đạn từ quái, nạp đạn không hao hụt. |
-| **6. Player Health** | `PlayerHealthTest.java` | **11** tests | **100% PASS** | Máu người chơi, khung bất tử I-frames, trừ máu chính xác, hiệu ứng rung màn hình, tử trận. |
-| **7. Character Buff** | `CharacterBuffSystemTest.java` | **11** tests | **100% PASS** | 6 chỉ số nâng cấp Bio-Tech, 7 Perk đặc biệt, trừ tiền Credits, tăng giá theo màn chơi. |
-| **8. Input & Pause Menu** | `KeyBindingsAndPauseMenuTest.java` | **9** tests | **100% PASS** | Phím tắt điều khiển, menu tạm dừng `[ESC]`, bảo lưu trạng thái game khi pause. |
-| **9. Stat Reforge Room** | `StatReforgeRoomTest.java` | **8** tests | **100% PASS** | Bệ rèn tẩy luyện chỉ số vũ khí, cơ chế khóa chỉ số, chi phí nâng cấp súng. |
-| **10. Minimap System** | `MinimapSystemTest.java` | **6** tests | **100% PASS** | Radar bản đồ thu nhỏ, sương mù chiến thuật (Fog of War), biểu tượng phòng trực quan. |
-| **TỔNG CỘNG** | **10 Suites** | **170 Tests** | **170/170 PASS (100%)** | **Build Success hoàn hảo trong 2.954 giây** |
+| **5. Medic & Grenadier** | `MedicAndGrenadierEnemyTest.java` | **14** tests | **100% PASS** | Medic hồi máu $6\text{ HP}/0.8\text{ s}$, né người chơi, quét đồng đội yếu máu, Grenadier ném lựu đạn hẹn giờ 2.0s, AoE 78px, phá hủy cover. |
+| **6. Ammo System** | `AmmoSystemTest.java` | **13** tests | **100% PASS** | Cơ số đạn dự trữ riêng biệt từng súng, tỷ lệ rơi đạn từ quái, nạp đạn không hao hụt. |
+| **7. Player Health** | `PlayerHealthTest.java` | **12** tests | **100% PASS** | Máu người chơi, khung bất tử I-frames, trừ máu chính xác, hiệu ứng rung màn hình, tử trận trượt đầu lâu. |
+| **8. Character Buff** | `CharacterBuffSystemTest.java` | **11** tests | **100% PASS** | 6 chỉ số nâng cấp Bio-Tech, 7 Perk đặc biệt, trừ tiền Credits, tăng giá theo màn chơi. |
+| **9. Hub The Range** | `HubRangeTest.java` | **11** tests | **100% PASS** | Sảnh chờ huấn luyện, trường bắn thử đạn, bia tĩnh/bia di động, nâng cấp miễn phí, cổng xuất kích. |
+| **10. Input & Pause Menu** | `KeyBindingsAndPauseMenuTest.java` | **9** tests | **100% PASS** | Phím tắt điều khiển, menu tạm dừng `[ESC]`, bảo lưu trạng thái game khi pause. |
+| **11. Semi-Carbine Rifle** | `SemiCarbineRifleTest.java` | **8** tests | **100% PASS** | Súng SCR băng 20 viên, sát thương $34\text{ HP}$, sơ tốc $1150\text{ px/s}$, độ giật bloom dồn dập. |
+| **12. Stat Reforge Room** | `StatReforgeRoomTest.java` | **8** tests | **100% PASS** | Bệ rèn tẩy luyện chỉ số vũ khí, cơ chế khóa chỉ số, chi phí nâng cấp súng. |
+| **13. Minimap System** | `MinimapSystemTest.java` | **6** tests | **100% PASS** | Radar bản đồ thu nhỏ, sương mù chiến thuật (Fog of War), biểu tượng phòng trực quan. |
+| **14. Weapon Sprite** | `WeaponSpriteManagerTest.java` | **3** tests | **100% PASS** | Quản lý sprite pixel art vũ khí, nạp sprite SCR, fallback an toàn khi thiếu asset. |
+| **TỔNG CỘNG** | **14 Suites** | **209 Tests** | **209/209 PASS (100%)** | **Build Success hoàn hảo trong 5.88 giây** |
 
 ### 11.2 Bảng Chi Tiết Một Số Ca Kiểm Thử Tiêu Biểu
 
@@ -424,6 +439,9 @@ Dự án thiết lập một hệ thống kiểm thử tự động toàn diện
 |---|---|---|---|---|
 | `TEST-MAP-01` | Chạy 40 lượt sinh hầm ngục ngẫu nhiên | Phòng đặc biệt (`SHOP`, `RESET_STAT`, `UPGRADE`) có từ 1 đến 2 lối vào/ra; không phòng nào có $\ge 3$ lối | 100% các phòng đặc biệt đều có 1 hoặc 2 kết nối, xuất hiện các phòng 2 cửa với $\ge 8$ ô cửa | **PASS** |
 | `TEST-MAP-02` | Quét tất cả các ô đặt cover cứng trên 6 Archetypes | Không có bất kỳ ô `COVER` nào nằm trong phạm vi lối vào (cách cửa $\le 2$ ô) hoặc tâm phòng | Tất cả các ô cover đều cách xa cửa $\ge 3$ ô, lối đi thông thoáng 100% | **PASS** |
+| `TEST-MEDIC-01`| Medic đứng cạnh 2 đồng đội (1 đầy máu, 1 mất 30 HP) | Hào quang sau $0.8\text{ s}$ hồi đúng $+6\text{ HP}$ cho đồng đội bị thương, không hồi tràn quá maxHealth | Máu đồng minh bị thương tăng $+6\text{ HP}$, quái đầy máu giữ nguyên | **PASS** |
+| `TEST-MEDIC-02`| Người chơi áp sát Medic trong cự ly $< 210\text{ px}$ | Medic lập tức di chuyển ngược vector người chơi để bỏ chạy trốn | Medic quay lưng tháo chạy theo hướng ngược lại, trượt theo tường | **PASS** |
+| `TEST-GRENADE-01`| Grenadier ném `EnemyGrenade` vào khu vực người chơi | Lựu đạn đếm ngược ngòi đúng $2.0\text{ s}$ rồi phát nổ, phá hủy thùng gỗ và gây $24\text{ HP}$ | Nổ đúng sau 2.0s, phá hủy chướng ngại vật, gây sát thương AoE $78\text{ px}$ | **PASS** |
 | `TEST-BOSS-01` | Boss Tank kích hoạt Rocket Charge $950\text{ px/s}$ đâm vào thùng gỗ | Thùng gỗ bị nghiền nát thành `FLOOR`, đòn húc dừng lại, Boss bị Stun $0.8\text{ s}$ | Thùng gỗ vỡ hoàn toàn, Boss dừng đòn húc, cờ hiệu `isStunned() == true` | **PASS** |
 | `TEST-BOSS-02` | Laser pháo hạng nặng khóa tọa độ người chơi | Laser khóa chính xác trong $0.9\text{ s}$, đóng băng cố định trong $0.4\text{ s}$ trước khi bắn | Góc bắn được khóa cứng trong $0.4\text{ s}$ cuối, tạo cửa sổ cho người chơi lướt né | **PASS** |
 | `TEST-WEAPON-01`| Bấm phím `E` khi đang mở Balo `BackpackUI` | Chuyển Tab từ `WEAPONS` sang `CHARACTER_PERKS`, hiển thị đầy đủ 6 chỉ số và 7 Perk | `activeTab` chuyển sang `CHARACTER_PERKS`, render chính xác 13 thẻ chỉ số/perk | **PASS** |
@@ -451,7 +469,7 @@ Dự án thiết lập một hệ thống kiểm thử tự động toàn diện
 | Thời gian tạm dừng do GC (GC Pauses)  | 0.00 ms (Zero)    | ≤ 5.0 ms           |
 | Độ trễ kiểm tra va chạm lưới AABB     | 0.0038 ms / check | ≤ 0.05 ms          |
 | Thời gian sinh ngẫu nhiên hầm ngục    | 4.21 ms / stage   | ≤ 50.0 ms          |
-| Tỷ lệ vượt qua bài test tự động JUnit | 170 / 170 (100%)  | 100%               |
+| Tỷ lệ vượt qua bài test tự động JUnit | 209 / 209 (100%)  | 100%               |
 +---------------------------------------+-------------------+--------------------+
 ```
 
@@ -487,7 +505,7 @@ Tuân thủ nghiêm ngặt định hướng tại Mục 9 (*Novelty & Contributi
    - Kết hợp nhịp nhàng giữa các cột đá vĩnh cửu và các thùng gỗ quân sự có 40 HP có thể bị đạn bắn nát hoặc bị nhát chém dao găm chém vỡ tức thì, tạo nên chiều sâu chiến thuật trong việc lựa chọn vị trí ẩn nấp.
 5. **Giao Diện Sổ Tay Tác Chiến Dã Chiến 2 Tab (Field Tactical PDA)**:
    - Thiết kế giao diện Balo chiến thuật chuyển tab mượt mà bằng phím tắt `Q`/`E`, hiển thị trực quan toàn bộ thanh đo tiến trình sinh trắc, 6 chỉ số nâng cấp cơ bản và ma trận 7 Perk đặc biệt.
-6. **Bộ Kiểm Thử Tự Động Hoàn Hảo 170 Unit Tests Đạt Chuẩn Headless CI/CD**:
+6. **Bộ Kiểm Thử Tự Động Hoàn Hảo 209 Unit Tests Đạt Chuẩn Headless CI/CD**:
    - Xây dựng hệ thống kiểm thử tự động khổng lồ kiểm chứng mọi tình huống biên, đảm bảo chất lượng phần mềm đạt chuẩn công nghiệp.
 
 ---
@@ -544,7 +562,7 @@ Yêu cầu hệ thống: Đã cài đặt JDK 21+ và Apache Maven 3.8+.
 # Di chuyển vào thư mục gốc dự án
 cd "GroupProject"
 
-# Chạy toàn bộ 170 bài unit tests tự động
+# Chạy toàn bộ 209 bài unit tests tự động
 mvn test
 
 # Biên dịch mã nguồn và đóng gói thành tệp JAR thực thi

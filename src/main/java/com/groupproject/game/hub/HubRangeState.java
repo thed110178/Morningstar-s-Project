@@ -543,44 +543,64 @@ public class HubRangeState extends GameState {
         renderHubHUD(g);
     }
 
+    /** Lưới gạch chỉ để hiển thị (không va chạm) - dùng chung Tile với dungeon để khớp phong cách. */
+    private com.groupproject.game.dungeon.Tile[][] hubTiles;
+
     /**
-     * Vẽ nền sàn căn cứ The Range phong cách Gritty Sci-Fi.
+     * Dựng lưới gạch nền 1 lần (lazy). Dùng đúng Tile/TileType của gameplay chính để sàn, tường,
+     * thảm cao su và sọc hazard đồng nhất. Chỉ là đồ họa: va chạm vẫn do giới hạn trung tâm xử lý.
+     */
+    private void buildHubTiles() {
+        int ts = GameConfig.TILE_SIZE;
+        int cols = (int) Math.ceil(WORLD_WIDTH / ts);
+        int rows = (int) Math.ceil(WORLD_HEIGHT / ts);
+        int leftBarCol = (int) (LEFT_BARRIER_X / ts);
+        int rightBarCol = (int) (RIGHT_BARRIER_X / ts);
+        int fieldTop = (int) ((CENTER_BOUND_MIN_Y - 40) / ts);
+        int fieldBot = (int) ((CENTER_BOUND_MAX_Y + 40) / ts);
+
+        hubTiles = new com.groupproject.game.dungeon.Tile[cols][rows];
+        for (int x = 0; x < cols; x++) {
+            for (int y = 0; y < rows; y++) {
+                com.groupproject.game.dungeon.TileType type = com.groupproject.game.dungeon.TileType.FLOOR;
+                if (x == 0 || y == 0 || x == cols - 1 || y == rows - 1) {
+                    type = com.groupproject.game.dungeon.TileType.WALL;
+                } else if (y >= fieldTop && y <= fieldBot) {
+                    if (x == leftBarCol || x == rightBarCol) {
+                        type = com.groupproject.game.dungeon.TileType.DOOR_RESET_STAT; // sọc hazard
+                    } else if (x < leftBarCol || x > rightBarCol) {
+                        type = com.groupproject.game.dungeon.TileType.REFORGE_ZONE; // thảm trường bắn
+                    }
+                }
+                hubTiles[x][y] = new com.groupproject.game.dungeon.Tile(x, y, type);
+            }
+        }
+    }
+
+    /**
+     * Vẽ nền The Range bằng gạch Tile giống gameplay chính (chỉ vẽ gạch trong tầm nhìn camera).
      */
     private void renderBackgroundGrid(Graphics2D g) {
-        g.setColor(new Color(16, 20, 26));
+        g.setColor(new Color(15, 18, 25));
         g.fillRect(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
 
-        Graphics2D g2 = (Graphics2D) g.create();
-        int tileSize = 60;
-
-        // Vẽ lưới gạch sàn kim loại
-        g2.setColor(new Color(26, 32, 42));
-        g2.setStroke(new BasicStroke(1.0f));
-
-        for (int wx = 0; wx <= (int) WORLD_WIDTH; wx += tileSize) {
-            int sx = camera.worldToScreenX(wx);
-            g2.drawLine(sx, camera.worldToScreenY(0), sx, camera.worldToScreenY(WORLD_HEIGHT));
+        if (hubTiles == null) {
+            buildHubTiles();
         }
-        for (int wy = 0; wy <= (int) WORLD_HEIGHT; wy += tileSize) {
-            int sy = camera.worldToScreenY(wy);
-            g2.drawLine(camera.worldToScreenX(0), sy, camera.worldToScreenX(WORLD_WIDTH), sy);
+        int ts = GameConfig.TILE_SIZE;
+        int cols = hubTiles.length;
+        int rows = hubTiles[0].length;
+        int startX = Math.max(0, (int) (camera.getX() / ts) - 1);
+        int endX = Math.min(cols - 1, (int) ((camera.getX() + camera.getViewportWidth()) / ts) + 1);
+        int startY = Math.max(0, (int) (camera.getY() / ts) - 1);
+        int endY = Math.min(rows - 1, (int) ((camera.getY() + camera.getViewportHeight()) / ts) + 1);
+
+        for (int x = startX; x <= endX; x++) {
+            for (int y = startY; y <= endY; y++) {
+                com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
+                t.render(g, camera.worldToScreenX(t.getWorldX()), camera.worldToScreenY(t.getWorldY()));
+            }
         }
-
-        // Vẽ vạch sàn phân định khu vực trung tâm
-        int cMinX = camera.worldToScreenX(CENTER_BOUND_MIN_X);
-        int cMaxX = camera.worldToScreenX(CENTER_BOUND_MAX_X);
-        int cMinY = camera.worldToScreenY(CENTER_BOUND_MIN_Y);
-        int cMaxY = camera.worldToScreenY(CENTER_BOUND_MAX_Y);
-
-        g2.setColor(new Color(40, 52, 68, 90));
-        g2.fillRect(cMinX, cMinY, cMaxX - cMinX, cMaxY - cMinY);
-
-        // Vạch sọc vàng cảnh báo quân sự quanh ô vuông trung tâm
-        g2.setColor(new Color(255, 195, 40, 160));
-        g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[]{10f, 10f}, 0f));
-        g2.drawRect(cMinX, cMinY, cMaxX - cMinX, cMaxY - cMinY);
-
-        g2.dispose();
     }
 
     /**
@@ -593,8 +613,8 @@ public class HubRangeState extends GameState {
         double pulse = Math.sin(barrierAnimTimer) * 0.5 + 0.5;
         int alphaGlow = (int) (60 + pulse * 70);
 
-        renderSingleBarrier(g2, LEFT_BARRIER_X, "TRƯỜNG BẮN TRÁI - STRAFING & TRACKING", alphaGlow);
-        renderSingleBarrier(g2, RIGHT_BARRIER_X, "TRƯỜNG BẮN PHẢI - RECOIL PATTERN TRACER", alphaGlow);
+        renderSingleBarrier(g2, LEFT_BARRIER_X, "[ TRƯỜNG BẮN TRÁI ]", alphaGlow);
+        renderSingleBarrier(g2, RIGHT_BARRIER_X, "[ TRƯỜNG BẮN PHẢI ]", alphaGlow);
 
         g2.dispose();
     }
@@ -604,20 +624,20 @@ public class HubRangeState extends GameState {
         int topY = camera.worldToScreenY(CENTER_BOUND_MIN_Y - 40);
         int botY = camera.worldToScreenY(CENTER_BOUND_MAX_Y + 40);
 
-        // Hào quang năng lượng
-        g2.setColor(new Color(60, 200, 255, alphaGlow));
+        // Hào quang tông cam hazard (thay cyan để khớp sọc vàng-đen của gạch)
+        g2.setColor(new Color(255, 140, 60, alphaGlow));
         g2.setStroke(new BasicStroke(6.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g2.drawLine(sx, topY, sx, botY);
 
         // Cột tia laser trung tâm
-        g2.setColor(new Color(200, 245, 255, 220));
+        g2.setColor(new Color(255, 225, 160, 220));
         g2.setStroke(new BasicStroke(2.0f));
         g2.drawLine(sx, topY, sx, botY);
 
-        // Biển nhãn chỉ hướng
-        g2.setFont(new Font("SansSerif", Font.BOLD, 10));
+        // Nhãn khu vực cùng style nhãn phòng gameplay chính
+        g2.setFont(new Font("SansSerif", Font.BOLD, 17));
         FontMetrics fm = g2.getFontMetrics();
-        g2.setColor(new Color(100, 220, 255));
+        g2.setColor(new Color(255, 140, 60, 200));
         g2.drawString(bannerText, sx - fm.stringWidth(bannerText) / 2, topY - 10);
     }
 

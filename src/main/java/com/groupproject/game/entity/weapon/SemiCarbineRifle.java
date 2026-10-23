@@ -12,33 +12,41 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Vũ khí: Súng trường bán tự động (Semi-Carbine Rifle - SCR).
  *
- * <p>WHY: Vũ khí hỏa lực cao dành cho giao tranh tầm trung - xa.
- * Sử dụng chung loại đạn súng trường (Rifle ammo - {@link com.groupproject.game.entity.item.AmmoType#AR}),
- * sở hữu băng đạn 20 viên, sát thương cao vượt trội (34 DMG so với 16 DMG của AR), và sơ tốc đầu nòng
+ * <p>
+ * WHY: Vũ khí hỏa lực cao dành cho giao tranh tầm trung - xa.
+ * Sử dụng chung loại đạn súng trường (Rifle ammo -
+ * {@link com.groupproject.game.entity.item.AmmoType#AR}),
+ * sở hữu băng đạn 20 viên, sát thương cao vượt trội (34 DMG so với 16 DMG của
+ * AR), và sơ tốc đầu nòng
  * rất cao (1150 px/giây so với 900 px/giây của AR).
  *
- * <p>Đặc tính động lực học (Dynamic Recoil Mechanics):
+ * <p>
+ * Đặc tính động lực học (Dynamic Recoil Mechanics):
  * <ul>
- *   <li><b>Độ chính xác viên đầu tiên cao:</b> 2 phát bắn đầu tiên có độ tản đạn cực nhỏ (khoảng 15% độ lệch cơ sở),
- *       cho phép người chơi ngắm bắn tỉa nhịp nhàng với độ chuẩn xác tuyệt đối.</li>
- *   <li><b>Độ giật cao khi bắn dồn dập (Spray Bloom):</b> Nếu người chơi nhấp cò liên tục với tốc độ cao không nghỉ,
- *       độ tản đạn tăng mạnh gấp 4 lần cơ sở (lên tới ±11.5°), đòi hỏi kỹ năng ghìm tâm và nhả nhịp (Tap-Fire).</li>
- *   <li><b>Hồi phục tâm nhanh (Recoil Recovery):</b> Khi ngừng bắn quá 0.27 giây, tâm súng nhanh chóng hồi phục về
- *       trạng thái viên đầu tiên.</li>
+ * <li><b>Độ chính xác viên đầu tiên cao:</b> 2 phát bắn đầu tiên có độ tản đạn
+ * cực nhỏ (khoảng 15% độ lệch cơ sở),
+ * cho phép người chơi ngắm bắn tỉa nhịp nhàng với độ chuẩn xác tuyệt đối.</li>
+ * <li><b>Độ giật cao khi bắn dồn dập (Spray Bloom):</b> Nếu người chơi nhấp cò
+ * liên tục với tốc độ cao không nghỉ,
+ * độ tản đạn tăng mạnh gấp 4 lần cơ sở (lên tới ±11.5°), đòi hỏi kỹ năng ghìm
+ * tâm và nhả nhịp (Tap-Fire).</li>
+ * <li><b>Hồi phục tâm nhanh (Recoil Recovery):</b> Khi ngừng bắn quá 0.27 giây,
+ * tâm súng nhanh chóng hồi phục về
+ * trạng thái viên đầu tiên.</li>
  * </ul>
  */
 public class SemiCarbineRifle extends Weapon {
 
     public static final int DEFAULT_DAMAGE = 34;
-    public static final double FIRE_RATE = 0.18;             // ~0.18s mỗi phát nhấp cò (~333 RPM)
-    public static final int MAG_CAPACITY = 20;               // Băng đạn tiêu chuẩn 20 viên
-    public static final double RELOAD_TIME = 1.9;            // 1.9s thay băng đạn
-    public static final double BULLET_SPEED = 1150.0;        // Sơ tốc cao vượt trội (1150 px/s so với AR 900 px/s)
-    public static final double BULLET_LIFETIME = 1.1;        // Tầm bắn xa hiệu dụng ~1265 px
-    public static final double SPREAD_ANGLE = 0.05;          // Góc tản đạn cơ sở (~2.86 độ)
+    public static final double FIRE_RATE = 0.18; // ~0.18s mỗi phát nhấp cò (~333 RPM)
+    public static final int MAG_CAPACITY = 20; // Băng đạn tiêu chuẩn 20 viên
+    public static final double RELOAD_TIME = 1.9; // 1.9s thay băng đạn
+    public static final double BULLET_SPEED = 1150.0; // Sơ tốc cao vượt trội (1150 px/s so với AR 900 px/s)
+    public static final double BULLET_LIFETIME = 1.1; // Tầm bắn xa hiệu dụng ~1265 px
+    public static final double SPREAD_ANGLE = 0.05; // Góc tản đạn cơ sở (~2.86 độ)
 
-    public static final double INITIAL_SPREAD_RATIO = 0.10;  // Viên đầu tiên cực chụm (~0.29 độ - Pinpoint Accuracy)
-    public static final double MAX_SPREAD_RATIO = 8.0;       // Khi bắn dồn dập tản tối đa gấp 8 lần (~22.9 độ)
+    public static final double INITIAL_SPREAD_RATIO = 0.10; // Viên đầu tiên cực chụm (~0.29 độ - Pinpoint Accuracy)
+    public static final double MAX_SPREAD_RATIO = 3.0; // Khi bắn dồn dập tản tối đa gấp 8 lần (~22.9 độ)
 
     // Bộ đếm đạn liên tiếp và thời gian hồi phục độ giật
     private int continuousShots = 0;
@@ -49,7 +57,8 @@ public class SemiCarbineRifle extends Weapon {
     }
 
     public SemiCarbineRifle(int slotIndex) {
-        super("Semi-Carbine Rifle (SCR)", slotIndex, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME, SPREAD_ANGLE);
+        super("Semi-Carbine Rifle (SCR)", slotIndex, DEFAULT_DAMAGE, FIRE_RATE, MAG_CAPACITY, RELOAD_TIME,
+                SPREAD_ANGLE);
         this.ammoType = com.groupproject.game.entity.item.AmmoType.AR;
     }
 
@@ -102,9 +111,12 @@ public class SemiCarbineRifle extends Weapon {
 
     /**
      * Tính toán độ tản đạn thực tế của phát bắn tiếp theo:
-     * - Chỉ phát bắn đầu tiên duy nhất: Độ chính xác tuyệt đối (First-shot pinpoint accuracy).
-     * - Ngay từ phát thứ 2 đến phát thứ 4: Độ tản đạn tăng vọt rất dốc theo nhịp click dồn dập.
-     * - Từ phát thứ 4 trở đi: Đạt ngưỡng tản đạn cực đại gấp 8 lần (Max bloom spread ±22.9°).
+     * - Chỉ phát bắn đầu tiên duy nhất: Độ chính xác tuyệt đối (First-shot pinpoint
+     * accuracy).
+     * - Ngay từ phát thứ 2 đến phát thứ 4: Độ tản đạn tăng vọt rất dốc theo nhịp
+     * click dồn dập.
+     * - Từ phát thứ 4 trở đi: Đạt ngưỡng tản đạn cực đại gấp 8 lần (Max bloom
+     * spread ±22.9°).
      */
     public double getCurrentDynamicSpreadAngle() {
         double minSpread = getInitialSpreadAngle();
@@ -121,8 +133,10 @@ public class SemiCarbineRifle extends Weapon {
         super.update(deltaTime);
 
         timeSinceLastShot += deltaTime;
-        // Ngưỡng phục hồi tâm ngắm: Nếu người chơi ngừng bắn quá 0.45s mới bắt đầu giảm độ giật
-        // Nếu nhấp chuột liên tục (nhịp < 0.45s), độ giật được giữ nguyên hoặc tăng tiếp
+        // Ngưỡng phục hồi tâm ngắm: Nếu người chơi ngừng bắn quá 0.45s mới bắt đầu giảm
+        // độ giật
+        // Nếu nhấp chuột liên tục (nhịp < 0.45s), độ giật được giữ nguyên hoặc tăng
+        // tiếp
         if (timeSinceLastShot > 0.45) {
             if (continuousShots > 0) {
                 continuousShots = Math.max(0, continuousShots - (int) Math.ceil(deltaTime * 16.0));
@@ -141,8 +155,9 @@ public class SemiCarbineRifle extends Weapon {
 
     @Override
     public boolean attack(double originX, double originY, double aimAngle,
-                          ProjectileManager pm, List<MeleeSlash> slashList) {
-        if (!canAttack()) return false;
+            ProjectileManager pm, List<MeleeSlash> slashList) {
+        if (!canAttack())
+            return false;
 
         // Nếu hết đạn, kích hoạt nạp đạn tự động
         if (currentAmmo <= 0) {
@@ -156,8 +171,10 @@ public class SemiCarbineRifle extends Weapon {
 
         // Tạo độ tản xạ động:
         // - Viên đầu tiên: chuẩn xác tuyệt đối vào hồng tâm.
-        // - Từ viên thứ 2 trở đi khi spam click: lực giật nảy hất đạn dạt mạnh sang 2 bên
-        //   với độ lệch tối thiểu 25% bán kính bloom, ngăn việc đạn vô tình trúng tâm khi spam.
+        // - Từ viên thứ 2 trở đi khi spam click: lực giật nảy hất đạn dạt mạnh sang 2
+        // bên
+        // với độ lệch tối thiểu 25% bán kính bloom, ngăn việc đạn vô tình trúng tâm khi
+        // spam.
         double dynamicSpread = getCurrentDynamicSpreadAngle();
         double jitter;
         if (continuousShots <= 1) {
@@ -207,7 +224,8 @@ public class SemiCarbineRifle extends Weapon {
         int endX = (int) (screenPX + Math.cos(aimAngle) * barrelLen);
         int endY = (int) (screenPY + Math.sin(aimAngle) * barrelLen);
 
-        // 1. Thân súng Semi-Carbine thon gọn kim loại màu xanh ô liu quân sự / xám thép dã chiến
+        // 1. Thân súng Semi-Carbine thon gọn kim loại màu xanh ô liu quân sự / xám thép
+        // dã chiến
         g.setStroke(new BasicStroke(3.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER));
         g.setColor(new Color(55, 65, 58)); // Xanh ô liu dã chiến
         g.drawLine(screenPX, screenPY, endX, endY);

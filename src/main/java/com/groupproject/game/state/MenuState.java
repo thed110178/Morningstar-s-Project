@@ -12,10 +12,14 @@ import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 
 /**
- * Main Menu State providing an interactive entry screen with dual Keyboard and Mouse navigation.
+ * Main Menu State providing an interactive entry screen with dual Keyboard and
+ * Mouse navigation.
  *
- * <p>WHY: Allows players to start the game, review control bindings, or exit gracefully.
- * Implementing both keyboard arrow navigation and mouse hover/click ensures accessibility
+ * <p>
+ * WHY: Allows players to start the game, review control bindings, or exit
+ * gracefully.
+ * Implementing both keyboard arrow navigation and mouse hover/click ensures
+ * accessibility
  * and creates a responsive, polished user interface experience.
  */
 public class MenuState extends GameState {
@@ -24,11 +28,11 @@ public class MenuState extends GameState {
      * Primary menu choices available to the user.
      */
     private final String[] options = {
-        "THE RANGE (TRƯỜNG BẮN & HUẤN LUYỆN)",
-        "BOSS FIGHT: TITAN TANK",
-        "CÀI ĐẶT PHÍM (SETTINGS)",
-        "HOW TO PLAY",
-        "EXIT"
+            "BẮT ĐẦU CHƠI",
+            "BOSS FIGHT: TITAN TANK",
+            "CÀI ĐẶT PHÍM (SETTINGS)",
+            "HOW TO PLAY",
+            "EXIT"
     };
     private int selectedOption = 0;
     private boolean showHowToPlay = false;
@@ -124,11 +128,13 @@ public class MenuState extends GameState {
     private void selectCurrentOption() {
         switch (selectedOption) {
             case 0 -> {
-                gsm.transitionTo(GameStateManager.StateType.THE_RANGE, "CĂN CỨ TIỀN PHƯƠNG", "KHU VỰC THỬ NGHIỆM VŨ KHÍ THE RANGE");
+                gsm.transitionTo(GameStateManager.StateType.THE_RANGE, "CĂN CỨ TIỀN PHƯƠNG",
+                        "THE RANGE");
             }
             case 1 -> {
                 PlayingState.setSpawnDirectlyInBossRoom(true);
-                gsm.transitionTo(GameStateManager.StateType.PLAYING, "GRAND BOSS ARENA", "GIAO TRANH TRỰC TIẾP VỚI CHIẾN XA BỌC THÉP");
+                gsm.transitionTo(GameStateManager.StateType.PLAYING, "HIGH THREAT ARENA",
+                        "PHÁT HIỆN KẺ ĐỊCH NGUY HIỂM");
             }
             case 2 -> {
                 showSettings = true;
@@ -231,7 +237,8 @@ public class MenuState extends GameState {
     }
 
     /**
-     * Renders a translucent briefing popup explaining controls and roguelite progression.
+     * Renders a translucent briefing popup explaining controls and roguelite
+     * progression.
      */
     private void renderHowToPlay(Graphics2D g) {
         int boxW = 800;
