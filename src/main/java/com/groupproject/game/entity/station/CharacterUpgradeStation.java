@@ -127,7 +127,11 @@ public class CharacterUpgradeStation {
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
 
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        // Viewport Culling: Bỏ qua nếu trạm nằm ngoài tầm nhìn camera
+        if (screenX < -50 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 50 ||
+            screenY < -50 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 50) {
+            return;
+        }
 
         // 1. Bóng đổ dã chiến
         g.setColor(new Color(0, 0, 0, 110));

@@ -15,23 +15,31 @@ import java.awt.Graphics2D;
 import java.awt.Paint;
 
 /**
- * Hệ thống Giao diện Chiến thuật thời gian thực trong phòng chơi (In-Game Playing HUD System).
+ * Hệ thống Giao diện Chiến thuật thời gian thực trong phòng chơi (In-Game
+ * Playing HUD System).
  *
- * <p>WHY: Bóc tách toàn bộ trách nhiệm hiển thị giao diện người dùng (HUD, Banners,
- * Boss Health Bar, Sector/Stage tag, Health bar, Credits badge, Low HP vignette, Extraction, Game Over)
- * ra khỏi God Class PlayingState, tuân thủ nguyên tắc Single Responsibility Principle (SRP).
+ * <p>
+ * WHY: Bóc tách toàn bộ trách nhiệm hiển thị giao diện người dùng (HUD,
+ * Banners,
+ * Boss Health Bar, Sector/Stage tag, Health bar, Credits badge, Low HP
+ * vignette, Extraction, Game Over)
+ * ra khỏi God Class PlayingState, tuân thủ nguyên tắc Single Responsibility
+ * Principle (SRP).
  */
 public class PlayingHUD {
 
     /**
-     * Hiển thị thanh máu của chiến binh Operative trên giao diện HUD góc trên bên trái màn hình.
-     * Có chỉ báo phần trăm, dải chuyển màu cảnh báo (Xanh ngọc -> Vàng hổ phách -> Đỏ nguy cấp).
+     * Hiển thị thanh máu của chiến binh Operative trên giao diện HUD góc trên bên
+     * trái màn hình.
+     * Có chỉ báo phần trăm, dải chuyển màu cảnh báo (Xanh ngọc -> Vàng hổ phách ->
+     * Đỏ nguy cấp).
      *
      * @param g      Đối tượng đồ họa Graphics2D.
      * @param player Thực thể người chơi.
      */
     public void renderPlayerHealthHUD(Graphics2D g, Player player) {
-        if (player == null) return;
+        if (player == null)
+            return;
 
         int barX = 20;
         int barY = 60;
@@ -58,7 +66,7 @@ public class PlayingHUD {
         } else if (curHp > 25) {
             hpColor = new Color(255, 180, 40); // Vàng hổ phách cảnh báo
         } else {
-            hpColor = new Color(255, 55, 55);  // Đỏ tươi nguy cấp
+            hpColor = new Color(255, 55, 55); // Đỏ tươi nguy cấp
         }
 
         if (fillW > 0) {
@@ -86,14 +94,16 @@ public class PlayingHUD {
     }
 
     /**
-     * Hiển thị thanh trạng thái hồi chiêu kỹ năng né đòn [SPACE] (Dodge Roll / Combat Dash HUD)
+     * Hiển thị thanh trạng thái hồi chiêu kỹ năng né đòn [SPACE] (Dodge Roll /
+     * Combat Dash HUD)
      * ngay dưới thanh máu của người chơi Operative.
      *
      * @param g      Đối tượng đồ họa Graphics2D.
      * @param player Thực thể người chơi.
      */
     public void renderDodgeHUD(Graphics2D g, Player player) {
-        if (player == null) return;
+        if (player == null)
+            return;
 
         int barX = 20;
         int barY = 88;
@@ -159,10 +169,12 @@ public class PlayingHUD {
     }
 
     /**
-     * Hiển thị trạng thái Khiên Chặn Đòn (Aegis Barrier) và các Huy hiệu Buff đang kích hoạt trên HUD.
+     * Hiển thị trạng thái Khiên Chặn Đòn (Aegis Barrier) và các Huy hiệu Buff đang
+     * kích hoạt trên HUD.
      */
     public void renderBuffsHUD(Graphics2D g, Player player) {
-        if (player == null || player.getBuffManager() == null) return;
+        if (player == null || player.getBuffManager() == null)
+            return;
         com.groupproject.game.entity.buff.PlayerBuffManager bm = player.getBuffManager();
 
         int startX = 20;
@@ -237,7 +249,8 @@ public class PlayingHUD {
             int curX = startX;
             for (String badge : activeBadges) {
                 int bW = fm.stringWidth(badge) + 8;
-                if (curX + bW > startX + barW + 80) break;
+                if (curX + bW > startX + barW + 80)
+                    break;
                 g.setColor(new Color(15, 25, 38, 200));
                 g.fillRoundRect(curX, startY, bW, 16, 4, 4);
                 g.setColor(new Color(50, 160, 220, 180));
@@ -327,8 +340,10 @@ public class PlayingHUD {
      * @param activeMinions          Số lượng quái hộ tống còn sống.
      * @param bossMinionRespawnTimer Thời gian đếm ngược tiếp viện (giây).
      */
-    public void renderBossHealthBar(Graphics2D g, TargetDummy bossDummy, long activeMinions, double bossMinionRespawnTimer) {
-        if (bossDummy == null || !bossDummy.isAlive()) return;
+    public void renderBossHealthBar(Graphics2D g, TargetDummy bossDummy, long activeMinions,
+            double bossMinionRespawnTimer) {
+        if (bossDummy == null || !bossDummy.isAlive())
+            return;
 
         int barW = 520;
         int barH = 22;
@@ -377,8 +392,7 @@ public class PlayingHUD {
         if (fillW > 0) {
             GradientPaint hpGrad = new GradientPaint(
                     barX, barY, new Color(255, 55, 55),
-                    barX + barW, barY, new Color(190, 15, 25)
-            );
+                    barX + barW, barY, new Color(190, 15, 25));
             Paint oldPaint = g.getPaint();
             g.setPaint(hpGrad);
             g.fillRoundRect(barX, barY, fillW, barH, 6, 6);
@@ -404,7 +418,8 @@ public class PlayingHUD {
 
         // Exact Health Text centered on the bar
         int percentInt = (int) (hpPercent * 100);
-        String hpText = String.format("%d / %d HP (%d%%)", bossDummy.getCurrentHealth(), bossDummy.getMaxHealth(), percentInt);
+        String hpText = String.format("%d / %d HP (%d%%)", bossDummy.getCurrentHealth(), bossDummy.getMaxHealth(),
+                percentInt);
         g.setFont(new Font("SansSerif", Font.BOLD, 12));
         FontMetrics hpfm = g.getFontMetrics();
         int hpTextW = hpfm.stringWidth(hpText);
@@ -453,32 +468,39 @@ public class PlayingHUD {
      * @param g             Đối tượng đồ họa Graphics2D.
      * @param bannerMessage Nội dung thông báo.
      * @param bannerColor   Màu sắc thông báo.
-     * @param hasBoss       Cờ xác định có Boss đang sống trên màn hình (để điều chỉnh tọa độ Y tránh đè thanh máu Boss).
+     * @param hasBoss       Cờ xác định có Boss đang sống trên màn hình (để điều
+     *                      chỉnh tọa độ Y tránh đè thanh máu Boss).
      */
     public void renderBanner(Graphics2D g, String bannerMessage, Color bannerColor, boolean hasBoss) {
-        if (bannerMessage == null || bannerMessage.isEmpty()) return;
+        if (bannerMessage == null || bannerMessage.isEmpty())
+            return;
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        boolean isShortAction = "FIGHT!".equals(bannerMessage) || "CLEAR!".equals(bannerMessage);
+        g.setFont(new Font("SansSerif", Font.BOLD, isShortAction ? 22 : 15));
         FontMetrics fm = g.getFontMetrics();
         int textW = fm.stringWidth(bannerMessage);
-        int pad = 18;
+        int pad = isShortAction ? 32 : 18;
 
         int boxW = textW + pad * 2;
-        int boxH = 36;
+        int boxH = isShortAction ? 44 : 36;
         int boxX = (GameConfig.SCREEN_WIDTH - boxW) / 2;
         int boxY = hasBoss ? 96 : 115;
 
-        g.setColor(new Color(15, 18, 28, 215));
+        g.setColor(new Color(15, 18, 28, 230));
         g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
         g.setColor(bannerColor);
+        g.setStroke(new BasicStroke(isShortAction ? 2.0f : 1.0f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+        g.setStroke(new BasicStroke(1.0f));
 
         g.setColor(bannerColor);
-        g.drawString(bannerMessage, boxX + pad, boxY + 23);
+        int textY = boxY + ((boxH - fm.getHeight()) / 2) + fm.getAscent();
+        g.drawString(bannerMessage, boxX + (boxW - textW) / 2, textY);
     }
 
     /**
-     * Hiển thị gợi ý tương tác sơ tán / chuyển Stage [F] khi đứng trên bệ đáp trực thăng Helipad.
+     * Hiển thị gợi ý tương tác sơ tán / chuyển Stage [F] khi đứng trên bệ đáp trực
+     * thăng Helipad.
      *
      * @param g            Đối tượng đồ họa Graphics2D.
      * @param screenPX     Tọa độ màn hình X của người chơi.
@@ -525,11 +547,18 @@ public class PlayingHUD {
     }
 
     /**
-     * Hiển thị màn hình đen tổng kết chiến dịch hoàn thành (Extraction Victory Screen).
+     * Hiển thị màn hình đen tổng kết chiến dịch hoàn thành (Extraction Victory
+     * Screen).
      *
      * @param g Đối tượng đồ họa Graphics2D.
      */
-    public void renderExtractionVictoryScreen(Graphics2D g) {
+    /**
+     * Hiển thị màn hình đen tổng kết chiến dịch hoàn thành (Extraction Victory Screen).
+     *
+     * @param g                     Đối tượng đồ họa Graphics2D.
+     * @param isStandaloneBossFight true nếu đang chơi ở chế độ Boss Fight độc lập từ Menu; false nếu ở Campaign vượt ải.
+     */
+    public void renderExtractionVictoryScreen(Graphics2D g, boolean isStandaloneBossFight) {
         int width = GameConfig.SCREEN_WIDTH;
         int height = GameConfig.SCREEN_HEIGHT;
 
@@ -554,10 +583,12 @@ public class PlayingHUD {
         g.drawLine(width - 40, height - 40, width - 40 - cSize, height - 40);
         g.drawLine(width - 40, height - 40, width - 40, height - 40 - cSize);
 
-        // 3. Victory Title: ★ BIOME 1 HOÀN THÀNH ★
+        // 3. Victory Title
         g.setFont(new Font("SansSerif", Font.BOLD, 42));
         FontMetrics fmTitle = g.getFontMetrics();
-        String title = "★ BIOME 1 HOÀN THÀNH ★";
+        String title = isStandaloneBossFight
+                ? "★ CHIẾN DỊCH HẠ BOSS HOÀN THÀNH ★"
+                : "★ CẢM ƠN VÌ ĐÃ CHƠI DEMO! ★";
         int titleX = (width - fmTitle.stringWidth(title)) / 2;
         int titleY = 210;
 
@@ -567,15 +598,17 @@ public class PlayingHUD {
         g.drawString(title, titleX, titleY);
 
         // Subtitle
-        g.setFont(new Font("SansSerif", Font.BOLD, 22));
+        g.setFont(new Font("SansSerif", Font.BOLD, 20));
         FontMetrics fmSub = g.getFontMetrics();
-        String subtitle = "CHIẾN DỊCH TOÀN THẮNG - SƠ TÁN THÀNH CÔNG";
+        String subtitle = isStandaloneBossFight
+                ? "ĐÃ TIÊU DIỆT CHIẾN XA TITAN MK-IV"
+                : "CHIẾN DỊCH TOÀN THẮNG — TIÊU DIỆT BOSS & SƠ TÁN THÀNH CÔNG";
         int subX = (width - fmSub.stringWidth(subtitle)) / 2;
         g.setColor(new Color(255, 215, 60));
         g.drawString(subtitle, subX, 260);
 
         // 4. Mission Debriefing Tactical Card
-        int cardW = 660;
+        int cardW = 680;
         int cardH = 180;
         int cardX = (width - cardW) / 2;
         int cardY = 310;
@@ -586,22 +619,36 @@ public class PlayingHUD {
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 16));
         g.setColor(new Color(200, 220, 245));
-        g.drawString("• Khu vực: Biome 1 (Alpha Sector) - Hoàn thành xuất sắc 3/3 Stages", cardX + 30, cardY + 45);
-        g.drawString("• Stage 1 & 2: Dọn sạch toàn bộ các phòng chiến đấu liên kết", cardX + 30, cardY + 80);
-        g.drawString("• Stage 3: Chinh phục Grand Boss Arena & kích hoạt sơ tán", cardX + 30, cardY + 115);
-        g.drawString("• Trang bị & Balo: Giữ nguyên toàn bộ vũ khí và chiến lợi phẩm", cardX + 30, cardY + 150);
+        if (isStandaloneBossFight) {
+            g.drawString("• Chế độ tác chiến: Thử thách độc lập Boss Fight (Titan Battle Tank)", cardX + 30, cardY + 45);
+            g.drawString("• Mục tiêu: Khắc chế hỏa lực đại pháo & súng máy phòng không", cardX + 30, cardY + 80);
+            g.drawString("• Trạng thái: Mục tiêu cơ giới Titan đã bị vô hiệu hóa hoàn toàn", cardX + 30, cardY + 115);
+            g.drawString("• Dữ liệu tác chiến đã được ghi nhận vào hệ thống", cardX + 30, cardY + 150);
+        } else {
+            g.drawString("• Khu vực: Biome 1 (Alpha Sector) - Hoàn thành xuất sắc toàn bộ Chiến dịch", cardX + 30, cardY + 45);
+            g.drawString("• Chiến tích: Tiêu diệt thành công Boss Chiến Xa Titan MK-IV và mở đường sơ tán", cardX + 30, cardY + 80);
+            g.drawString("• Bản Demo hoàn tất: Bạn có thể tiếp tục rèn luyện vũ khí & thử nghiệm tại The Range", cardX + 30, cardY + 115);
+            g.drawString("• Hãy tiếp tục cải thiện kỹ năng và đón chờ các bản cập nhật tiếp theo!", cardX + 30, cardY + 150);
+        }
 
         // 5. User prompt at bottom
-        g.setFont(new Font("SansSerif", Font.ITALIC, 16));
+        g.setFont(new Font("SansSerif", Font.BOLD, 16));
         FontMetrics fmPrompt = g.getFontMetrics();
-        String prompt = "[ Nhấn ENTER hoặc F để quay về Menu ngay ]";
+        String prompt = isStandaloneBossFight
+                ? "[ Bấm nút bất kỳ hoặc Click chuột để quay về Menu chính ]"
+                : "[ Bấm nút bất kỳ hoặc Click chuột để tiếp tục quay về The Range ]";
         int promptX = (width - fmPrompt.stringWidth(prompt)) / 2;
-        g.setColor(new Color(160, 180, 210));
+        g.setColor(new Color(255, 230, 120));
         g.drawString(prompt, promptX, 550);
     }
 
+    public void renderExtractionVictoryScreen(Graphics2D g) {
+        renderExtractionVictoryScreen(g, false);
+    }
+
     /**
-     * Hiển thị hiệu ứng viền đỏ nhấp nháy quanh 4 cạnh màn hình khi máu xuống mức nguy cấp (<= 30%).
+     * Hiển thị hiệu ứng viền đỏ nhấp nháy quanh 4 cạnh màn hình khi máu xuống mức
+     * nguy cấp (<= 30%).
      *
      * @param g Đối tượng đồ họa Graphics2D.
      */
@@ -617,8 +664,10 @@ public class PlayingHUD {
     }
 
     /**
-     * Hiển thị hiệu ứng chuyển cảnh điện ảnh tử trận (Cinematic Death Vignette & Fade).
-     * Khi chiến binh ngã xuống biến thành đầu lâu trượt trên sàn, màn hình từ từ phủ bóng tối
+     * Hiển thị hiệu ứng chuyển cảnh điện ảnh tử trận (Cinematic Death Vignette &
+     * Fade).
+     * Khi chiến binh ngã xuống biến thành đầu lâu trượt trên sàn, màn hình từ từ
+     * phủ bóng tối
      * và viền đỏ bi tráng, không che mất hoạt cảnh đầu lâu trượt ma sát.
      *
      * @param g        Đối tượng đồ họa Graphics2D.
@@ -628,32 +677,63 @@ public class PlayingHUD {
         int w = GameConfig.SCREEN_WIDTH;
         int h = GameConfig.SCREEN_HEIGHT;
 
-        // 1. Phủ mờ tối điện ảnh tăng dần từ 0 đến 135 alpha (không che khuất tầm nhìn)
-        int darkAlpha = (int) (135 * progress);
-        if (darkAlpha > 0) {
-            g.setColor(new Color(10, 5, 8, darkAlpha));
+        // Chuỗi tử trận điện ảnh gồm 3 giai đoạn:
+        // 1. Chết & Màn đen dần (0.0 -> 0.28): Màn hình mờ tối dần từ 0 đến đen kịt 100% (alpha 255)
+        // 2. "BẠN ĐÃ BỊ HẠ" (0.28 -> 0.70): Nền đen 100%, chữ hiện lên rõ nét (fade in 0.28->0.42, giữ sáng 0.42->0.70)
+        // 3. Lại đen dần (0.70 -> 1.00): Chữ mờ dần vào bóng tối hoàn toàn (fade out 0.70->1.00) trước khi transition
+
+        // 1. Phủ màn đen (Fade to black)
+        int blackAlpha = (progress < 0.28)
+                ? (int) Math.min(255, (progress / 0.28) * 255)
+                : 255;
+
+        if (blackAlpha > 0) {
+            g.setColor(new Color(0, 0, 0, blackAlpha));
             g.fillRect(0, 0, w, h);
         }
 
-        // 2. Viền đỏ rực (Vignette) bo 4 cạnh tạo cảm giác bi tráng
-        int edgeAlpha = (int) (170 * progress);
-        if (edgeAlpha > 0) {
-            g.setColor(new Color(180, 25, 25, edgeAlpha));
-            int edgeThickness = (int) (24 + 18 * progress);
-            g.fillRect(0, 0, w, edgeThickness);
-            g.fillRect(0, h - edgeThickness, w, edgeThickness);
-            g.fillRect(0, 0, edgeThickness, h);
-            g.fillRect(w - edgeThickness, 0, edgeThickness, h);
+        // 2. Viền đỏ rực (Vignette) bi tráng trong lúc màn hình đang đen dần (0.0 -> 0.30)
+        if (progress < 0.30) {
+            float vigFactor = (float) (1.0 - progress / 0.30);
+            int edgeAlpha = (int) (190 * vigFactor);
+            if (edgeAlpha > 0) {
+                g.setColor(new Color(180, 25, 25, edgeAlpha));
+                int edgeThickness = (int) (24 + 18 * (1.0 - vigFactor));
+                g.fillRect(0, 0, w, edgeThickness);
+                g.fillRect(0, h - edgeThickness, w, edgeThickness);
+                g.fillRect(0, 0, edgeThickness, h);
+                g.fillRect(w - edgeThickness, 0, edgeThickness, h);
+            }
         }
 
-        // 3. Dòng thông báo trạng thái (hoạt cảnh tử trận không thể bỏ qua)
-        if (progress > 0.35) {
-            g.setFont(new Font("SansSerif", Font.ITALIC, 14));
-            FontMetrics fm = g.getFontMetrics();
-            String hint = "[ Đang hoàn tất dữ liệu tử trận... ]";
-            int hintAlpha = (int) Math.min(255, (progress - 0.35) / 0.65 * 200);
-            g.setColor(new Color(255, 210, 210, hintAlpha));
-            g.drawString(hint, (w - fm.stringWidth(hint)) / 2, h - 45);
+        // 3. Hiển thị tiêu đề "☠ BẠN ĐÃ BỊ HẠ ☠" trên nền đen và mờ dần vào bóng tối (Lại đen dần)
+        if (progress >= 0.28) {
+            int textAlpha;
+            if (progress < 0.42) {
+                // Chữ hiện dần lên trên nền đen (Fade-in)
+                textAlpha = (int) Math.clamp(((progress - 0.28) / 0.14) * 255, 0, 255);
+            } else if (progress <= 0.70) {
+                // Giữ sáng chữ rõ nét, rực lửa
+                textAlpha = 255;
+            } else {
+                // Lại đen dần: Chữ mờ dần biến mất vào bóng tối hoàn toàn (Fade-out)
+                textAlpha = (int) Math.clamp((1.0 - (progress - 0.70) / 0.30) * 255, 0, 255);
+            }
+
+            if (textAlpha > 0) {
+                g.setFont(new Font("SansSerif", Font.BOLD, 40));
+                FontMetrics fmTitle = g.getFontMetrics();
+                String title = "☠ BẠN ĐÃ BỊ HẠ ☠";
+                int titleW = fmTitle.stringWidth(title);
+
+                // Đổ bóng đỏ sẫm chiều sâu 3D
+                g.setColor(new Color(60, 0, 0, textAlpha));
+                g.drawString(title, (w - titleW) / 2 + 2, h / 2 - 18);
+
+                // Chữ đỏ tươi rực sáng
+                g.setColor(new Color(255, 60, 60, textAlpha));
+                g.drawString(title, (w - titleW) / 2, h / 2 - 20);
+            }
         }
     }
 
@@ -667,7 +747,8 @@ public class PlayingHUD {
      * @param clearedRoomCount Số phòng chiến đấu đã dọn sạch.
      * @param weaponSlotsCount Số vũ khí trong kho đồ.
      */
-    public void renderGameOverScreen(Graphics2D g, int currentStage, int maxStages, int playerCredits, long clearedRoomCount, int weaponSlotsCount) {
+    public void renderGameOverScreen(Graphics2D g, int currentStage, int maxStages, int playerCredits,
+            long clearedRoomCount, int weaponSlotsCount) {
         // Phủ màn mờ đỏ đen kịch tính
         g.setColor(new Color(15, 5, 8, 235));
         g.fillRect(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);

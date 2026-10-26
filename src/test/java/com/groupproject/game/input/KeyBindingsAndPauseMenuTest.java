@@ -37,11 +37,17 @@ public class KeyBindingsAndPauseMenuTest {
         keyH = new KeyboardHandler();
         mouseH = new MouseHandler();
         KeyBindings.resetToDefaults();
+        com.groupproject.game.core.GameConfig.showFpsUps = false;
+        com.groupproject.game.core.GameConfig.showAimGuideline = true;
+        com.groupproject.game.state.PlayingState.setSpawnDirectlyInBossRoom(false);
     }
 
     @AfterEach
     void tearDown() {
         KeyBindings.resetToDefaults();
+        com.groupproject.game.core.GameConfig.showFpsUps = false;
+        com.groupproject.game.core.GameConfig.showAimGuideline = true;
+        com.groupproject.game.state.PlayingState.setSpawnDirectlyInBossRoom(false);
     }
 
     private void pressKey(int keyCode, char keyChar) {
@@ -374,5 +380,54 @@ public class KeyBindingsAndPauseMenuTest {
 
         // Khôi phục mặc định
         com.groupproject.game.core.GameConfig.showAimGuideline = true;
+    }
+
+    @Test
+    @DisplayName("Kiểm tra Bật / Tắt Chỉ số FPS & UPS (Performance HUD) trong Cài đặt và tích hợp hiển thị")
+    void testFpsUpsToggleInSettings() {
+        PauseMenuUI menu = new PauseMenuUI();
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        // Ban đầu mặc định là FALSE
+        com.groupproject.game.core.GameConfig.showFpsUps = false;
+
+        // Chuyển sang menu SETTINGS và render 1 frame để khởi tạo bounds
+        menu.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+        menu.render(g, 1280, 720);
+        g.dispose();
+
+        java.awt.Rectangle toggleBounds = menu.getFpsUpsToggleBounds();
+        assertNotNull(toggleBounds, "Vùng toggle FPS/UPS phải được khởi tạo");
+        assertTrue(toggleBounds.width > 0 && toggleBounds.height > 0, "Kích thước toggle box FPS/UPS phải hợp lệ");
+
+        // 1. Click vào nút toggle -> Bật (true)
+        int clickX = (int) toggleBounds.getCenterX();
+        int clickY = (int) toggleBounds.getCenterY();
+        clickMouse(MouseEvent.BUTTON1, clickX, clickY);
+
+        menu.update(keyH, mouseH, 0.016);
+        assertTrue(com.groupproject.game.core.GameConfig.showFpsUps, "Click vào toggle phải bật hiển thị FPS/UPS (true)");
+
+        // 2. Click lần thứ 2 -> Tắt lại (false)
+        clickMouse(MouseEvent.BUTTON1, clickX, clickY);
+        menu.update(keyH, mouseH, 0.016);
+        assertFalse(com.groupproject.game.core.GameConfig.showFpsUps, "Click lần nữa phải tắt hiển thị FPS/UPS (false)");
+
+        // 3. Kiểm tra GameLoop FPS/UPS getter hợp lệ và render GamePanel không throw exception
+        assertEquals(0, com.groupproject.game.core.GameLoop.getFps());
+        assertEquals(0, com.groupproject.game.core.GameLoop.getUps());
+
+        com.groupproject.game.core.GamePanel panel = new com.groupproject.game.core.GamePanel();
+        panel.setSize(1280, 720);
+
+        java.awt.Graphics2D gPanel = img.createGraphics();
+        com.groupproject.game.core.GameConfig.showFpsUps = true;
+        assertDoesNotThrow(() -> panel.paint(gPanel), "Vẽ GamePanel khi BẬT FPS/UPS không được ném ngoại lệ");
+
+        com.groupproject.game.core.GameConfig.showFpsUps = false;
+        assertDoesNotThrow(() -> panel.paint(gPanel), "Vẽ GamePanel khi TẮT FPS/UPS không được ném ngoại lệ");
+        gPanel.dispose();
+        com.groupproject.game.state.PlayingState.setSpawnDirectlyInBossRoom(false);
     }
 }

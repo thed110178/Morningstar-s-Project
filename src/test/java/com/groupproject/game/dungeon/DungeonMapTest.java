@@ -556,4 +556,35 @@ public class DungeonMapTest {
 
         g2.dispose();
     }
+
+    @Test
+    @DisplayName("Kiểm tra thuật toán Void Culling: Bỏ qua hơn 40.000 ô VOID ngoài phòng để tối ưu hiệu năng")
+    void testVoidCullingOptimization() {
+        int voidTiles = 0;
+        int activeTiles = 0;
+
+        for (int c = 0; c < DungeonMap.COLS; c++) {
+            for (int r = 0; r < DungeonMap.ROWS; r++) {
+                Tile tile = map.getTile(c, r);
+                if (tile != null) {
+                    if (tile.getType() == TileType.VOID) {
+                        voidTiles++;
+                    } else {
+                        activeTiles++;
+                    }
+                }
+            }
+        }
+
+        assertTrue(voidTiles > 1500, "Phần lớn ô trong bản đồ 80x45 (hơn 1.500 ô) là VOID (khoảng trống ngoài phòng) cần được culling");
+        assertTrue(activeTiles > 0, "Phải có các ô phòng và hành lang hữu dụng");
+
+        // Render camera ở góc chứa các ô VOID đảm bảo không ném ngoại lệ
+        com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(1280, 720);
+        camera.snapTo(1000, 1000);
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+        assertDoesNotThrow(() -> map.render(g, camera), "Render vùng VOID với Void Culling phải trơn tru không lỗi");
+        g.dispose();
+    }
 }

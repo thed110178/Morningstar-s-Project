@@ -38,6 +38,34 @@ public class GameSpriteManagerTest {
     }
 
     @Test
+    @DisplayName("Verify pre-scaled textures and hardware compatible image caching")
+    void testPreScaledTexturesAndCompatibleImage() {
+        assertNotNull(GameSpriteManager.getPreScaledTextureDirt(), "Pre-scaled dirt texture must be loaded");
+        assertEquals(49, GameSpriteManager.getPreScaledTextureDirt().getWidth());
+        assertEquals(49, GameSpriteManager.getPreScaledTextureDirt().getHeight());
+
+        assertNotNull(GameSpriteManager.getPreScaledTextureGrass(), "Pre-scaled grass texture must be loaded");
+        assertEquals(49, GameSpriteManager.getPreScaledTextureGrass().getWidth());
+        assertEquals(49, GameSpriteManager.getPreScaledTextureGrass().getHeight());
+
+        assertNotNull(GameSpriteManager.getPreScaledTextureGreyBrick(), "Pre-scaled brick texture must be loaded");
+        assertEquals(49, GameSpriteManager.getPreScaledTextureGreyBrick().getWidth());
+        assertEquals(49, GameSpriteManager.getPreScaledTextureGreyBrick().getHeight());
+
+        assertNotNull(GameSpriteManager.getPreScaledCoverStone(), "Pre-scaled stone cover must be loaded");
+        assertEquals(48, GameSpriteManager.getPreScaledCoverStone().getWidth());
+        assertEquals(48, GameSpriteManager.getPreScaledCoverStone().getHeight());
+
+        assertNotNull(GameSpriteManager.getPreScaledCoverBarrel(), "Pre-scaled barrel cover must be loaded");
+        assertEquals(48, GameSpriteManager.getPreScaledCoverBarrel().getWidth());
+        assertEquals(48, GameSpriteManager.getPreScaledCoverBarrel().getHeight());
+
+        BufferedImage testImg = new BufferedImage(10, 10, BufferedImage.TYPE_4BYTE_ABGR);
+        BufferedImage compatible = GameSpriteManager.toCompatibleImage(testImg);
+        assertNotNull(compatible);
+    }
+
+    @Test
     @DisplayName("Verify renderRotatedSprite executes safely without throwing exceptions")
     void testRenderRotatedSprite() {
         BufferedImage canvas = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);

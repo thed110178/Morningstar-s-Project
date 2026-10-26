@@ -119,4 +119,22 @@ public class KeyboardHandler implements KeyListener {
             keys[code] = false;
         }
     }
+
+    /**
+     * Gán trạng thái phím trực tiếp (dành riêng cho Unit Test hoặc kịch bản mô phỏng).
+     *
+     * @param keyCode Mã phím ảo từ {@link KeyEvent}.
+     * @param pressed {@code true} nếu đang nhấn xuống, {@code false} nếu nhả ra.
+     */
+    public void setKeyPressed(int keyCode, boolean pressed) {
+        if (keyCode >= 0 && keyCode < keys.length) {
+            keys[keyCode] = pressed;
+            if (pressed) {
+                keysJustPressed[keyCode] = true;
+            } else {
+                keysCantPress[keyCode] = false;
+                keysJustPressed[keyCode] = false;
+            }
+        }
+    }
 }

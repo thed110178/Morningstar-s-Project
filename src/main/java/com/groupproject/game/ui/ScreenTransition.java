@@ -71,6 +71,29 @@ public class ScreenTransition {
         this.state = State.FADING_OUT;
     }
 
+    /**
+     * Khởi động quá trình fade-in từ màn hình đen sẵn có sang State mới.
+     * Bắt đầu trực tiếp từ HOLD (đen hoàn toàn), thực thi callback đổi State ngay lập tức,
+     * và sau đó chuyển sang FADING_IN để cảnh mới mở sáng dần ra.
+     */
+    public void startFadeInFromBlack(double holdTime, double fadeInTime, Runnable onHold, String title, String subtitle, Color accent) {
+        this.fadeDuration = Math.max(0.05, fadeInTime);
+        this.holdDuration = Math.max(0.01, holdTime);
+        this.onHoldAction = onHold;
+        this.overlayTitle = title;
+        this.overlaySubtitle = subtitle;
+        this.accentColor = (accent != null) ? accent : new Color(0, 220, 255);
+        this.timer = 0.0;
+        this.state = State.HOLD;
+        if (onHoldAction != null) {
+            try {
+                onHoldAction.run();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public void setOnCompleteAction(Runnable onCompleteAction) {
         this.onCompleteAction = onCompleteAction;
     }

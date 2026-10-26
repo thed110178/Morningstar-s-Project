@@ -1000,4 +1000,15 @@ public abstract class Weapon {
                 oldCrit, getCritChancePercent()
         );
     }
+
+    // --- Các hàm hỗ trợ Lưu trữ và Khôi phục trạng thái (Save/Load Checkpoint) ---
+
+    public void setCritStats(double critChance, double critMultiplier) {
+        setCritChance(critChance);
+        setCritMultiplier(critMultiplier);
+    }
+
+    public void setCurrentAmmo(int ammo) {
+        this.currentAmmo = Math.max(0, ammo);
+    }
 }

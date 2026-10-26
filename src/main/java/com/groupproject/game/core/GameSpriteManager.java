@@ -1,7 +1,12 @@
 package com.groupproject.game.core;
 
 import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
+import java.awt.Transparency;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
@@ -48,6 +53,13 @@ public final class GameSpriteManager {
     public static final String FILE_TEX_GRASS = "Material/Texture/Grass.png";
     public static final String FILE_EFFECT_SLASH = "Material/Effect/Slash.png";
 
+    // Bộ đệm hình ảnh đã pre-scale sẵn kích thước chính xác và tương thích VRAM
+    private static BufferedImage preScaledTextureDirt;
+    private static BufferedImage preScaledTextureGrass;
+    private static BufferedImage preScaledTextureGreyBrick;
+    private static BufferedImage preScaledCoverStone;
+    private static BufferedImage preScaledCoverBarrel;
+
     static {
         loadAll();
     }
@@ -57,7 +69,7 @@ public final class GameSpriteManager {
     }
 
     /**
-     * Nạp toàn bộ sprite vào bộ nhớ Cache khi khởi động game.
+     * Nạp toàn bộ sprite vào bộ nhớ Cache và tạo trước các bộ đệm ảnh tương thích phần cứng.
      */
     public static synchronized void loadAll() {
         loadSprite(RES_PLAYER_GUN, FILE_PLAYER_GUN);
@@ -72,10 +84,109 @@ public final class GameSpriteManager {
         loadSprite(RES_TEX_DIRT, FILE_TEX_DIRT);
         loadSprite(RES_TEX_GRASS, FILE_TEX_GRASS);
         loadSprite(RES_EFFECT_SLASH, FILE_EFFECT_SLASH);
+
+        // Khởi tạo trước bộ đệm pre-scaled tương thích phần cứng cho các texture địa hình tần suất vẽ cao
+        preScaledTextureDirt = createPreScaledImage(getTextureDirt(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        preScaledTextureGrass = createPreScaledImage(getTextureGrass(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        preScaledTextureGreyBrick = createPreScaledImage(getTextureGreyBrick(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        preScaledCoverStone = createPreScaledImage(getCoverStoneSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+        preScaledCoverBarrel = createPreScaledImage(getCoverBarrelSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+    }
+
+    /**
+     * Chuyển đổi một BufferedImage sang định dạng tương thích với cấu hình đồ họa phần cứng (Hardware Compatible Image).
+     *
+     * <p>WHY: BufferedImage mặc định từ ImageIO.read() thường có định dạng TYPE_4BYTE_ABGR hoặc TYPE_CUSTOM.
+     * Khi vẽ (drawImage) lên màn hình, driver đồ họa phải dùng CPU giải nén và convert từng pixel sang định dạng VRAM.
+     * Chuyển đổi trước sang Compatible Image giúp hình ảnh được lưu trữ trực tiếp dưới dạng VRAM Surface,
+     * cho phép GPU Direct3D/OpenGL thực hiện sao chép khối pixel (BitBlt) với tốc độ phần cứng nguyên bản.
+     */
+    public static BufferedImage toCompatibleImage(BufferedImage image) {
+        if (image == null) {
+            return null;
+        }
+
+        GraphicsConfiguration gc = null;
+        try {
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            if (!ge.isHeadless()) {
+                GraphicsDevice gd = ge.getDefaultScreenDevice();
+                if (gd != null) {
+                    gc = gd.getDefaultConfiguration();
+                }
+            }
+        } catch (Exception ignored) {
+            // Môi trường headless (chạy test không có màn hình)
+        }
+
+        int transparency = image.getColorModel().hasAlpha() ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
+
+        if (gc != null) {
+            BufferedImage compatible = gc.createCompatibleImage(image.getWidth(), image.getHeight(), transparency);
+            Graphics2D g2 = compatible.createGraphics();
+            g2.drawImage(image, 0, 0, null);
+            g2.dispose();
+            return compatible;
+        }
+
+        // Fallback chuẩn cho môi trường headless/test
+        int targetType = (transparency == Transparency.TRANSLUCENT)
+                ? BufferedImage.TYPE_INT_ARGB
+                : BufferedImage.TYPE_INT_RGB;
+        if (image.getType() == targetType) {
+            return image;
+        }
+        BufferedImage fallback = new BufferedImage(image.getWidth(), image.getHeight(), targetType);
+        Graphics2D g2 = fallback.createGraphics();
+        g2.drawImage(image, 0, 0, null);
+        g2.dispose();
+        return fallback;
+    }
+
+    /**
+     * Tạo trước một bản sao hình ảnh tương thích phần cứng với kích thước pixel mong muốn (Pre-scaled Image).
+     *
+     * <p>WHY: Tránh việc nội suy co giãn hình ảnh (rescaling) 30.000 lần mỗi giây trong vòng lặp game.
+     * Thực hiện co giãn một lần duy nhất lúc nạp tài nguyên và lưu vào bộ nhớ đệm giúp lệnh drawImage
+     * đạt hiệu năng tối đa 1:1.
+     */
+    public static BufferedImage createPreScaledImage(BufferedImage src, int targetWidth, int targetHeight) {
+        if (src == null) {
+            return null;
+        }
+
+        GraphicsConfiguration gc = null;
+        try {
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            if (!ge.isHeadless()) {
+                GraphicsDevice gd = ge.getDefaultScreenDevice();
+                if (gd != null) {
+                    gc = gd.getDefaultConfiguration();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        int transparency = src.getColorModel().hasAlpha() ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
+        BufferedImage scaled;
+        if (gc != null) {
+            scaled = gc.createCompatibleImage(targetWidth, targetHeight, transparency);
+        } else {
+            scaled = new BufferedImage(targetWidth, targetHeight,
+                    transparency == Transparency.TRANSLUCENT ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB);
+        }
+
+        Graphics2D g2 = scaled.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        g2.drawImage(src, 0, 0, targetWidth, targetHeight, null);
+        g2.dispose();
+
+        return scaled;
     }
 
     /**
      * Nạp ảnh với chiến lược đa tầng: Classpath -> Thư mục đĩa cứng dự phòng.
+     * Tự động chuyển đổi sang Hardware Compatible Image.
      */
     public static BufferedImage loadSprite(String resourcePath, String fallbackFilePath) {
         if (resourcePath == null) {
@@ -124,6 +235,7 @@ public final class GameSpriteManager {
         }
 
         if (img != null) {
+            img = toCompatibleImage(img);
             CACHE.put(resourcePath, img);
         }
 
@@ -178,9 +290,45 @@ public final class GameSpriteManager {
         return loadSprite(RES_EFFECT_SLASH, FILE_EFFECT_SLASH);
     }
 
+    public static BufferedImage getPreScaledTextureDirt() {
+        if (preScaledTextureDirt == null) {
+            preScaledTextureDirt = createPreScaledImage(getTextureDirt(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        }
+        return preScaledTextureDirt;
+    }
+
+    public static BufferedImage getPreScaledTextureGrass() {
+        if (preScaledTextureGrass == null) {
+            preScaledTextureGrass = createPreScaledImage(getTextureGrass(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        }
+        return preScaledTextureGrass;
+    }
+
+    public static BufferedImage getPreScaledTextureGreyBrick() {
+        if (preScaledTextureGreyBrick == null) {
+            preScaledTextureGreyBrick = createPreScaledImage(getTextureGreyBrick(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        }
+        return preScaledTextureGreyBrick;
+    }
+
+    public static BufferedImage getPreScaledCoverStone() {
+        if (preScaledCoverStone == null) {
+            preScaledCoverStone = createPreScaledImage(getCoverStoneSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+        }
+        return preScaledCoverStone;
+    }
+
+    public static BufferedImage getPreScaledCoverBarrel() {
+        if (preScaledCoverBarrel == null) {
+            preScaledCoverBarrel = createPreScaledImage(getCoverBarrelSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+        }
+        return preScaledCoverBarrel;
+    }
+
     /**
      * Vẽ ảnh xoay quanh tâm (centerX, centerY) với góc ngắm (angle).
      * Do sprite gốc hướng lên trên (-PI/2), góc xoay trong hệ tọa độ vẽ là `angle + Math.PI / 2`.
+     * Tối ưu hóa biến đổi ma trận AffineTransform trực tiếp, tránh cấp phát và hủy Graphics2D mỗi frame.
      *
      * @param g       Đối tượng đồ họa Graphics2D.
      * @param img     Ảnh cần vẽ.
@@ -196,21 +344,21 @@ public final class GameSpriteManager {
             return;
         }
 
-        Graphics2D g2 = (Graphics2D) g.create();
-        Object oldHint = g2.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        AffineTransform oldTransform = g.getTransform();
+        Object oldHint = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
         // Dịch chuyển về tâm đối tượng và xoay hướng
-        g2.translate(centerX, centerY);
-        g2.rotate(angle + Math.PI / 2.0);
+        g.translate(centerX, centerY);
+        g.rotate(angle + Math.PI / 2.0);
 
         int drawX = -width / 2;
         int drawY = -height / 2;
-        g2.drawImage(img, drawX, drawY, width, height, null);
+        g.drawImage(img, drawX, drawY, width, height, null);
 
         if (oldHint != null) {
-            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, oldHint);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, oldHint);
         }
-        g2.dispose();
+        g.setTransform(oldTransform);
     }
 }

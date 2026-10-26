@@ -20,6 +20,11 @@ public class Main {
      * @param args Command-line arguments passed to the application (unused).
      */
     public static void main(String[] args) {
+        // Tối ưu hóa hiệu năng render đồ họa Java 2D: Ép bật tăng tốc Direct3D pipeline và VRAM surface
+        System.setProperty("sun.java2d.d3d", "true");
+        System.setProperty("sun.java2d.ddforcevram", "true");
+        System.setProperty("sun.java2d.accthreshold", "0");
+
         // Enqueue the window creation task to the EDT to ensure thread safety during GUI initialization
         SwingUtilities.invokeLater(() -> {
             GameWindow window = new GameWindow();

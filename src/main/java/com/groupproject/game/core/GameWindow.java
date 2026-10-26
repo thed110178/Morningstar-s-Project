@@ -47,6 +47,18 @@ public class GameWindow extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                // Tự động lưu tiến trình ván đấu checkpoint nếu người chơi đang trong Chiến dịch Campaign
+                try {
+                    com.groupproject.game.state.GameStateManager gsm = gamePanel.getStateManager();
+                    if (gsm != null && gsm.getCurrentStateType() == com.groupproject.game.state.GameStateManager.StateType.PLAYING) {
+                        com.groupproject.game.state.GameState current = gsm.getState(com.groupproject.game.state.GameStateManager.StateType.PLAYING);
+                        if (current instanceof com.groupproject.game.state.PlayingState ps) {
+                            com.groupproject.game.storage.RunSaveManager.saveRun(ps);
+                        }
+                    }
+                } catch (Exception ex) {
+                    System.err.println("[GameWindow] Không thể lưu checkpoint khi đóng cửa sổ: " + ex.getMessage());
+                }
                 gameLoop.stop();
             }
         });

@@ -55,10 +55,12 @@ public class PauseMenuUI {
     private final Rectangle resetDefaultsBtnBounds = new Rectangle();
     private final Rectangle backFromSettingsBtnBounds = new Rectangle();
     private final Rectangle aimGuidelineToggleBounds = new Rectangle();
+    private final Rectangle fpsUpsToggleBounds = new Rectangle();
 
     private boolean isResetHovered = false;
     private boolean isBackHovered = false;
     private boolean isAimGuidelineHovered = false;
+    private boolean isFpsUpsHovered = false;
     private GameAction hoveredAction = null;
 
     private String feedbackMessage = "";
@@ -240,6 +242,7 @@ public class PauseMenuUI {
         isResetHovered = resetDefaultsBtnBounds.contains(mouseX, mouseY);
         isBackHovered = backFromSettingsBtnBounds.contains(mouseX, mouseY);
         isAimGuidelineHovered = aimGuidelineToggleBounds.contains(mouseX, mouseY);
+        isFpsUpsHovered = fpsUpsToggleBounds.contains(mouseX, mouseY);
         hoveredAction = null;
         for (Map.Entry<GameAction, Rectangle> entry : keybindBounds.entrySet()) {
             if (entry.getValue().contains(mouseX, mouseY)) {
@@ -268,6 +271,15 @@ public class PauseMenuUI {
                 feedbackMessage = com.groupproject.game.core.GameConfig.showAimGuideline
                         ? "ĐÃ BẬT ĐƯỜNG NGẮM CON TRỎ CHUỘT (AIM GUIDELINE: ON)"
                         : "ĐÃ TẮT ĐƯỜNG NGẮM CON TRỎ CHUỘT (AIM GUIDELINE: OFF)";
+                feedbackTimer = 2.0;
+                return PauseAction.NONE;
+            }
+
+            if (isFpsUpsHovered) {
+                com.groupproject.game.core.GameConfig.showFpsUps = !com.groupproject.game.core.GameConfig.showFpsUps;
+                feedbackMessage = com.groupproject.game.core.GameConfig.showFpsUps
+                        ? "ĐÃ BẬT HIỂN THỊ CHỈ SỐ FPS & UPS (PERFORMANCE HUD: ON)"
+                        : "ĐÃ TẮT HIỂN THỊ CHỈ SỐ FPS & UPS (PERFORMANCE HUD: OFF)";
                 feedbackTimer = 2.0;
                 return PauseAction.NONE;
             }
@@ -411,7 +423,7 @@ public class PauseMenuUI {
 
     private void renderSettingsMenu(Graphics2D g, int screenW, int screenH) {
         int panelW = 900;
-        int panelH = 610;
+        int panelH = 650;
         int panelX = (screenW - panelW) / 2;
         int panelY = (screenH - panelH) / 2;
 
@@ -536,63 +548,104 @@ public class PauseMenuUI {
             }
         }
 
-        // Tùy chọn giao diện: Đường ngắm nét đứt nối con trỏ chuột (Aim Guideline Toggle)
+        // Tùy chọn giao diện & Hiệu năng: 2 Hàng Toggle Box
         int botBtnW = 220;
-        int botBtnH = 42;
-        int botBtnY = panelY + panelH - botBtnH - 22;
+        int botBtnH = 38;
+        int botBtnY = panelY + panelH - botBtnH - 18;
 
         int toggleBoxW = panelW - 60;
-        int toggleBoxH = 38;
+        int toggleBoxH = 34;
         int toggleBoxX = panelX + 30;
-        int toggleBoxY = botBtnY - toggleBoxH - 12;
-        aimGuidelineToggleBounds.setBounds(toggleBoxX, toggleBoxY, toggleBoxW, toggleBoxH);
 
-        Color toggleBoxBg = isAimGuidelineHovered ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
-        g.setColor(toggleBoxBg);
-        g.fillRoundRect(toggleBoxX, toggleBoxY, toggleBoxW, toggleBoxH, 6, 6);
+        int toggle2Y = botBtnY - toggleBoxH - 10;
+        int toggle1Y = toggle2Y - toggleBoxH - 8;
+
+        aimGuidelineToggleBounds.setBounds(toggleBoxX, toggle1Y, toggleBoxW, toggleBoxH);
+        fpsUpsToggleBounds.setBounds(toggleBoxX, toggle2Y, toggleBoxW, toggleBoxH);
+
+        // --- HÀNG 1: ĐƯỜNG NGẮM CHUỘT ---
+        Color toggle1Bg = isAimGuidelineHovered ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
+        g.setColor(toggle1Bg);
+        g.fillRoundRect(toggleBoxX, toggle1Y, toggleBoxW, toggleBoxH, 6, 6);
         g.setColor(isAimGuidelineHovered ? new Color(0, 210, 255) : new Color(45, 65, 95));
-        g.drawRoundRect(toggleBoxX, toggleBoxY, toggleBoxW, toggleBoxH, 6, 6);
+        g.drawRoundRect(toggleBoxX, toggle1Y, toggleBoxW, toggleBoxH, 6, 6);
 
-        // Nhãn bên trái
         g.setFont(new Font("SansSerif", Font.BOLD, 13));
         g.setColor(new Color(230, 245, 255));
-        g.drawString("🎯 ĐƯỜNG NGẮM CHUỘT (AIM GUIDELINE)", toggleBoxX + 14, toggleBoxY + 24);
+        g.drawString("🎯 ĐƯỜNG NGẮM CHUỘT (AIM GUIDELINE)", toggleBoxX + 14, toggle1Y + 22);
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         g.setColor(new Color(145, 175, 205));
-        g.drawString("Đường kẻ đứt mờ nối từ người chơi đến con trỏ chuột hỗ trợ ngắm bắn", toggleBoxX + 305, toggleBoxY + 24);
+        g.drawString("Đường kẻ đứt mờ nối từ người chơi đến con trỏ chuột hỗ trợ ngắm bắn", toggleBoxX + 305, toggle1Y + 22);
 
-        // Nút trạng thái bên phải
         int statusBtnW = 125;
-        int statusBtnH = 26;
+        int statusBtnH = 24;
         int statusBtnX = toggleBoxX + toggleBoxW - statusBtnW - 8;
-        int statusBtnY = toggleBoxY + (toggleBoxH - statusBtnH) / 2;
+        int statusBtn1Y = toggle1Y + (toggleBoxH - statusBtnH) / 2;
 
-        boolean isOn = com.groupproject.game.core.GameConfig.showAimGuideline;
-        if (isOn) {
+        boolean isAimOn = com.groupproject.game.core.GameConfig.showAimGuideline;
+        if (isAimOn) {
             g.setColor(new Color(25, 110, 70));
-            g.fillRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.fillRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(60, 240, 140));
-            g.drawRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.drawRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
             g.setFont(new Font("SansSerif", Font.BOLD, 11));
             String onText = "✔ ĐANG BẬT";
             int otw = g.getFontMetrics().stringWidth(onText);
             g.setColor(Color.WHITE);
-            g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtnY + 18);
+            g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtn1Y + 16);
         } else {
             g.setColor(new Color(45, 50, 60));
-            g.fillRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.fillRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(110, 115, 130));
-            g.drawRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.drawRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
             g.setFont(new Font("SansSerif", Font.BOLD, 11));
             String offText = "✖ ĐANG TẮT";
             int oftw = g.getFontMetrics().stringWidth(offText);
             g.setColor(new Color(180, 185, 195));
-            g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtnY + 18);
+            g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtn1Y + 16);
+        }
+
+        // --- HÀNG 2: CHỈ SỐ HIỆU NĂNG FPS & UPS ---
+        Color toggle2Bg = isFpsUpsHovered ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
+        g.setColor(toggle2Bg);
+        g.fillRoundRect(toggleBoxX, toggle2Y, toggleBoxW, toggleBoxH, 6, 6);
+        g.setColor(isFpsUpsHovered ? new Color(0, 210, 255) : new Color(45, 65, 95));
+        g.drawRoundRect(toggleBoxX, toggle2Y, toggleBoxW, toggleBoxH, 6, 6);
+
+        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setColor(new Color(230, 245, 255));
+        g.drawString("⚡ CHỈ SỐ FPS & UPS (PERFORMANCE HUD)", toggleBoxX + 14, toggle2Y + 22);
+
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setColor(new Color(145, 175, 205));
+        g.drawString("Hiển thị số khung hình (FPS) và nhịp cập nhật logic (UPS) thời gian thực", toggleBoxX + 305, toggle2Y + 22);
+
+        int statusBtn2Y = toggle2Y + (toggleBoxH - statusBtnH) / 2;
+        boolean isFpsOn = com.groupproject.game.core.GameConfig.showFpsUps;
+        if (isFpsOn) {
+            g.setColor(new Color(25, 110, 70));
+            g.fillRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(60, 240, 140));
+            g.drawRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            String onText = "✔ ĐANG BẬT";
+            int otw = g.getFontMetrics().stringWidth(onText);
+            g.setColor(Color.WHITE);
+            g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtn2Y + 16);
+        } else {
+            g.setColor(new Color(45, 50, 60));
+            g.fillRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(110, 115, 130));
+            g.drawRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            String offText = "✖ ĐANG TẮT";
+            int oftw = g.getFontMetrics().stringWidth(offText);
+            g.setColor(new Color(180, 185, 195));
+            g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtn2Y + 16);
         }
 
         // 2 Nút ở đáy: [ ĐẶT LẠI MẶC ĐỊNH ] và [ QUAY LẠI ]
-
         int resetBtnX = panelX + (panelW / 2) - botBtnW - 15;
         int backBtnX = panelX + (panelW / 2) + 15;
 
@@ -665,5 +718,9 @@ public class PauseMenuUI {
 
     public Rectangle getAimGuidelineToggleBounds() {
         return aimGuidelineToggleBounds;
+    }
+
+    public Rectangle getFpsUpsToggleBounds() {
+        return fpsUpsToggleBounds;
     }
 }

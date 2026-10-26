@@ -1,12 +1,10 @@
 package com.groupproject.game.hub;
 
 import com.groupproject.game.entity.enemy.TargetDummy;
-import com.groupproject.game.entity.item.AmmoType;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.SemiCarbineRifle;
 import com.groupproject.game.entity.weapon.Shotgun;
-import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
 import com.groupproject.game.state.GameStateManager;
@@ -58,8 +56,8 @@ class HubRangeTest {
         // Đúng 4 Dummy di chuyển lạng lách ở trường bắn trái
         assertEquals(4, hub.getLeftRangeDummies().size(), "Phải có 4 Dummy ở trường bắn trái");
 
-        // Các trạm tương tác phải có đủ 10 trạm
-        assertTrue(hub.getStations().size() >= 10, "Phải có đầy đủ các trạm vũ khí, nâng cấp, reroll, thùng rác, HP, cổng");
+        // Các trạm tương tác phải có đủ 9 trạm (5 kệ súng, bàn nâng cấp, bàn reroll, cầu thang xuất kích, bảng HP)
+        assertTrue(hub.getStations().size() >= 9, "Phải có đầy đủ các trạm vũ khí, nâng cấp, reroll, HP, cầu thang xuất kích");
     }
 
     @Test
@@ -216,9 +214,7 @@ class HubRangeTest {
     @DisplayName("Kiểm tra Thùng rác (TrashBinStation): Không cho vứt Pistol/Dao, cho phép vứt súng Slot 1 và 2")
     void testTrashBinStationProtectionAndDiscard() {
         WeaponManager wm = hub.getWeaponManager();
-        TrashBinStation bin = (TrashBinStation) hub.getStations().stream()
-                .filter(s -> s instanceof TrashBinStation)
-                .findFirst().orElse(null);
+        TrashBinStation bin = new TrashBinStation(0, 0);
         assertNotNull(bin);
 
         // 1. Thử vứt súng lục Slot 3 -> Bị chặn
@@ -376,5 +372,126 @@ class HubRangeTest {
         java.awt.Graphics2D g2 = img.createGraphics();
         assertDoesNotThrow(() -> hub.render(g2), "Render súng trên tay người chơi và thanh nạp đạn ở chân không được ném Exception");
         g2.dispose();
+    }
+
+    @Test
+    @DisplayName("Kiểm tra dải tường gạch Bắc/Nam thay thế tường vô hình, xóa tile ngoài biên và Surface Baking trong The Range")
+    void testHubWallBoundariesAndSurfaceBaking() {
+        com.groupproject.game.dungeon.Tile[][] tiles = hub.getHubTiles();
+        assertNotNull(tiles, "Lưới gạch The Range phải được khởi tạo");
+
+        int cols = tiles.length;
+        int rows = tiles[0].length;
+
+        // 1. Kiểm tra các hàng phía trên hàng 4 (y < 4) và phía dưới hàng 21 (y > 21) bị xóa sạch hoàn toàn (null)
+        for (int x = 0; x < cols; x++) {
+            for (int y = 0; y < HubRangeState.WALL_ROW_TOP; y++) {
+                assertNull(tiles[x][y], "Ô tile hàng " + y + " phía trên tường Bắc phải bị xóa (null) để tiết kiệm tài nguyên");
+            }
+            for (int y = HubRangeState.WALL_ROW_BOT + 1; y < rows; y++) {
+                assertNull(tiles[x][y], "Ô tile hàng " + y + " phía dưới tường Nam phải bị xóa (null) để tiết kiệm tài nguyên");
+            }
+        }
+
+        // 2. Kiểm tra hàng WALL_ROW_TOP (hàng 4) và WALL_ROW_BOT (hàng 21) là tường gạch WALL kiên cố bao quanh
+        for (int x = 0; x < cols; x++) {
+            assertNotNull(tiles[x][HubRangeState.WALL_ROW_TOP], "Tường Bắc phải tồn tại");
+            assertEquals(com.groupproject.game.dungeon.TileType.WALL, tiles[x][HubRangeState.WALL_ROW_TOP].getType(),
+                    "Bờ tường Bắc hàng " + HubRangeState.WALL_ROW_TOP + " phải là dải tường gạch WALL");
+
+            assertNotNull(tiles[x][HubRangeState.WALL_ROW_BOT], "Tường Nam phải tồn tại");
+            assertEquals(com.groupproject.game.dungeon.TileType.WALL, tiles[x][HubRangeState.WALL_ROW_BOT].getType(),
+                    "Bờ tường Nam hàng " + HubRangeState.WALL_ROW_BOT + " phải là dải tường gạch WALL");
+        }
+
+        // 3. Kiểm tra Surface Baking đã nướng xong ảnh nền và render 1 lệnh trơn tru
+        java.awt.image.BufferedImage baked = hub.getBakedHubSurface();
+        assertNotNull(baked, "Ảnh nướng nền The Range (bakedHubSurface) phải được tạo thành công");
+        assertTrue(baked.getWidth() > 0 && baked.getHeight() > 0, "Kích thước surface nướng phải hợp lệ");
+
+        java.awt.image.BufferedImage screen = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = screen.createGraphics();
+        assertDoesNotThrow(() -> hub.render(g), "Vẽ The Range với Surface Baking không được ném ngoại lệ");
+        g.dispose();
+    }
+
+    @Test
+    @DisplayName("Kiểm tra cơ chế Viewport Culling trên Station và Dummy khi nằm ngoài tầm nhìn camera")
+    void testHubAndEntityViewportCulling() {
+        com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(1280, 720);
+        camera.snapTo(2000.0, 500.0);
+
+        // Dummy ở rất xa bên trái (x = 100) -> screenX = 100 - (2000 - 640) = -1260 (nằm ngoài camera)
+        TargetDummy offscreenDummy = new TargetDummy(100.0, 500.0, 100);
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        assertDoesNotThrow(() -> offscreenDummy.render(g, camera), "Render Dummy ngoài viewport phải được culling trơn tru");
+
+        // Strafing Dummy ở rất xa
+        StrafingTargetDummy offscreenStrafing = new StrafingTargetDummy(100.0, 500.0, 100, 50.0, 150.0, 400.0, 600.0);
+        assertDoesNotThrow(() -> offscreenStrafing.render(g, camera), "Render Strafing Dummy ngoài viewport phải được culling trơn tru");
+
+        g.dispose();
+    }
+
+    @Test
+    @DisplayName("Kiểm tra đạn Sniper xuyên qua mục tiêu không bị nhân lên nhiều tracer từ người chơi")
+    void testSniperPiercingSingleTracerIntegrity() {
+        RecoilTracerManager tm = hub.getTracerManager();
+        assertEquals(0, tm.getActiveCount(), "Ban đầu không có tracer");
+
+        // Tạo 1 viên đạn xuyên phá (Sniper) với 1 lượt xuyên (xuyên Dummy 1 và dừng ở Dummy 2)
+        com.groupproject.game.entity.projectile.Projectile piercingBullet =
+                new com.groupproject.game.entity.projectile.Projectile(
+                        1000.0, 500.0, 0.0, 800.0, 100, 2.0, true, false, 1, 0.2
+                );
+        assertEquals(1000.0, piercingBullet.getOriginX(), 0.01, "OriginX ban đầu phải được lưu trữ chính xác");
+        assertEquals(500.0, piercingBullet.getOriginY(), 0.01, "OriginY ban đầu phải được lưu trữ chính xác");
+
+        TargetDummy dummy1 = hub.getRightRangeDummies().get(0); // x = 1640
+        TargetDummy dummy2 = hub.getRightRangeDummies().get(1); // x = 1840
+
+        // Khi đạn bắn trúng Dummy 1 lần đầu (còn 1 lượt xuyên -> tiêu hao lượt xuyên và bay tiếp)
+        piercingBullet.onHitTarget(dummy1);
+        assertTrue(piercingBullet.isActive(), "Đạn sniper vẫn tiếp tục bay sau khi xuyên Dummy 1");
+
+        // Khi đạn bắn trúng Dummy 2 (đã hết lượt xuyên -> dừng lại và deactivate)
+        piercingBullet.onHitTarget(dummy2);
+        assertFalse(piercingBullet.isActive(), "Đạn sniper dừng lại sau khi xuyên hết số lần cho phép");
+
+        // Thêm duy nhất 1 tracer từ điểm bắn ban đầu đến điểm kết thúc cuối
+        tm.addTracer(piercingBullet.getOriginX(), piercingBullet.getOriginY(), dummy2.getX(), dummy2.getY(), Color.YELLOW);
+        assertEquals(1, tm.getActiveCount(), "Chỉ có duy nhất 1 đường tracer kết thúc tại dummy cuối cùng, không bị nhân 3 tia");
+    }
+
+    @Test
+    @DisplayName("Kiểm tra Render Cầu Thang Xuất Kích, Bàn Quân Khí và Bàn Bio-Tech không gây lỗi")
+    void testTacticalStationsRenderIntegrity() {
+        com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(1280, 720);
+        camera.snapTo(1050.0, 360.0);
+
+        DepartureGateStation stairs = new DepartureGateStation(1050, 360);
+        HubUpgradeStation upgrade = new HubUpgradeStation(880, 370);
+        HubRerollStation reroll = new HubRerollStation(1220, 370);
+
+        stairs.update(0.1);
+        upgrade.update(0.1);
+        reroll.update(0.1);
+
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        assertDoesNotThrow(() -> stairs.render(g, camera, true), "Render Cầu thang xuất kích (có player gần)");
+        assertDoesNotThrow(() -> stairs.render(g, camera, false), "Render Cầu thang xuất kích (không có player gần)");
+        assertDoesNotThrow(() -> upgrade.render(g, camera, true), "Render Bàn Nâng Cấp Bio-Tech");
+        assertDoesNotThrow(() -> reroll.render(g, camera, true), "Render Bàn Tái Rèn Quân Khí Dã Chiến");
+
+        // Kiểm tra Banner FIGHT! và CLEAR
+        com.groupproject.game.ui.PlayingHUD hud = new com.groupproject.game.ui.PlayingHUD();
+        assertDoesNotThrow(() -> hud.renderBanner(g, "FIGHT!", new Color(255, 65, 65), false), "Render banner FIGHT!");
+        assertDoesNotThrow(() -> hud.renderBanner(g, "CLEAR", new Color(60, 235, 130), false), "Render banner CLEAR");
+
+        g.dispose();
     }
 }

@@ -9,9 +9,9 @@ echo Dang khoi dong tro choi...
 echo.
 
 if exist "runtime\bin\java.exe" (
-    "runtime\bin\java.exe" -jar DontKnow.jar
+    "runtime\bin\java.exe" -Dsun.java2d.d3d=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.accthreshold=0 -jar DontKnow.jar
 ) else (
-    java -jar DontKnow.jar
+    java -Dsun.java2d.d3d=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.accthreshold=0 -jar DontKnow.jar
 )
 
 if %ERRORLEVEL% NEQ 0 (

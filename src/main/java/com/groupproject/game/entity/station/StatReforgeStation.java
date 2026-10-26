@@ -250,6 +250,12 @@ public class StatReforgeStation {
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
 
+        // Viewport Culling: Bỏ qua nếu trạm nằm ngoài tầm nhìn camera
+        if (screenX < -60 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 60 ||
+            screenY < -60 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 60) {
+            return;
+        }
+
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 

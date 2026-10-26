@@ -86,6 +86,12 @@ public class AmmoPickup {
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
 
+        // Viewport Culling: Bỏ qua nếu hộp đạn nằm ngoài tầm nhìn camera
+        if (screenX < -40 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 40 ||
+            screenY < -40 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 40) {
+            return;
+        }
+
         // Độ cao nhấp nhô lơ lửng theo nhịp sin (-4px đến +4px)
         int hoverOffset = (int) (Math.sin(bobbingTimer) * 4.0);
         int drawY = screenY + hoverOffset;

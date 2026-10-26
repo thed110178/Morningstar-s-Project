@@ -10,6 +10,7 @@ import com.groupproject.game.entity.weapon.WeaponManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -384,6 +385,48 @@ public class PlayerBuffManager {
             if (mag > 0) {
                 active.getBoundAmmoInventory().addAmmo(active.getAmmoType(), mag * 2);
                 ammoSuppliedVisual = true;
+            }
+        }
+    }
+
+    /**
+     * Xuất toàn bộ cấp độ buff hiện tại sang dạng Map chuỗi phục vụ lưu checkpoint.
+     */
+    public Map<String, Integer> exportBuffLevels() {
+        Map<String, Integer> exported = new HashMap<>();
+        for (Map.Entry<CharacterBuff, Integer> entry : buffLevels.entrySet()) {
+            if (entry.getValue() > 0) {
+                exported.put(entry.getKey().name(), entry.getValue());
+            }
+        }
+        return exported;
+    }
+
+    /**
+     * Khôi phục toàn bộ trạng thái Buff từ bản lưu checkpoint.
+     */
+    public void restoreBuffLevels(Map<String, Integer> savedLevels, Player player, WeaponManager weaponManager) {
+        reset();
+        if (savedLevels == null || savedLevels.isEmpty()) {
+            return;
+        }
+
+        for (CharacterBuff buff : CharacterBuff.values()) {
+            Integer lvl = savedLevels.get(buff.name());
+            if (lvl != null && lvl > 0) {
+                int targetLvl = Math.min(lvl, buff.getMaxLevel());
+                buffLevels.put(buff, targetLvl);
+
+                // Áp dụng các hiệu ứng tức thời nếu có
+                if (buff == CharacterBuff.MAX_HEALTH && player != null) {
+                    int newMax = (int) Math.round(100.0 * getMaxHealthMultiplier());
+                    player.setMaxHealth(newMax);
+                } else if (buff == CharacterBuff.ONE_HIT_BARRIER) {
+                    barrierReady = true;
+                    barrierCooldownTimer = 0.0;
+                } else if (buff == CharacterBuff.EXTENDED_MAGAZINE && weaponManager != null) {
+                    applyExtendedMagazines(weaponManager);
+                }
             }
         }
     }

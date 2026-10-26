@@ -1,10 +1,7 @@
 package com.groupproject.game.hub;
 
 import com.groupproject.game.core.Camera;
-import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.enemy.TargetDummy;
-import com.groupproject.game.entity.projectile.ProjectileManager;
-import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -124,33 +121,45 @@ public class StrafingTargetDummy extends TargetDummy {
         setSpawnTelegraph(0.8); // Hiệu ứng triệu hồi 0.8 giây
     }
 
+    private static final BasicStroke STROKE_TRACKING = new BasicStroke(1.5f);
+    private static final Color COLOR_TRACKING = new Color(60, 220, 255, 180);
+
     @Override
     public void render(Graphics2D g, Camera camera) {
         if (!alive) return;
         super.render(g, camera);
 
-        // Vẽ thêm họa tiết nhận diện bia tập di động (Mũi tên chỉ hướng hoặc viền xanh neon tác chiến)
+        // Vẽ thêm họa tiết nhận diện bia tập di động (4 góc khung ngắm tracking)
         int screenCX = camera.worldToScreenX(x);
         int screenCY = camera.worldToScreenY(y);
         int half = (int) (size / 2.0);
 
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setColor(new Color(60, 220, 255, 180));
-        g2.setStroke(new BasicStroke(1.5f));
+        // Viewport Culling: Không vẽ nếu ngoài màn hình
+        if (screenCX + half < -50 || screenCX - half > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 50 ||
+            screenCY + half < -50 || screenCY - half > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 50) {
+            return;
+        }
+
+        java.awt.Stroke oldStroke = g.getStroke();
+        Color oldColor = g.getColor();
+
+        g.setColor(COLOR_TRACKING);
+        g.setStroke(STROKE_TRACKING);
         // 4 góc khung ngắm tracking
         int cornerLen = 5;
-        g2.drawLine(screenCX - half - 2, screenCY - half - 2, screenCX - half - 2 + cornerLen, screenCY - half - 2);
-        g2.drawLine(screenCX - half - 2, screenCY - half - 2, screenCX - half - 2, screenCY - half - 2 + cornerLen);
+        g.drawLine(screenCX - half - 2, screenCY - half - 2, screenCX - half - 2 + cornerLen, screenCY - half - 2);
+        g.drawLine(screenCX - half - 2, screenCY - half - 2, screenCX - half - 2, screenCY - half - 2 + cornerLen);
 
-        g2.drawLine(screenCX + half + 2, screenCY - half - 2, screenCX + half + 2 - cornerLen, screenCY - half - 2);
-        g2.drawLine(screenCX + half + 2, screenCY - half - 2, screenCX + half + 2, screenCY - half - 2 + cornerLen);
+        g.drawLine(screenCX + half + 2, screenCY - half - 2, screenCX + half + 2 - cornerLen, screenCY - half - 2);
+        g.drawLine(screenCX + half + 2, screenCY - half - 2, screenCX + half + 2, screenCY - half - 2 + cornerLen);
 
-        g2.drawLine(screenCX - half - 2, screenCY + half + 2, screenCX - half - 2 + cornerLen, screenCY + half + 2);
-        g2.drawLine(screenCX - half - 2, screenCY + half + 2, screenCX - half - 2, screenCY + half + 2 - cornerLen);
+        g.drawLine(screenCX - half - 2, screenCY + half + 2, screenCX - half - 2 + cornerLen, screenCY + half + 2);
+        g.drawLine(screenCX - half - 2, screenCY + half + 2, screenCX - half - 2, screenCY + half + 2 - cornerLen);
 
-        g2.drawLine(screenCX + half + 2, screenCY + half + 2, screenCX + half + 2 - cornerLen, screenCY + half + 2);
-        g2.drawLine(screenCX + half + 2, screenCY + half + 2, screenCX + half + 2, screenCY + half + 2 - cornerLen);
+        g.drawLine(screenCX + half + 2, screenCY + half + 2, screenCX + half + 2 - cornerLen, screenCY + half + 2);
+        g.drawLine(screenCX + half + 2, screenCY + half + 2, screenCX + half + 2, screenCY + half + 2 - cornerLen);
 
-        g2.dispose();
+        g.setStroke(oldStroke);
+        g.setColor(oldColor);
     }
 }

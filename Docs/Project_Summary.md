@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 26/10/2026
+Cập nhật mới nhất vào ngày: 27/10/2026
 
 # TỔNG QUAN DỰ ÁN: PROJECT DONTKNOW
 *An unplanned top-down roguelite shooter*
@@ -12,7 +12,7 @@ Cập nhật mới nhất vào ngày: 26/10/2026
   * Ngôn ngữ: **Java 21 LTS**
   * Đồ họa & GUI: **Java Swing + Graphics2D + Double Buffering (Anti-Tearing Engine)**
   * Quản lý gói: **Apache Maven**
-  * Kiểm thử: **JUnit 5 (Jupiter - 226 tests passing 100%)**
+  * Kiểm thử: **JUnit 5 (Jupiter - 242 tests passing 100%)**
   * Kiểm soát phiên bản: **Git**
 
 ---
@@ -31,12 +31,13 @@ Cập nhật mới nhất vào ngày: 26/10/2026
    * **Súng Bắn Tỉa (Sniper Rifle)**: Nhánh chuyên biệt hóa Sức Xuyên (Pierce Power) xuyên qua 2 đến 5 mục tiêu liên tiếp.
    * **Reroll súng 2 mục độc lập**: Reroll Sao Chỉ Số (bảo lưu chí mạng, khóa súng Lv.1) và Reroll Chí Mạng (bảo lưu cấu hình sao, áp dụng mọi cấp độ).
    * **Trường Bắn The Range**: Căn cứ tập huấn tự do với bia bắn hình nộm đo DPS thực tế và các trạm dịch vụ quân khí miễn phí.
-4. **Yếu tố Roguelite & Nâng cấp Nhân vật**:
+4. **Yếu tố Roguelite, Nâng cấp Nhân vật & Lưu Tiến Trình**:
    * Thu thập Credits từ quái vật và rương thử thách.
    * **Phòng Nâng Cấp Nhân Vật**: Cường hóa chỉ số sinh tồn vĩnh viễn (HP, Speed, Defense, Reload Speed, Regen).
    * Bản đồ phòng ngẫu nhiên 4 Stages (3 standard stages + 1 Titan Boss Arena).
    * Boss Xe Tăng Titan với vùng đỏ cảnh báo xung kích đâm húc, pháo phản lực siêu thanh và đợt lính tiếp viện vô tận.
-   * Permadeath: Chết là kết thúc ván đấu, lưu điểm vào Bảng xếp hạng (**Leaderboard**).
+   * **Lưu Tiến Trình Checkpoint & Resume Game**: Tự động lưu khi thoát ra Menu hoặc tắt game; hỗ trợ nút "★ TIẾP TỤC CHƠI" khôi phục nguyên vẹn Stage, Máu, Tiền, Buff, Súng ống và Đạn dự trữ; tự hủy save an toàn khi game cập nhật phiên bản mới (`GAME_BUILD_VERSION`); kèm hộp thoại cảnh báo bảo vệ người chơi khi bắt đầu ván mới.
+   * Permadeath: Chết hoặc hoàn thành chiến dịch sẽ xóa file save dở và ghi điểm vào Bảng xếp hạng (**Leaderboard**).
 
 ---
 
@@ -47,7 +48,8 @@ Dự án tuân thủ nghiêm ngặt nguyên lý **SOLID** và các mẫu thiết
 * **`entity/`**: Hệ thống thực thể kế thừa (`Player`, `Enemy`, `Projectile`).
 * **`physics/`**: Hitbox AABB / Circle và thuật toán phân vùng không gian **Spatial Grid** tối ưu va chạm $O(N)$.
 * **`input/`**: Bộ xử lý bàn phím và chuột không độ trễ.
-* **`storage/`**: Lưu trữ điểm số và tiến trình chơi ra file (I/O).
+* **`storage/`**: Lưu trữ điểm số Leaderboard và Quản lý Checkpoint Tiến trình Ván chơi (`RunSaveManager`, `RunProgressData`, `WeaponSaveData`) ra file (I/O) độc lập.
+
 
 ---
 

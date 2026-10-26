@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 20/10/2026
+Cập nhật mới nhất vào ngày: 27/10/2026
 
 # MenuState.java - Màn Hình Menu Chính (Main Menu Interface)
 
@@ -64,8 +64,12 @@ Giao diện hỗ trợ điều khiển song song bằng cả bàn phím (W/S/Mũ
 ## 5. Sửa đổi / Cập nhật
 * **02/10/2026**: Cập nhật lại tiêu đề thành `"Project DontKnow"` và phụ đề `"An unplanned top-down roguelite shooter"`.
 * **20/10/2026**: Bổ sung lựa chọn thứ 3 `CÀI ĐẶT PHÍM (SETTINGS)` cho phép người chơi tùy biến 16 phím tác chiến ngay tại Menu chính trước khi bước vào trận.
+* **27/10/2026**: Bổ sung hệ thống phát hiện Checkpoint lưu tiến trình ván đấu:
+  - Khi có file save hợp lệ: Tự động hiển thị nút `★ TIẾP TỤC CHƠI (STAGE X)` ở vị trí đầu tiên màu vàng kim.
+  - Khi người chơi chọn `BẮT ĐẦU CHƠI MỚI` lúc đang có save dở: Hiển thị Hộp thoại Cảnh báo Modal (`showNewGameConfirmDialog`) hỏi *"Bạn có chắc không? Tiến trình lượt chơi trước đó sẽ bị xóa!"* với 2 nút `[HỦY BỎ]` (mặc định) và `[XÁC NHẬN XÓA & CHƠI MỚI]`.
 
 ---
 
 ## 6. Lỗi đã sửa
 Chưa ghi nhận lỗi.
+

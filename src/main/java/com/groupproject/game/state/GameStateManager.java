@@ -101,6 +101,22 @@ public class GameStateManager {
     }
 
     /**
+     * Chuyển cảnh từ màn hình đen sẵn có sang State mới (Fade in from black).
+     * Áp dụng sau chuỗi cắt cảnh tử trận khi màn hình đã tối hoàn toàn.
+     */
+    public void transitionFromBlack(StateType type) {
+        if (screenTransition != null && screenTransition.isActive()) {
+            setState(type);
+            return;
+        }
+        if (screenTransition != null) {
+            screenTransition.startFadeInFromBlack(0.06, 0.40, () -> setState(type), null, null, null);
+        } else {
+            setState(type);
+        }
+    }
+
+    /**
      * Retrieves the instance of a registered state without changing the current active state.
      */
     public GameState getState(StateType type) {

@@ -50,27 +50,7 @@ public class CombatKnife extends Weapon {
 
     @Override
     public void render(Graphics2D g, Camera camera, double originX, double originY, double aimAngle) {
-        int screenPX = camera.worldToScreenX(originX);
-        int screenPY = camera.worldToScreenY(originY);
-
-        int handleLen = 14;
-        int bladeLen = 22;
-
-        int hx = (int) (screenPX + Math.cos(aimAngle) * handleLen);
-        int hy = (int) (screenPY + Math.sin(aimAngle) * handleLen);
-        int bx = (int) (screenPX + Math.cos(aimAngle) * bladeLen);
-        int by = (int) (screenPY + Math.sin(aimAngle) * bladeLen);
-
-        // Draw handle (grip)
-        g.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
-        g.setColor(new Color(60, 50, 40));
-        g.drawLine(screenPX, screenPY, hx, hy);
-
-        // Draw tactical steel blade
-        g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER));
-        g.setColor(new Color(220, 230, 245));
-        g.drawLine(hx, hy, bx, by);
-
-        g.setStroke(new BasicStroke(1.0f));
+        // WHY: Khi nhân vật cầm dao, sprite PlayerMelee.png đã tích hợp sẵn tư thế cầm dao cận chiến hoàn chỉnh.
+        // Loại bỏ hoàn toàn thanh que vector vẽ đè ở giữa hai tay để hình ảnh nhân vật tự nhiên, đẹp mắt và chuẩn pixel-art.
     }
 }

@@ -90,6 +90,8 @@ public class PlayingState extends GameState {
     private boolean isExtracting = false;
     private double extractTransitionTimer = 0.0;
     private static final double EXTRACT_DURATION = 4.0; // 4.0 seconds black screen before auto return
+    // Cờ đánh dấu chế độ chơi: true nếu là Boss Fight riêng biệt từ Menu; false nếu là Campaign vượt ải
+    private boolean isStandaloneBossFight = false;
 
     // Hòm tiếp tế vũ khí xuất hiện tại các phòng chiến đấu đã dọn sạch
     private final List<WeaponChest> weaponChests = new CopyOnWriteArrayList<>();
@@ -184,9 +186,13 @@ public class PlayingState extends GameState {
     @Override
     public void init() {
         if (spawnDirectlyInBossRoom) {
+            this.isStandaloneBossFight = true;
+            spawnDirectlyInBossRoom = false; // Reset cờ tĩnh sau khi đã khởi tạo
             loadBossStageDirectly();
             return;
         }
+
+        this.isStandaloneBossFight = false;
 
         this.currentStage = 1;
         this.playerCredits = 0;
@@ -247,6 +253,7 @@ public class PlayingState extends GameState {
      * Cung cấp sẵn trang bị vũ khí hỏa lực cao (AR Cấp 3, Shotgun Cấp 3, đầy ắp đạn) và 500 Credits.
      */
     public void loadBossStageDirectly() {
+        this.isStandaloneBossFight = true;
         this.currentStage = BOSS_STAGE;
         this.playerCredits = 500;
         dungeonMap.generateStage(BOSS_STAGE);
@@ -377,6 +384,15 @@ public class PlayingState extends GameState {
             showBanner("STAGE 4: BOSS ARENA", new Color(255, 70, 70), 2.0);
         } else {
             showBanner("STAGE " + currentStage, new Color(60, 220, 160), 2.0);
+        }
+
+        // Nếu chuyển sang Stage Boss: Tiền sản sinh sẵn chiếc xe tăng BossTank trong phòng Boss
+        // để xe tăng hiện diện sẵn sàng ngay từ đầu, không dùng portal spawn
+        if (currentStage == BOSS_STAGE && !dungeonMap.getCombatRooms().isEmpty()) {
+            Room bossRoom = dungeonMap.getCombatRooms().get(0);
+            double cx = bossRoom.getCenterWorldX();
+            double cy = bossRoom.getCenterWorldY();
+            spawnBossSafely(bossRoom, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
         }
     }
 
@@ -747,7 +763,7 @@ public class PlayingState extends GameState {
     private void spawnBossSafely(Room arena, double preferredX, double preferredY, int health, double size, String name) {
         Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, size, combatTargets);
         BossTank boss = new BossTank(safePos.x, safePos.y, health, size, name);
-        boss.setSpawnTelegraph(0.50); // 0.50s xuất hiện nhanh của Boss
+        boss.setSpawnTelegraph(0.0); // Không hiển thị portal telegraph, hiện diện trực tiếp cỗ xe tăng bọc thép
         this.bossDummy = boss;
         combatTargets.add(boss);
     }
@@ -758,8 +774,6 @@ public class PlayingState extends GameState {
      * @param phase Số thứ tự phase (1 hoặc 2).
      */
     private void spawnTargetsForRoomPhase(Room arena, int phase) {
-        combatTargets.clear();
-        this.bossDummy = null;
         if (arena == null) return;
 
         double cx = arena.getCenterWorldX();
@@ -768,7 +782,14 @@ public class PlayingState extends GameState {
         if (currentStage == BOSS_STAGE) {
             // Stage Boss (Stage 4) Grand Boss Arena: Xe tăng chiến đấu hạng nặng (size 96px, 1250 HP) và 8 AI hộ tống
             // Đội hình tinh nhuệ đa dạng: 3 Cận chiến + 3 Súng lục + 1 Combat Medic hồi máu + 1 Heavy Grenadier ép góc
-            spawnBossSafely(arena, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+            BossTank existingBoss = (this.bossDummy instanceof BossTank bt) ? bt : null;
+            combatTargets.clear();
+            if (existingBoss != null && existingBoss.isAlive()) {
+                this.bossDummy = existingBoss;
+                combatTargets.add(existingBoss);
+            } else {
+                spawnBossSafely(arena, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+            }
             spawnMeleeEnemySafely(arena, cx + 220, cy, 80);
             spawnMeleeEnemySafely(arena, cx - 220, cy, 80);
             spawnRangedPistolEnemySafely(arena, cx, cy + 180, 60);
@@ -780,6 +801,8 @@ public class PlayingState extends GameState {
             this.bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
             this.bossMinionWaveCount = 0;
         } else {
+            combatTargets.clear();
+            this.bossDummy = null;
             if (arena.getTotalPhases() <= 1) {
                 // Phòng 1 Phase: Phân bổ kẻ địch theo từng Stage
                 spawnMeleeEnemySafely(arena, cx - 120, cy - 60, 50);
@@ -968,6 +991,9 @@ public class PlayingState extends GameState {
                 isPaused = false;
             } else if (action == PauseMenuUI.PauseAction.EXIT_TO_MENU) {
                 isPaused = false;
+                if (!isStandaloneBossFight && !player.isDead() && !isExtracting) {
+                    com.groupproject.game.storage.RunSaveManager.saveRun(this);
+                }
                 gsm.setState(GameStateManager.StateType.MENU);
             }
             return; // Đóng băng toàn bộ hoạt động chiến trường khi đang tạm dừng
@@ -1000,16 +1026,17 @@ public class PlayingState extends GameState {
                 bannerTimer -= deltaTime;
             }
 
-            // Khi hoạt cảnh trượt đã kết thúc (sau 2.0s):
+            // Khi hoạt cảnh trượt tử trận hoàn tất (màn hình đã đen hoàn toàn):
+            // Tự động kích hoạt transition mở sáng dần từ bóng tối vào The Range (hoặc Menu nếu là Boss Fight riêng)
             if (player.isDeathSequenceComplete()) {
-                if (keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || keyH.isKeyPressedOnce(KeyEvent.VK_R)) {
-                    init(); // Tái xuất phát run mới từ đầu
-                } else if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
-                    gsm.setState(GameStateManager.StateType.MENU);
+                com.groupproject.game.storage.RunSaveManager.deleteSave();
+                if (isStandaloneBossFight) {
+                    gsm.transitionFromBlack(GameStateManager.StateType.MENU);
+                } else {
+                    gsm.transitionFromBlack(GameStateManager.StateType.THE_RANGE);
                 }
+                return;
             }
-            // Trong 2.0s đầu lâu đang trượt: KHÔNG nhận phím nào (ENTER/SPACE/R/ESC) để người chơi
-            // xem trọn hoạt cảnh tử trận; chỉ sau khi hoàn tất mới cho Chơi lại / Thoát ra menu.
             return;
         }
 
@@ -1021,17 +1048,25 @@ public class PlayingState extends GameState {
         }
 
         // --- Handle Extraction Victory Transition Sequence ---
-        // WHY: Freezes all combat updates and presents the black debriefing screen
+        // WHY: Freezes all combat updates and presents the victory debriefing screen
         if (isExtracting) {
             extractTransitionTimer += deltaTime;
 
-            // Allow skipping black screen by pressing ENTER, SPACE, ESC, or F
-            if (extractTransitionTimer >= EXTRACT_DURATION
-                    || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
+            // Bấm nút bất kỳ (ENTER, SPACE, ESC, F, ...) hoặc Click chuột để tiếp tục
+            boolean userConfirmed = keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
                     || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)
                     || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)
-                    || KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
-                gsm.setState(GameStateManager.StateType.MENU);
+                    || KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)
+                    || (mouseH != null && mouseH.isLeftClickedOnce())
+                    || extractTransitionTimer >= 180.0;
+
+            if (userConfirmed) {
+                com.groupproject.game.storage.RunSaveManager.deleteSave();
+                if (isStandaloneBossFight) {
+                    gsm.transitionTo(GameStateManager.StateType.MENU);
+                } else {
+                    gsm.transitionTo(GameStateManager.StateType.THE_RANGE, "CĂN CỨ TIỀN PHƯƠNG", "THE RANGE");
+                }
             }
             return;
         }
@@ -1141,11 +1176,8 @@ public class PlayingState extends GameState {
                     spawnTargetsForRoomPhase(cr, 1);
                     tryStartBossIntro(); // Chỉ có tác dụng ở Stage Boss
 
-                    int idx = dungeonMap.getCombatRooms().indexOf(cr) + 1;
-                    int total = dungeonMap.getCombatRooms().size();
                     if (currentStage != BOSS_STAGE) {
-                        showBanner(String.format("PHÒNG CHIẾN ĐẤU %d/%d", idx, total),
-                                new Color(255, 75, 75), 1.5);
+                        showBanner("FIGHT!", new Color(255, 65, 65), 1.5);
                     }
                     break;
                 }
@@ -1278,17 +1310,8 @@ public class PlayingState extends GameState {
                 if (currentStage == BOSS_STAGE) {
                     // Stage Boss (Stage 4) Grand Boss Arena: Kích hoạt bệ sơ tán ngay tại tâm phòng combat!
                     dungeonMap.spawnExtractZoneInRoom(activeCombatRoom);
-                    showBanner("CHIẾN THẮNG! BỆ SƠ TÁN ĐÃ MỞ (+" + clearReward + " C)",
-                            new Color(60, 240, 140), 2.5);
-                } else {
-                    if (clearedCount >= totalCount) {
-                        showBanner("CỬA SƠ TÁN ĐÃ MỞ (+" + clearReward + " C)",
-                                new Color(60, 240, 140), 2.5);
-                    } else {
-                        showBanner(String.format("PHÒNG %d/%d HOÀN THÀNH (+%d C)", clearedCount, totalCount, clearReward),
-                                new Color(60, 220, 120), 2.0);
-                    }
                 }
+                showBanner("CLEAR", new Color(60, 235, 130), 2.0);
 
                 activeCombatRoom = null;
             }
@@ -1536,10 +1559,13 @@ public class PlayingState extends GameState {
         }
 
         // 3. Update targets AI (locomotion, kiting, melee attacks, pistol bursts)
-        double playerCenterX = player.getCenterX();
-        double playerCenterY = player.getCenterY();
-        for (TargetDummy dummy : combatTargets) {
-            dummy.updateAI(deltaTime, playerCenterX, playerCenterY, player.getSize(), dungeonMap, projectileManager, this);
+        // Chỉ cập nhật AI di chuyển và tấn công của kẻ địch khi phòng combat đang kích hoạt
+        if (activeCombatRoom != null) {
+            double playerCenterX = player.getCenterX();
+            double playerCenterY = player.getCenterY();
+            for (TargetDummy dummy : combatTargets) {
+                dummy.updateAI(deltaTime, playerCenterX, playerCenterY, player.getSize(), dungeonMap, projectileManager, this);
+            }
         }
         combatTargets.removeIf(d -> !d.isAlive());
     }
@@ -1699,9 +1725,9 @@ public class PlayingState extends GameState {
             playingHUD.renderExtractPrompt(g, screenPX, screenPY, currentStage);
         }
 
-        // 10. Extraction Victory Black Screen Overlay (Report Stage 0-1 Completed)
+        // 10. Extraction Victory Black Screen Overlay
         if (isExtracting) {
-            playingHUD.renderExtractionVictoryScreen(g);
+            playingHUD.renderExtractionVictoryScreen(g, isStandaloneBossFight);
         }
 
         // 10.4 Cảnh báo viền đỏ nguy hiểm khi máu thấp (<= 30%)
@@ -1709,16 +1735,9 @@ public class PlayingState extends GameState {
             playingHUD.renderLowHealthVignette(g);
         }
 
-        // 10.6 Màn hình Game Over khi tử trận
+        // 10.6 Màn hình khi tử trận (Tự động hiển thị hiệu ứng chuyển tiếp về The Range)
         if (player.isDead()) {
-            if (player.isDeathSequenceComplete()) {
-                long cleared = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
-                playingHUD.renderGameOverScreen(g, currentStage, MAX_STAGES, playerCredits, cleared, weaponManager.getWeaponSlots().size());
-            } else {
-                // Trong thời gian 2.0s đầu lâu đang trượt:
-                // Phủ hiệu ứng chuyển cảnh điện ảnh mờ tối và viền đỏ bi tráng
-                playingHUD.renderDeathVignetteTransition(g, player.getDeathSequenceProgress());
-            }
+            playingHUD.renderDeathVignetteTransition(g, player.getDeathSequenceProgress());
         }
 
         // 11. Giao diện Balo chiến thuật (TAB Overlay)
@@ -1753,6 +1772,15 @@ public class PlayingState extends GameState {
      * Vẽ đường ngắm nét đứt mờ nối từ vị trí người chơi đến con trỏ chuột.
      * Có thể bật/tắt trong Cài đặt (GameConfig.showAimGuideline).
      */
+    private static final float[] AIM_DASH_PATTERN = { 6.0f, 6.0f };
+    private static final java.awt.BasicStroke AIM_GUIDELINE_STROKE = new java.awt.BasicStroke(1.2f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND, 1.0f, AIM_DASH_PATTERN, 0.0f);
+    private static final java.awt.BasicStroke AIM_CIRCLE_STROKE = new java.awt.BasicStroke(1.0f);
+    private static final Color AIM_LINE_COLOR = new Color(175, 230, 255, 65);
+    private static final Color AIM_CIRCLE_COLOR = new Color(175, 230, 255, 80);
+
+    /**
+     * Đường ngắm nét đứt mờ nối từ người chơi đến con trỏ chuột.
+     */
     private void renderAimGuideline(Graphics2D g) {
         if (!GameConfig.showAimGuideline || cachedMouseHandler == null || player == null || player.isDead()) {
             return;
@@ -1776,8 +1804,8 @@ public class PlayingState extends GameState {
             return;
         }
 
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        java.awt.Stroke oldStroke = g.getStroke();
+        Color oldColor = g.getColor();
 
         // Điểm bắt đầu ngay đầu nòng súng (~24px)
         double startOffset = 24.0;
@@ -1785,19 +1813,17 @@ public class PlayingState extends GameState {
         int startY = (int) (screenPY + (dy / dist) * startOffset);
 
         // Đường kẻ nét đứt mờ (Faint dashed guideline)
-        float[] dashPattern = { 6.0f, 6.0f };
-        g2.setStroke(new java.awt.BasicStroke(1.2f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND, 1.0f, dashPattern, 0.0f));
-
-        // Màu trắng xanh lơ nhạt mờ màng thanh thoát (alpha 65/255)
-        g2.setColor(new Color(175, 230, 255, 65));
-        g2.drawLine(startX, startY, mouseSX, mouseSY);
+        g.setStroke(AIM_GUIDELINE_STROKE);
+        g.setColor(AIM_LINE_COLOR);
+        g.drawLine(startX, startY, mouseSX, mouseSY);
 
         // Vòng tròn chấm tâm ngắm nhỏ mờ nhạt quanh con trỏ chuột
-        g2.setStroke(new java.awt.BasicStroke(1.0f));
-        g2.setColor(new Color(175, 230, 255, 80));
-        g2.drawOval(mouseSX - 3, mouseSY - 3, 6, 6);
+        g.setStroke(AIM_CIRCLE_STROKE);
+        g.setColor(AIM_CIRCLE_COLOR);
+        g.drawOval(mouseSX - 3, mouseSY - 3, 6, 6);
 
-        g2.dispose();
+        g.setStroke(oldStroke);
+        g.setColor(oldColor);
     }
 
     public boolean isStandingOnExtract() {
@@ -1806,6 +1832,10 @@ public class PlayingState extends GameState {
 
     public boolean isExtracting() {
         return isExtracting;
+    }
+
+    public void setIsExtracting(boolean extracting) {
+        this.isExtracting = extracting;
     }
 
     public void setPlayerPosition(double x, double y) {
@@ -2148,5 +2178,126 @@ public class PlayingState extends GameState {
 
     public MinimapHUD getMinimapHUD() {
         return minimapHUD;
+    }
+
+    public boolean isStandaloneBossFight() {
+        return isStandaloneBossFight;
+    }
+
+    public void setStandaloneBossFight(boolean standaloneBossFight) {
+        this.isStandaloneBossFight = standaloneBossFight;
+    }
+
+    /**
+     * Xuất toàn bộ dữ liệu trạng thái tiến trình của ván đấu hiện tại phục vụ lưu checkpoint.
+     */
+    public com.groupproject.game.storage.RunProgressData exportSaveData() {
+        if (isStandaloneBossFight || player.isDead() || isExtracting) {
+            return null;
+        }
+
+        com.groupproject.game.storage.RunProgressData data = new com.groupproject.game.storage.RunProgressData();
+        data.setGameVersion(GameConfig.GAME_BUILD_VERSION);
+        data.setTimestamp(System.currentTimeMillis());
+        data.setCurrentStage(this.currentStage);
+        data.setPlayerHealth(player.getCurrentHealth());
+        data.setPlayerMaxHealth(player.getMaxHealth());
+        data.setPlayerCredits(this.playerCredits);
+        data.setActiveWeaponSlot(weaponManager.getActiveWeapon() != null ? weaponManager.getActiveWeapon().getSlotIndex() : 1);
+
+        // Khôi phục Buff
+        data.setBuffLevels(player.getBuffManager().exportBuffLevels());
+
+        // Khôi phục Đạn dự trữ
+        data.setAmmoReserves(weaponManager.getAmmoInventory().exportAmmoReserves());
+
+        // Danh sách vũ khí
+        java.util.List<com.groupproject.game.storage.WeaponSaveData> wList = new java.util.ArrayList<>();
+        for (Weapon w : weaponManager.getAllWeapons()) {
+            if (w != null) {
+                wList.add(new com.groupproject.game.storage.WeaponSaveData(
+                        w.getSlotIndex(),
+                        w.getRawName(),
+                        w.getLevel(),
+                        w.getDamageStars(),
+                        w.getFireRateStars(),
+                        w.getAccuracyStars(),
+                        w.getCritChance(),
+                        w.getCritMultiplier(),
+                        w.getCurrentAmmo(),
+                        w.isSTier()
+                ));
+            }
+        }
+        data.setWeapons(wList);
+
+        return data;
+    }
+
+    /**
+     * Khôi phục ván đấu dở dang từ đối tượng dữ liệu lưu checkpoint.
+     */
+    public void resumeFromSave(com.groupproject.game.storage.RunProgressData data) {
+        if (data == null) return;
+
+        this.isStandaloneBossFight = false;
+        this.currentStage = Math.max(1, data.getCurrentStage());
+        this.playerCredits = data.getPlayerCredits();
+
+        // 1. Khôi phục sinh lực
+        player.setMaxHealth(data.getPlayerMaxHealth());
+        player.setCurrentHealth(data.getPlayerHealth());
+        player.setDead(false);
+
+        // 2. Khôi phục Buff
+        player.getBuffManager().restoreBuffLevels(data.getBuffLevels(), player, weaponManager);
+
+        // 3. Khôi phục Đạn dự trữ & Vũ khí
+        weaponManager.getAmmoInventory().restoreAmmoReserves(data.getAmmoReserves());
+        weaponManager.restoreFromSave(data.getWeapons(), data.getActiveWeaponSlot());
+        weaponManager.bindPlayerBuffManager(player.getBuffManager());
+
+        // 4. Khởi tạo bản đồ Stage tương ứng
+        bossIntroTriggered = false;
+        dungeonMap.generateStage(currentStage);
+
+        Room spawnRoom = dungeonMap.getSpawnRoom();
+        if (spawnRoom != null) {
+            player.setPosition(spawnRoom.getCenterWorldX() - (player.getSize() / 2.0),
+                               spawnRoom.getCenterWorldY() - (player.getSize() / 2.0));
+        } else {
+            player.setPosition(GameConfig.WORLD_WIDTH / 2.0, GameConfig.WORLD_HEIGHT / 2.0);
+        }
+
+        projectileManager.clear();
+        combatTargets.clear();
+        bossDummy = null;
+        activeExplosions.clear();
+        activeCritVisuals.clear();
+        activeCorpses.clear();
+        weaponChests.clear();
+        ammoPickups.clear();
+        healthPickups.clear();
+        activeCombatRoom = null;
+        isStandingOnExtract = false;
+        isExtracting = false;
+        extractTransitionTimer = 0.0;
+        player.setInvulnerableTimer(0.0);
+        screenShakeTimer = 0.0;
+
+        populateShopItems();
+        populateResetStatStation();
+        populateUpgradeStations();
+
+        // Nếu là Boss Stage (Stage 4), sinh sẵn chiếc xe tăng BossTank trong phòng
+        if (currentStage == BOSS_STAGE && !dungeonMap.getCombatRooms().isEmpty()) {
+            Room bossRoom = dungeonMap.getCombatRooms().get(0);
+            double cx = bossRoom.getCenterWorldX();
+            double cy = bossRoom.getCenterWorldY();
+            spawnBossSafely(bossRoom, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+        }
+
+        camera.update(player.getCenterX(), player.getCenterY());
+        showBanner("TIẾP TỤC CHIẾN DỊCH — STAGE " + currentStage, new Color(255, 215, 60), 2.5);
     }
 }

@@ -161,7 +161,6 @@ public class CharacterBuffSystemTest {
         SMG smg = new SMG();
         smg.setSlotIndex(2);
         Pistol pistol = new Pistol();
-        Shotgun shotgun = new Shotgun();
 
         // Ban đầu
         assertEquals(30, ar.getMagazineSize());

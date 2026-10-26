@@ -279,8 +279,10 @@ public class CombatDoorTest {
         keyH2.update();
 
         state.update(0.016, keyH2, mouseH);
-        assertEquals(com.groupproject.game.state.GameStateManager.StateType.MENU,
-                gsm.getCurrentStateType(), "Victory debriefing must return player to Main Menu");
+        assertTrue(gsm.getScreenTransition().isActive(), "Transition to The Range must be triggered");
+        gsm.getScreenTransition().update(1.0);
+        assertEquals(com.groupproject.game.state.GameStateManager.StateType.THE_RANGE,
+                gsm.getCurrentStateType(), "Victory debriefing in Campaign must return player to The Range");
     }
 
     @Test

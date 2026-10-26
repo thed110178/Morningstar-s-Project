@@ -2,9 +2,6 @@ package com.groupproject.game.entity.shop;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.entity.item.WeaponChest;
-import com.groupproject.game.entity.weapon.AssaultRifle;
-import com.groupproject.game.entity.weapon.SMG;
-import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
 import com.groupproject.game.state.PlayingState;
@@ -214,6 +211,12 @@ public class ShopItem {
 
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
+
+        // Viewport Culling: Bỏ qua nếu quầy hàng nằm ngoài tầm nhìn camera
+        if (screenX < -60 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 60 ||
+            screenY < -60 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 60) {
+            return;
+        }
 
         // Hiệu ứng nhấp nhô lơ lửng
         int bobOffset = (int) (Math.sin(bobbingTimer) * 4.0);

@@ -1,9 +1,6 @@
 package com.groupproject.game.entity.item;
 
 import com.groupproject.game.core.Camera;
-import com.groupproject.game.entity.weapon.AssaultRifle;
-import com.groupproject.game.entity.weapon.SMG;
-import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
@@ -225,6 +222,12 @@ public class WeaponChest {
     public void render(Graphics2D g, Camera camera, boolean showPrompt) {
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
+
+        // Viewport Culling: Bỏ qua nếu hòm tiếp tế nằm ngoài tầm nhìn camera
+        if (screenX < -50 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 50 ||
+            screenY < -50 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 50) {
+            return;
+        }
 
         // Hiệu ứng nhấp nhô nhẹ lơ lửng của vật phẩm thưởng
         double floatOffset = Math.sin(bobbingTimer) * 4.0;

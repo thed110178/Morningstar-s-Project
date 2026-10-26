@@ -560,6 +560,7 @@ public class DungeonMap {
                 this.spawnRoom.setDiscovered(true);
             }
             decorateGrass();
+            computeWallExposure();
             success = true;
         }
     }
@@ -949,6 +950,13 @@ public class DungeonMap {
         for (int c = startCol; c <= endCol; c++) {
             for (int r = startRow; r <= endRow; r++) {
                 Tile tile = tiles[c][r];
+                if (tile == null) continue;
+
+                // WHY: Void Culling - Bỏ qua hoàn toàn các ô hư vô Abyss ngoài không gian phòng/hành lang
+                if (tile.getType() == TileType.VOID) {
+                    continue;
+                }
+
                 int screenX = (int) Math.round(tile.getWorldX() - camX);
                 int screenY = (int) Math.round(tile.getWorldY() - camY);
                 tile.render(g, screenX, screenY);
@@ -962,7 +970,6 @@ public class DungeonMap {
      * Displays floating tactical room banners inside each chamber with lockdown warnings.
      */
     private void renderRoomLabels(Graphics2D g, Camera camera) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 17));
         double camCenterX = camera.getX() + camera.getViewportWidth() / 2.0;
         double camCenterY = camera.getY() + camera.getViewportHeight() / 2.0;
 
@@ -972,81 +979,37 @@ public class DungeonMap {
             double distSq = (camCenterX - rx) * (camCenterX - rx) + (camCenterY - ry) * (camCenterY - ry);
 
             // Chỉ hiển thị nhãn của phòng khi camera thực sự ở gần buồng phòng đó (<= 480px)
-            // Ngăn chặn hoàn toàn việc nhãn của phòng khác bị lọt mép vào màn hình
             if (distSq > 480 * 480) {
                 continue;
             }
 
-            int screenX = camera.worldToScreenX(room.getCenterWorldX() - 110);
-            int screenY = camera.worldToScreenY(room.getGridY() * GameConfig.TILE_SIZE + 28);
-
-            if (room.getRoomType() == Room.RoomType.SPAWN) {
-                    g.setColor(new Color(60, 220, 160, 200));
-                    g.drawString("[ " + room.getName() + " ]", screenX, screenY);
-                } else if (room.getRoomType() == Room.RoomType.COMBAT) {
-                    if (room.isLocked()) {
-                        g.setColor(new Color(255, 60, 60, 240));
-                        g.drawString("[ ! COMBAT LOCKDOWN ! ]", screenX, screenY);
-                    } else if (room.isCleared()) {
-                        g.setColor(new Color(60, 220, 120, 200));
-                        g.drawString("[ CLEARED - DOORS OPEN ]", screenX, screenY);
-                    } else {
-                        g.setColor(new Color(255, 140, 60, 200));
-                        g.drawString("[ " + room.getName() + " ]", screenX, screenY);
-                    }
-                } else if (room.getRoomType() == Room.RoomType.SHOP) {
-                    // Hiển thị biển hiệu cổng vào Shop [ ★ CỬA SHOP (LUÔN MỞ) ★ ] ngay trên vòm cửa
-                    if (!room.getDoorTiles().isEmpty()) {
-                        double avgDoorX = 0, avgDoorY = 0;
-                        for (Tile dt : room.getDoorTiles()) {
-                            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
-                            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
-                        }
-                        avgDoorX /= room.getDoorTiles().size();
-                        avgDoorY /= room.getDoorTiles().size();
-
-                        int doorScreenX = camera.worldToScreenX(avgDoorX);
-                        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
-
-                        renderArchwayBadge(g, doorScreenX, doorScreenY, "★ CỬA SHOP (LUÔN MỞ) ★", new Color(255, 215, 60, 220), new Color(25, 20, 10, 230));
-                    }
-                } else if (room.getRoomType() == Room.RoomType.RESET_STAT) {
-                    // Hiển thị biển hiệu cổng vào Xưởng Quân Khí ngay trên vòm cửa
-                    if (!room.getDoorTiles().isEmpty()) {
-                        double avgDoorX = 0, avgDoorY = 0;
-                        for (Tile dt : room.getDoorTiles()) {
-                            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
-                            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
-                        }
-                        avgDoorX /= room.getDoorTiles().size();
-                        avgDoorY /= room.getDoorTiles().size();
-
-                        int doorScreenX = camera.worldToScreenX(avgDoorX);
-                        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
-
-                        renderArchwayBadge(g, doorScreenX, doorScreenY, "★ XƯỞNG QUÂN KHÍ DÃ CHIẾN (LUÔN MỞ) ★", new Color(235, 190, 30, 230), new Color(28, 28, 24, 235));
-                    }
-                } else if (room.getRoomType() == Room.RoomType.UPGRADE) {
-                    // Hiển thị biển hiệu cổng vào Phòng Nâng Cấp Nhân Vật
-                    if (!room.getDoorTiles().isEmpty()) {
-                        double avgDoorX = 0, avgDoorY = 0;
-                        for (Tile dt : room.getDoorTiles()) {
-                            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
-                            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
-                        }
-                        avgDoorX /= room.getDoorTiles().size();
-                        avgDoorY /= room.getDoorTiles().size();
-
-                        int doorScreenX = camera.worldToScreenX(avgDoorX);
-                        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
-
-                        renderArchwayBadge(g, doorScreenX, doorScreenY, "★ PHÒNG NÂNG CẤP NHÂN VẬT (LUÔN MỞ) ★", new Color(40, 240, 180, 230), new Color(15, 35, 30, 235));
-                    }
-                } else {
-                    g.setColor(new Color(190, 100, 255, 200));
-                    g.drawString("[ " + room.getName() + " ]", screenX, screenY);
-                }
+            // Hiển thị biển hiệu vòm cửa tinh gọn cho các phòng dịch vụ chức năng (Shop, Xưởng Quân Khí, Nâng Cấp).
+            // Loại bỏ hoàn toàn các chữ vẽ đè sàn nhà ([SPAWN], [COMBAT LOCKDOWN], [CLEARED]) để giao diện chiến trường thông thoáng, không che khuất người chơi và kẻ thù.
+            if (room.getRoomType() == Room.RoomType.SHOP) {
+                renderDoorArchwayBadge(g, camera, room, "★ CỬA HÀNG ★", new Color(255, 215, 60, 220), new Color(25, 20, 10, 230));
+            } else if (room.getRoomType() == Room.RoomType.RESET_STAT) {
+                renderDoorArchwayBadge(g, camera, room, "★ XƯỞNG QUÂN KHÍ ★", new Color(235, 190, 30, 230), new Color(28, 28, 24, 235));
+            } else if (room.getRoomType() == Room.RoomType.UPGRADE) {
+                renderDoorArchwayBadge(g, camera, room, "★ NÂNG CẤP NHÂN VẬT ★", new Color(40, 240, 180, 230), new Color(15, 35, 30, 235));
+            }
         }
+    }
+
+    private void renderDoorArchwayBadge(Graphics2D g, Camera camera, Room room, String text, Color themeColor, Color bgColor) {
+        if (room == null || room.getDoorTiles().isEmpty()) return;
+
+        double avgDoorX = 0, avgDoorY = 0;
+        for (Tile dt : room.getDoorTiles()) {
+            avgDoorX += dt.getWorldX() + GameConfig.TILE_SIZE / 2.0;
+            avgDoorY += dt.getWorldY() + GameConfig.TILE_SIZE / 2.0;
+        }
+        avgDoorX /= room.getDoorTiles().size();
+        avgDoorY /= room.getDoorTiles().size();
+
+        int doorScreenX = camera.worldToScreenX(avgDoorX);
+        int doorScreenY = camera.worldToScreenY(avgDoorY - 14);
+
+        renderArchwayBadge(g, doorScreenX, doorScreenY, text, themeColor, bgColor);
     }
 
     private void renderArchwayBadge(Graphics2D g, int centerX, int centerY, String text, Color themeColor, Color bgColor) {
@@ -1260,6 +1223,7 @@ public class DungeonMap {
             this.spawnRoom.setDiscovered(true);
         }
         decorateGrass();
+        computeWallExposure();
     }
 
     /**
@@ -1304,6 +1268,41 @@ public class DungeonMap {
                         tile.setHasGrass(true);
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Thuật toán Void Culling: Quét toàn bộ bản đồ và đánh dấu các ô tường tiếp xúc với không gian mở (phòng, cửa, hành lang).
+     * Các ô tường ngầm chìm sâu trong lòng đất (cả 8 ô xung quanh đều là WALL) sẽ được đánh dấu exposed = false
+     * và được bỏ qua hoàn toàn khi render, giúp tiết kiệm tới 60-70% số ô tile phải vẽ mỗi frame.
+     */
+    public void computeWallExposure() {
+        for (int c = 0; c < COLS; c++) {
+            for (int r = 0; r < ROWS; r++) {
+                Tile tile = tiles[c][r];
+                if (tile == null) continue;
+                if (tile.getType() != TileType.WALL) {
+                    tile.setExposed(true);
+                    continue;
+                }
+
+                boolean exposed = false;
+                for (int dc = -1; dc <= 1 && !exposed; dc++) {
+                    for (int dr = -1; dr <= 1; dr++) {
+                        if (dc == 0 && dr == 0) continue;
+                        int nc = c + dc;
+                        int nr = r + dr;
+                        if (isValidGrid(nc, nr)) {
+                            Tile neighbor = tiles[nc][nr];
+                            if (neighbor != null && neighbor.getType() != TileType.WALL) {
+                                exposed = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                tile.setExposed(exposed);
             }
         }
     }

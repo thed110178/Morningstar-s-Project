@@ -304,4 +304,164 @@ public class PlayerHealthTest {
         state.getPlayer().completeDeathSequence();
         assertTrue(state.getPlayer().isDeathSequenceComplete(), "completeDeathSequence must finish transition immediately");
     }
+
+    @Test
+    @DisplayName("Verify operative death automatically respawns at The Range after death sequence without any keypress")
+    void testPlayerDeathAutoRespawnToTheRangeWithoutKeypress() {
+        com.groupproject.game.hub.HubRangeState hubRangeState = new com.groupproject.game.hub.HubRangeState(gsm);
+        gsm.registerState(GameStateManager.StateType.THE_RANGE, hubRangeState);
+        gsm.registerState(GameStateManager.StateType.PLAYING, state);
+        gsm.setState(GameStateManager.StateType.PLAYING);
+
+        KeyboardHandler keyH = new KeyboardHandler();
+        MouseHandler mouseH = new MouseHandler();
+
+        // 1. Gây sát thương chí mạng tiêu diệt người chơi
+        state.setInvulnerableTimer(0.0);
+        state.damagePlayer(150);
+        assertTrue(state.isPlayerDead());
+        assertEquals(GameStateManager.StateType.PLAYING, gsm.getCurrentStateType());
+
+        // 2. Cập nhật 1.0 giây (hoạt cảnh trượt chưa xong): Vẫn ở PLAYING
+        state.update(1.0, keyH, mouseH);
+        assertFalse(state.getPlayer().isDeathSequenceComplete());
+        assertEquals(GameStateManager.StateType.PLAYING, gsm.getCurrentStateType());
+
+        // 3. Cập nhật thêm 1.2 giây (tổng 2.2s > 2.0s hoàn tất hoạt cảnh tử trận)
+        // Tuyệt đối không nhấn phím nào (ENTER / R / ESC)
+        state.update(1.2, keyH, mouseH);
+
+        // Xác nhận: Hệ thống tự động chuyển tiếp thẳng người chơi về The Range
+        assertEquals(GameStateManager.StateType.THE_RANGE, gsm.getCurrentStateType(),
+                "Player must auto-respawn in The Range without requiring any key press");
+        assertEquals(100, hubRangeState.getPlayer().getCurrentHealth(),
+                "Player must respawn in The Range with full health");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank is pre-spawned and ready in Boss Arena without portal telegraph")
+    void testBossPreSpawnInBossStageWithoutPortalTelegraph() {
+        // Chuyển thẳng tới Stage 4 (Boss Stage)
+        while (state.getCurrentStage() < PlayingState.BOSS_STAGE) {
+            state.advanceToNextStage();
+        }
+        assertEquals(PlayingState.BOSS_STAGE, state.getCurrentStage());
+
+        // Xác nhận BossTank đã được sinh sẵn trong phòng Boss
+        com.groupproject.game.entity.enemy.TargetDummy boss = state.getBossDummy();
+        assertNotNull(boss, "BossTank must be pre-spawned in Boss Stage arena");
+        assertTrue(boss instanceof com.groupproject.game.entity.enemy.BossTank, "Boss dummy must be instance of BossTank");
+        assertTrue(boss.isAlive(), "BossTank must be alive");
+        assertFalse(boss.isSpawning(), "BossTank must NOT be in portal spawning telegraph mode, it must be fully visible");
+    }
+
+    @Test
+    @DisplayName("Verify directional projectile tracer beams render without errors and respect yellow/red colors")
+    void testProjectileTracerRenderBeamColors() {
+        // Đạn thường của người chơi (Player regular bullet)
+        com.groupproject.game.entity.projectile.Projectile normalBullet =
+                new com.groupproject.game.entity.projectile.Projectile(100, 100, 0.0, 500, 20, 2.0, true, false);
+        assertTrue(normalBullet.isPlayerBullet());
+        assertFalse(normalBullet.isCritical());
+        assertFalse(normalBullet.isPiercing());
+
+        // Đạn bắn tỉa của người chơi (Sniper piercing bullet)
+        com.groupproject.game.entity.projectile.Projectile sniperBullet =
+                new com.groupproject.game.entity.projectile.Projectile(100, 100, 0.5, 900, 85, 2.0, true, false, 2, 0.25);
+        assertTrue(sniperBullet.isPlayerBullet());
+        assertFalse(sniperBullet.isCritical());
+        assertTrue(sniperBullet.isPiercing());
+
+        // Đạn chí mạng (Critical bullet)
+        com.groupproject.game.entity.projectile.Projectile critBullet =
+                new com.groupproject.game.entity.projectile.Projectile(100, 100, 0.5, 900, 150, 2.0, true, true, 2, 0.25);
+        assertTrue(critBullet.isPlayerBullet());
+        assertTrue(critBullet.isCritical());
+
+        // Kết xuất đồ họa thử nghiệm trên BufferedImage Graphics2D
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(400, 400, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g2 = img.createGraphics();
+        com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(400, 400);
+
+        assertDoesNotThrow(() -> normalBullet.render(g2, camera));
+        assertDoesNotThrow(() -> sniperBullet.render(g2, camera));
+        assertDoesNotThrow(() -> critBullet.render(g2, camera));
+        g2.dispose();
+    }
+
+    @Test
+    @DisplayName("Verify Campaign Boss extraction displays Demo thank you message and returns to The Range on button press")
+    void testCampaignBossExtractionReturnsToTheRange() {
+        com.groupproject.game.hub.HubRangeState hubRangeState = new com.groupproject.game.hub.HubRangeState(gsm);
+        gsm.registerState(GameStateManager.StateType.THE_RANGE, hubRangeState);
+        gsm.registerState(GameStateManager.StateType.PLAYING, state);
+        gsm.setState(GameStateManager.StateType.PLAYING);
+
+        // Đảm bảo là chế độ Campaign
+        state.setStandaloneBossFight(false);
+        assertFalse(state.isStandaloneBossFight());
+
+        // Kích hoạt sơ tán chiến thắng sau khi hạ boss
+        state.setIsExtracting(true);
+        assertTrue(state.isExtracting());
+
+        KeyboardHandler keyH = new KeyboardHandler();
+        MouseHandler mouseH = new MouseHandler();
+
+        // Cập nhật mà chưa bấm nút -> Vẫn ở màn hình victory
+        state.update(0.5, keyH, mouseH);
+        assertEquals(GameStateManager.StateType.PLAYING, gsm.getCurrentStateType());
+
+        // Người chơi bấm phím ENTER để tiếp tục
+        keyH.setKeyPressed(KeyEvent.VK_ENTER, true);
+        state.update(0.016, keyH, mouseH);
+
+        // Phải transition về THE_RANGE
+        assertTrue(gsm.getScreenTransition().isActive());
+        // Chờ transition hoàn tất
+        gsm.getScreenTransition().update(1.0);
+        assertEquals(GameStateManager.StateType.THE_RANGE, gsm.getCurrentStateType(),
+                "Campaign victory extraction must return to The Range on button press");
+    }
+
+    @Test
+    @DisplayName("Verify Standalone Boss Fight returns to MENU on both win and loss")
+    void testStandaloneBossFightWinAndLossReturnsToMenu() {
+        com.groupproject.game.state.MenuState menuState = new com.groupproject.game.state.MenuState(gsm);
+        gsm.registerState(GameStateManager.StateType.MENU, menuState);
+        gsm.registerState(GameStateManager.StateType.PLAYING, state);
+        gsm.setState(GameStateManager.StateType.PLAYING);
+
+        // Chế độ Boss Fight độc lập
+        state.setStandaloneBossFight(true);
+        assertTrue(state.isStandaloneBossFight());
+
+        KeyboardHandler keyH = new KeyboardHandler();
+        MouseHandler mouseH = new MouseHandler();
+
+        // 1. Kiểm tra trường hợp THẮNG (Extract)
+        state.setIsExtracting(true);
+        keyH.setKeyPressed(KeyEvent.VK_SPACE, true);
+        state.update(0.016, keyH, mouseH);
+        keyH.setKeyPressed(KeyEvent.VK_SPACE, false);
+
+        // Transition về MENU
+        assertTrue(gsm.getScreenTransition().isActive());
+        gsm.getScreenTransition().update(1.0);
+        assertEquals(GameStateManager.StateType.MENU, gsm.getCurrentStateType(),
+                "Standalone boss fight victory must return to MENU");
+
+        // 2. Kiểm tra trường hợp THUA (Chết)
+        gsm.setState(GameStateManager.StateType.PLAYING);
+        state.setStandaloneBossFight(true);
+        state.setIsExtracting(false);
+        state.setInvulnerableTimer(0.0);
+        state.damagePlayer(150);
+        assertTrue(state.isPlayerDead());
+
+        // Cập nhật hết chuỗi tử trận (màn hình đen dần -> chữ -> lại đen dần)
+        state.update(2.5, keyH, mouseH);
+        assertEquals(GameStateManager.StateType.MENU, gsm.getCurrentStateType(),
+                "Standalone boss fight loss must return to MENU");
+    }
 }

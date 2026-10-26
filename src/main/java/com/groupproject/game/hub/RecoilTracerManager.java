@@ -71,6 +71,9 @@ public class RecoilTracerManager {
             return remainingTime;
         }
 
+        private static final BasicStroke STROKE_GLOW = new BasicStroke(3.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+        private static final BasicStroke STROKE_CORE = new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+
         public void render(Graphics2D g, Camera camera) {
             if (isExpired()) return;
 
@@ -88,25 +91,26 @@ public class RecoilTracerManager {
             int alphaCore = (int) Math.clamp(230 * alphaFactor, 0, 255);
             int alphaGlow = (int) Math.clamp(90 * alphaFactor, 0, 255);
 
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            java.awt.Stroke oldStroke = g.getStroke();
+            Color oldColor = g.getColor();
 
             // 1. Lớp hào quang dạ quang phát sáng (Glow halo)
-            g2.setStroke(new BasicStroke(3.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.setColor(new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alphaGlow));
-            g2.drawLine(sx, sy, ex, ey);
+            g.setStroke(STROKE_GLOW);
+            g.setColor(new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alphaGlow));
+            g.drawLine(sx, sy, ex, ey);
 
             // 2. Lõi đường đạn laser sắc nét (Laser core)
-            g2.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.setColor(new Color(255, 255, 255, alphaCore));
-            g2.drawLine(sx, sy, ex, ey);
+            g.setStroke(STROKE_CORE);
+            g.setColor(new Color(255, 255, 255, alphaCore));
+            g.drawLine(sx, sy, ex, ey);
 
             // 3. Đánh dấu điểm va chạm / đích đạn (Impact point marker)
             int pointRadius = 3;
-            g2.setColor(new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alphaCore));
-            g2.fillOval(ex - pointRadius, ey - pointRadius, pointRadius * 2, pointRadius * 2);
+            g.setColor(new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alphaCore));
+            g.fillOval(ex - pointRadius, ey - pointRadius, pointRadius * 2, pointRadius * 2);
 
-            g2.dispose();
+            g.setStroke(oldStroke);
+            g.setColor(oldColor);
         }
     }
 

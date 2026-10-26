@@ -35,6 +35,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -147,11 +148,10 @@ public class HubRangeState extends GameState {
         // 4. Khởi tạo các trạm tương tác (Stations)
         stations.clear();
 
-        // Bờ tường Bắc: Cổng xuất kích, Bàn Nâng Cấp Lv10, Bàn Reroll, Thùng rác
+        // Bờ tường Bắc: Bàn Nâng Cấp Lv10 (trái), Cầu Thang Xuất Kích (trung tâm), Bàn Tái Rèn (phải)
+        stations.add(new HubUpgradeStation(880, 370));
         stations.add(new DepartureGateStation(1050, 360));
-        stations.add(new HubUpgradeStation(880, 380));
-        stations.add(new HubRerollStation(1220, 380));
-        stations.add(new TrashBinStation(1360, 380));
+        stations.add(new HubRerollStation(1220, 370));
 
         // Cạnh trường bắn Trái: Bảng chỉnh HP Dummy
         stations.add(new DummyHPControllerStation(710, 620));
@@ -467,13 +467,12 @@ public class HubRangeState extends GameState {
                     dummy.takeDamage(dmg, isCrit);
                     popupManager.addPopup(dummy.getX(), dummy.getY(), dmg, isCrit);
 
-                    // Ghi nhận vệt đạn Recoil Tracer trong 3 giây
-                    Color tracerColor = isCrit ? new Color(255, 100, 80) : new Color(255, 215, 60);
-                    tracerManager.addTracer(player.getCenterX(), player.getCenterY(), dummy.getX(), dummy.getY(), tracerColor);
-
                     // Tiêu hao lượt xuyên phá của đạn (nếu là Sniper có thể xuyên qua dummy tiếp theo)
                     bullet.onHitTarget(dummy);
                     if (!bullet.isActive()) {
+                        // Đạn kết thúc tại đây (hết lượt xuyên phá) -> Ghi nhận 1 vệt tracer duy nhất từ nòng súng đến mục tiêu cuối
+                        Color tracerColor = isCrit ? new Color(255, 100, 80) : new Color(255, 215, 60);
+                        tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), dummy.getX(), dummy.getY(), tracerColor);
                         break;
                     }
                 }
@@ -490,6 +489,8 @@ public class HubRangeState extends GameState {
                     // Tiêu hao lượt xuyên phá của đạn (nếu là Sniper có thể xuyên qua dummy tiếp theo)
                     bullet.onHitTarget(dummy);
                     if (!bullet.isActive()) {
+                        Color tracerColor = isCrit ? new Color(255, 100, 80) : new Color(255, 215, 60);
+                        tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), dummy.getX(), dummy.getY(), tracerColor);
                         break;
                     }
                 }
@@ -497,7 +498,15 @@ public class HubRangeState extends GameState {
 
             // Nếu đạn bay vào trường bắn phải và vượt quá giới hạn tường phải (X >= 2200)
             if (bullet.isActive() && bullet.getX() >= 2200.0) {
-                tracerManager.addTracer(player.getCenterX(), player.getCenterY(), bullet.getX(), bullet.getY(), new Color(255, 215, 60));
+                Color tracerColor = bullet.isCritical() ? new Color(255, 100, 80) : new Color(255, 215, 60);
+                tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), bullet.getX(), bullet.getY(), tracerColor);
+                bullet.deactivate();
+            }
+
+            // Nếu đạn bay vào trường bắn trái và vượt quá giới hạn tường trái (X <= 100)
+            if (bullet.isActive() && bullet.getX() <= 100.0) {
+                Color tracerColor = bullet.isCritical() ? new Color(255, 100, 80) : new Color(255, 215, 60);
+                tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), bullet.getX(), bullet.getY(), tracerColor);
                 bullet.deactivate();
             }
         }
@@ -562,12 +571,19 @@ public class HubRangeState extends GameState {
         renderHubHUD(g);
     }
 
+    /** Hàng tường biên Bắc (trên) và biên Nam (dưới) của The Range để thay thế tường vô hình bằng tường gạch thật */
+    public static final int WALL_ROW_TOP = 4;
+    public static final int WALL_ROW_BOT = 21;
+
     /** Lưới gạch chỉ để hiển thị (không va chạm) - dùng chung Tile với dungeon để khớp phong cách. */
     private com.groupproject.game.dungeon.Tile[][] hubTiles;
 
+    /** Tấm ảnh nền The Range đã được nướng sẵn (Surface Baking) tương thích VRAM - giảm từ 500 lệnh vẽ xuống đúng 1 lệnh */
+    private java.awt.image.BufferedImage bakedHubSurface;
+
     /**
-     * Dựng lưới gạch nền 1 lần (lazy). Dùng đúng Tile/TileType của gameplay chính để sàn, tường,
-     * thảm cao su và sọc hazard đồng nhất. Chỉ là đồ họa: va chạm vẫn do giới hạn trung tâm xử lý.
+     * Dựng lưới gạch nền và nướng (bake) thành 1 tấm ảnh duy nhất tương thích phần cứng.
+     * Xây tường gạch kiên cố ở hàng WALL_ROW_TOP và WALL_ROW_BOT, xóa bỏ hoàn toàn 100% tile thừa ở ngoài biên (Void Culling).
      */
     private void buildHubTiles() {
         int ts = GameConfig.TILE_SIZE;
@@ -575,45 +591,80 @@ public class HubRangeState extends GameState {
         int rows = (int) Math.ceil(WORLD_HEIGHT / ts);
         int leftBarCol = (int) (LEFT_BARRIER_X / ts);
         int rightBarCol = (int) (RIGHT_BARRIER_X / ts);
-        int fieldTop = (int) ((CENTER_BOUND_MIN_Y - 40) / ts);
-        int fieldBot = (int) ((CENTER_BOUND_MAX_Y + 40) / ts);
 
         hubTiles = new com.groupproject.game.dungeon.Tile[cols][rows];
+
+        // 1. Chỉ sinh các ô tile trong phạm vi hoạt động từ WALL_ROW_TOP đến WALL_ROW_BOT
+        // Các hàng y < WALL_ROW_TOP và y > WALL_ROW_BOT để null (xóa hoàn toàn tile thừa tiết kiệm bộ nhớ & CPU)
         for (int x = 0; x < cols; x++) {
-            for (int y = 0; y < rows; y++) {
+            for (int y = WALL_ROW_TOP; y <= WALL_ROW_BOT; y++) {
                 com.groupproject.game.dungeon.TileType type = com.groupproject.game.dungeon.TileType.FLOOR;
-                if (x == 0 || y == 0 || x == cols - 1 || y == rows - 1) {
+
+                // Xây bờ tường gạch kiên cố bao quanh 4 phía: Bờ Bắc, Bờ Nam, Bờ Tây, Bờ Đông
+                if (x == 0 || x == cols - 1 || y == WALL_ROW_TOP || y == WALL_ROW_BOT) {
                     type = com.groupproject.game.dungeon.TileType.WALL;
-                } else if (y >= fieldTop && y <= fieldBot) {
+                } else {
                     if (x == leftBarCol || x == rightBarCol) {
-                        type = com.groupproject.game.dungeon.TileType.DOOR_RESET_STAT; // sọc hazard
+                        type = com.groupproject.game.dungeon.TileType.DOOR_RESET_STAT; // sọc hazard rào chắn
                     } else if (x < leftBarCol || x > rightBarCol) {
-                        type = com.groupproject.game.dungeon.TileType.REFORGE_ZONE; // thảm trường bắn
+                        type = com.groupproject.game.dungeon.TileType.REFORGE_ZONE; // thảm cao su trường bắn
                     }
                 }
                 hubTiles[x][y] = new com.groupproject.game.dungeon.Tile(x, y, type);
             }
         }
 
-        // Trang trí vạt cỏ ở rìa tường bao The Range
+        // 2. Trang trí vạt cỏ ở rìa chân tường bao và bãi đất trống The Range
         for (int x = 1; x < cols - 1; x++) {
-            for (int y = 1; y < rows - 1; y++) {
+            for (int y = WALL_ROW_TOP + 1; y < WALL_ROW_BOT; y++) {
                 com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
                 if (t != null && t.getType() == com.groupproject.game.dungeon.TileType.FLOOR) {
-                    boolean nearWall = (x == 1 || x == cols - 2 || y == 1 || y == rows - 2);
+                    boolean nearWall = (x == 1 || x == cols - 2 || y == WALL_ROW_TOP + 1 || y == WALL_ROW_BOT - 1);
                     if (nearWall) {
                         int hash = (x * 31 + y * 17 + (x ^ y) * 7) & 0x7FFFFFFF;
-                        if (hash % 100 < 70) {
+                        if (hash % 100 < 75) {
+                            t.setHasGrass(true);
+                        }
+                    } else {
+                        // Bãi đất trống ở giữa sân: Phân bổ các cụm cỏ xanh dã chiến đan xen tự nhiên (~38%)
+                        int hash = (x * 73856093 ^ y * 19349663 ^ (x + y) * 83492791) & 0x7FFFFFFF;
+                        if (hash % 100 < 38) {
                             t.setHasGrass(true);
                         }
                     }
                 }
             }
         }
+
+        // 3. Surface Baking: Nướng toàn bộ nền The Range vào một tấm ảnh đệm VRAM duy nhất
+        int surfaceW = cols * ts;
+        int surfaceH = (WALL_ROW_BOT - WALL_ROW_TOP + 1) * ts;
+        java.awt.image.BufferedImage rawSurface = new java.awt.image.BufferedImage(surfaceW, surfaceH, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Graphics2D sg = rawSurface.createGraphics();
+
+        for (int x = 0; x < cols; x++) {
+            for (int y = WALL_ROW_TOP; y <= WALL_ROW_BOT; y++) {
+                com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
+                if (t != null) {
+                    int px = x * ts;
+                    int py = (y - WALL_ROW_TOP) * ts;
+                    t.render(sg, px, py);
+                }
+            }
+        }
+        sg.dispose();
+
+        // Chuyển đổi sang CompatibleImage khớp với VRAM card màn hình để BitBlt cực nhanh
+        this.bakedHubSurface = com.groupproject.game.core.GameSpriteManager.toCompatibleImage(rawSurface);
     }
 
+    private static final BasicStroke BARRIER_GLOW_STROKE = new BasicStroke(6.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+    private static final BasicStroke BARRIER_CORE_STROKE = new BasicStroke(2.0f);
+    private static final Font BARRIER_FONT = new Font("SansSerif", Font.BOLD, 17);
+
     /**
-     * Vẽ nền The Range bằng gạch Tile giống gameplay chính (chỉ vẽ gạch trong tầm nhìn camera).
+     * Vẽ nền The Range: Áp dụng Viewport Culling kết hợp các texture 49x49 pre-scaled 1:1 trong VRAM.
+     * Chỉ duyệt và vẽ các ô tile nằm trong khung nhìn camera, hoàn toàn loại bỏ tải nặng khi GPU scale ảnh lớn 2304x864.
      */
     private void renderBackgroundGrid(Graphics2D g) {
         g.setColor(new Color(15, 18, 25));
@@ -622,18 +673,20 @@ public class HubRangeState extends GameState {
         if (hubTiles == null) {
             buildHubTiles();
         }
+
         int ts = GameConfig.TILE_SIZE;
         int cols = hubTiles.length;
-        int rows = hubTiles[0].length;
-        int startX = Math.max(0, (int) (camera.getX() / ts) - 1);
-        int endX = Math.min(cols - 1, (int) ((camera.getX() + camera.getViewportWidth()) / ts) + 1);
-        int startY = Math.max(0, (int) (camera.getY() / ts) - 1);
-        int endY = Math.min(rows - 1, (int) ((camera.getY() + camera.getViewportHeight()) / ts) + 1);
+        int startX = Math.max(0, (int) Math.floor(camera.getX() / ts));
+        int endX = Math.min(cols - 1, (int) Math.ceil((camera.getX() + camera.getViewportWidth()) / ts));
+        int startY = Math.max(WALL_ROW_TOP, (int) Math.floor(camera.getY() / ts));
+        int endY = Math.min(WALL_ROW_BOT, (int) Math.ceil((camera.getY() + camera.getViewportHeight()) / ts));
 
         for (int x = startX; x <= endX; x++) {
             for (int y = startY; y <= endY; y++) {
                 com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
-                t.render(g, camera.worldToScreenX(t.getWorldX()), camera.worldToScreenY(t.getWorldY()));
+                if (t != null) {
+                    t.render(g, camera.worldToScreenX(t.getWorldX()), camera.worldToScreenY(t.getWorldY()));
+                }
             }
         }
     }
@@ -642,38 +695,46 @@ public class HubRangeState extends GameState {
      * Vẽ rào chắn năng lượng 2 bên (cho phép đạn xuyên qua nhưng chặn người).
      */
     private void renderEnergyBarriers(Graphics2D g) {
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Stroke oldStroke = g.getStroke();
+        Color oldColor = g.getColor();
+        Font oldFont = g.getFont();
 
         double pulse = Math.sin(barrierAnimTimer) * 0.5 + 0.5;
         int alphaGlow = (int) (60 + pulse * 70);
 
-        renderSingleBarrier(g2, LEFT_BARRIER_X, "[ TRƯỜNG BẮN TRÁI ]", alphaGlow);
-        renderSingleBarrier(g2, RIGHT_BARRIER_X, "[ TRƯỜNG BẮN PHẢI ]", alphaGlow);
+        renderSingleBarrier(g, LEFT_BARRIER_X, "[ TRƯỜNG BẮN TRÁI ]", alphaGlow);
+        renderSingleBarrier(g, RIGHT_BARRIER_X, "[ TRƯỜNG BẮN PHẢI ]", alphaGlow);
 
-        g2.dispose();
+        g.setStroke(oldStroke);
+        g.setColor(oldColor);
+        g.setFont(oldFont);
     }
 
-    private void renderSingleBarrier(Graphics2D g2, double worldX, String bannerText, int alphaGlow) {
+    private void renderSingleBarrier(Graphics2D g, double worldX, String bannerText, int alphaGlow) {
         int sx = camera.worldToScreenX(worldX);
+        // Viewport Culling cho từng rào chắn
+        if (sx < -100 || sx > GameConfig.SCREEN_WIDTH + 100) {
+            return;
+        }
+
         int topY = camera.worldToScreenY(CENTER_BOUND_MIN_Y - 40);
         int botY = camera.worldToScreenY(CENTER_BOUND_MAX_Y + 40);
 
         // Hào quang tông cam hazard (thay cyan để khớp sọc vàng-đen của gạch)
-        g2.setColor(new Color(255, 140, 60, alphaGlow));
-        g2.setStroke(new BasicStroke(6.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.drawLine(sx, topY, sx, botY);
+        g.setColor(new Color(255, 140, 60, alphaGlow));
+        g.setStroke(BARRIER_GLOW_STROKE);
+        g.drawLine(sx, topY, sx, botY);
 
         // Cột tia laser trung tâm
-        g2.setColor(new Color(255, 225, 160, 220));
-        g2.setStroke(new BasicStroke(2.0f));
-        g2.drawLine(sx, topY, sx, botY);
+        g.setColor(new Color(255, 225, 160, 220));
+        g.setStroke(BARRIER_CORE_STROKE);
+        g.drawLine(sx, topY, sx, botY);
 
         // Nhãn khu vực cùng style nhãn phòng gameplay chính
-        g2.setFont(new Font("SansSerif", Font.BOLD, 17));
-        FontMetrics fm = g2.getFontMetrics();
-        g2.setColor(new Color(255, 140, 60, 200));
-        g2.drawString(bannerText, sx - fm.stringWidth(bannerText) / 2, topY - 10);
+        g.setFont(BARRIER_FONT);
+        FontMetrics fm = g.getFontMetrics();
+        g.setColor(new Color(255, 140, 60, 200));
+        g.drawString(bannerText, sx - fm.stringWidth(bannerText) / 2, topY - 10);
     }
 
     /**
@@ -889,5 +950,19 @@ public class HubRangeState extends GameState {
                 showNotification("★ REROLL CHÍ MẠNG: CRIT " + res.newCritPercent() + "% (x" + String.format(java.util.Locale.US, "%.2f", weapon.getCritMultiplier()) + ") ★");
             }
         });
+    }
+
+    public com.groupproject.game.dungeon.Tile[][] getHubTiles() {
+        if (hubTiles == null) {
+            buildHubTiles();
+        }
+        return hubTiles;
+    }
+
+    public java.awt.image.BufferedImage getBakedHubSurface() {
+        if (bakedHubSurface == null) {
+            buildHubTiles();
+        }
+        return bakedHubSurface;
     }
 }

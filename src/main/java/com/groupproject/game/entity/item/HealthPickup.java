@@ -116,6 +116,12 @@ public class HealthPickup {
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
 
+        // Viewport Culling: Bỏ qua nếu hộp máu nằm ngoài tầm nhìn camera
+        if (screenX < -40 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 40 ||
+            screenY < -40 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 40) {
+            return;
+        }
+
         // Hiệu ứng nhấp nhô lơ lửng
         int bobOffset = (int) (Math.sin(bobbingTimer) * 3.5);
         int drawY = screenY + bobOffset;

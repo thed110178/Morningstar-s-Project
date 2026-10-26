@@ -109,6 +109,21 @@ public class Tile {
     }
 
     /**
+     * Cờ đánh dấu ô này có tiếp xúc với không gian mở (phòng, hành lang) hay không.
+     * Dùng cho Void Culling: Các ô tường ngầm trong bóng tối (exposed = false) sẽ không cần vẽ.
+     * Mặc định là true để giữ tương thích an toàn nếu chưa chạy thuật toán culling.
+     */
+    private boolean exposed = true;
+
+    public boolean isExposed() {
+        return exposed;
+    }
+
+    public void setExposed(boolean exposed) {
+        this.exposed = exposed;
+    }
+
+    /**
      * Xác định xem ô này có phải là cover tạm thời có thể phá hủy được hay không.
      */
     public boolean isDestructible() {
@@ -157,26 +172,22 @@ public class Tile {
         // Bù giáp mí 1px (drawSize = size + 1) để triệt tiêu hoàn toàn khe hở subpixel khi cửa sổ game co giãn scale
         int drawSize = size + 1;
 
-        // Base surface fill (Ưu tiên nạp texture Dirt hoặc Grass cho sàn đất / thảm cỏ dã chiến)
+        // 1. Base surface fill: Tối ưu 1-pass không overdraw cho các ô có texture VRAM (FLOOR, WALL, COVER, BARREL)
         if (type == TileType.FLOOR) {
-            BufferedImage floorTex = hasGrass ? GameSpriteManager.getTextureGrass() : GameSpriteManager.getTextureDirt();
+            BufferedImage floorTex = hasGrass ? GameSpriteManager.getPreScaledTextureGrass() : GameSpriteManager.getPreScaledTextureDirt();
             if (floorTex != null) {
-                g.drawImage(floorTex, screenX, screenY, drawSize, drawSize, null);
+                g.drawImage(floorTex, screenX, screenY, null);
             } else {
                 g.setColor(hasGrass ? new Color(55, 110, 50) : type.getDefaultColor());
                 g.fillRect(screenX, screenY, drawSize, drawSize);
             }
-        } else {
-            g.setColor(type.getDefaultColor());
-            g.fillRect(screenX, screenY, drawSize, drawSize);
-        }
-
-        // Visual ornamentation based on tile classification
-        if (type == TileType.WALL) {
-            BufferedImage brickTex = GameSpriteManager.getTextureGreyBrick();
+        } else if (type == TileType.WALL) {
+            BufferedImage brickTex = GameSpriteManager.getPreScaledTextureGreyBrick();
             if (brickTex != null) {
-                g.drawImage(brickTex, screenX, screenY, drawSize, drawSize, null);
+                g.drawImage(brickTex, screenX, screenY, null);
             } else {
+                g.setColor(type.getDefaultColor());
+                g.fillRect(screenX, screenY, drawSize, drawSize);
                 // Beveled 3D top-down wall border
                 g.setColor(new Color(65, 75, 100));
                 g.drawRect(screenX, screenY, size - 1, size - 1);
@@ -184,10 +195,12 @@ public class Tile {
                 g.fillRect(screenX + 4, screenY + 4, size - 8, size - 8);
             }
         } else if (type == TileType.COVER) {
-            BufferedImage stoneTex = GameSpriteManager.getCoverStoneSprite();
+            BufferedImage stoneTex = GameSpriteManager.getPreScaledCoverStone();
             if (stoneTex != null) {
-                g.drawImage(stoneTex, screenX, screenY, size, size, null);
+                g.drawImage(stoneTex, screenX, screenY, null);
             } else {
+                g.setColor(type.getDefaultColor());
+                g.fillRect(screenX, screenY, drawSize, drawSize);
                 // Tactical cover block with cross-hatch pattern
                 g.setColor(new Color(90, 105, 135));
                 g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
@@ -195,20 +208,18 @@ public class Tile {
                 g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
             }
         } else if (type == TileType.DESTRUCTIBLE_COVER) {
-            BufferedImage barrelTex = GameSpriteManager.getCoverBarrelSprite();
+            BufferedImage barrelTex = GameSpriteManager.getPreScaledCoverBarrel();
             if (barrelTex != null) {
-                g.drawImage(barrelTex, screenX, screenY, size, size, null);
+                g.drawImage(barrelTex, screenX, screenY, null);
             } else {
+                g.setColor(type.getDefaultColor());
+                g.fillRect(screenX, screenY, drawSize, drawSize);
                 // Thùng gỗ che chắn chiến thuật phá hủy được (Tactical Wooden Crate)
                 g.setColor(new Color(85, 55, 30));
                 g.drawRect(screenX + 1, screenY + 1, size - 3, size - 3);
-
-                // Nan gỗ chéo chữ X gia cố
                 g.setColor(new Color(105, 75, 40));
                 g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
                 g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
-
-                // 4 Nẹp kim loại ở các góc
                 g.setColor(new Color(70, 75, 85));
                 int bSize = 6;
                 g.fillRect(screenX + 2, screenY + 2, bSize, bSize);
@@ -216,7 +227,15 @@ public class Tile {
                 g.fillRect(screenX + 2, screenY + size - 2 - bSize, bSize, bSize);
                 g.fillRect(screenX + size - 2 - bSize, screenY + size - 2 - bSize, bSize, bSize);
             }
+        } else {
+            // Các ô chức năng và vùng chiến thuật đặc biệt (SPAWN_ZONE, DOOR_OPEN, DOOR_CLOSED, EXTRACT_ZONE...)
+            // Tô lớp nền màu đặc trưng (defaultColor) để không bị lộ nền đen của GamePanel
+            g.setColor(type.getDefaultColor());
+            g.fillRect(screenX, screenY, drawSize, drawSize);
+        }
 
+        // 2. Visual ornamentation based on tile classification
+        if (type == TileType.DESTRUCTIBLE_COVER) {
             // Hiệu ứng rạn nứt khi bị nhận sát thương
             if (health < maxHealth) {
                 g.setColor(new Color(25, 15, 10, 220));

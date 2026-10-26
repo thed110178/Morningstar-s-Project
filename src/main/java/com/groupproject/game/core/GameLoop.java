@@ -32,9 +32,19 @@ public class GameLoop implements Runnable {
 
     /**
      * Diagnostic metrics tracked every second to evaluate rendering and logic performance.
+     * Marked static volatile for thread-safe global access from UI renderers.
      */
-    private int currentFPS = 0;
-    private int currentUPS = 0;
+    private static volatile int currentFPS = 0;
+    private static volatile int currentUPS = 0;
+    private static volatile int actualRenderedFrames = 0;
+
+    /**
+     * Ghi nhận một khung hình đã thực sự được Swing/GPU vẽ hoàn tất trên màn hình (paintComponent).
+     * Được gọi từ Event Dispatch Thread (EDT) của GamePanel.
+     */
+    public static void recordFrameRendered() {
+        actualRenderedFrames++;
+    }
 
     /**
      * Constructs a GameLoop instance bound to the specified display panel.
@@ -86,7 +96,6 @@ public class GameLoop implements Runnable {
         double delta = 0;
 
         long timer = System.currentTimeMillis();
-        int frames = 0;
         int updates = 0;
 
         while (running) {
@@ -95,23 +104,35 @@ public class GameLoop implements Runnable {
             delta += (currentTime - initialTime) / timePerUpdate;
             initialTime = currentTime;
 
+            // WHY: Chống vòng xoắn tử thần (Spiral of Death) khi có gián đoạn hệ thống hoặc garbage collection
+            if (delta > 5.0) {
+                delta = 5.0;
+            }
+
+            boolean shouldRender = false;
+
             // Catch up on logic updates at a strictly fixed timestep
             while (delta >= 1) {
                 double dt = 1.0 / GameConfig.TARGET_UPS;
                 gamePanel.update(dt);
                 updates++;
                 delta--;
+                shouldRender = true;
             }
 
-            // Repaint the screen after logic catch-up
-            gamePanel.repaint();
-            frames++;
+            // WHY: Chỉ yêu cầu Swing vẽ lại (repaint) khi trạng thái thế giới trò chơi đã được cập nhật logic.
+            // Tránh spam repaint() 150-200 lần/giây gây nghẽn hàng đợi Event Dispatch Thread (EDT),
+            // triệt tiêu xung đột khóa synchronized giữa update và render gây micro-stutter (khựng khung hình).
+            if (shouldRender) {
+                gamePanel.repaint();
+            }
 
-            // Measure FPS and UPS once every 1000 milliseconds for performance evaluation
-            if (System.currentTimeMillis() - timer >= 1000) {
-                currentFPS = frames;
+            // Measure FPS và UPS mỗi 1000ms: FPS đo số khung hình thực tế vẽ bởi Swing/GPU
+            long now = System.currentTimeMillis();
+            if (now - timer >= 1000) {
+                currentFPS = actualRenderedFrames;
                 currentUPS = updates;
-                frames = 0;
+                actualRenderedFrames = 0;
                 updates = 0;
                 timer += 1000;
             }
@@ -137,6 +158,20 @@ public class GameLoop implements Runnable {
      * Returns the measured Updates Per Second executed in the last second.
      */
     public int getCurrentUPS() {
+        return currentUPS;
+    }
+
+    /**
+     * Static thread-safe accessor for real-time FPS metric.
+     */
+    public static int getFps() {
+        return currentFPS;
+    }
+
+    /**
+     * Static thread-safe accessor for real-time UPS metric.
+     */
+    public static int getUps() {
         return currentUPS;
     }
 }

@@ -14,6 +14,8 @@ import java.awt.Rectangle;
  */
 public class Projectile {
 
+    private final double originX;
+    private final double originY;
     private double x;
     private double y;
     private final double vx;
@@ -65,6 +67,8 @@ public class Projectile {
     public Projectile(double originX, double originY, double angle, double speed,
                       int damage, double maxLifetime, boolean playerBullet, boolean critical,
                       int remainingPierces, double pierceDamageFalloff) {
+        this.originX = originX;
+        this.originY = originY;
         this.x = originX;
         this.y = originY;
         this.vx = Math.cos(angle) * speed;
@@ -97,46 +101,67 @@ public class Projectile {
     }
 
     /**
-     * Renders the glowing bullet tracer on the canvas.
+     * Kết xuất đạn dạng tia mảnh (Sleek Directional Tracer Beam) xé gió theo góc bay:
+     * - Đạn thường của người chơi (bao gồm cả Sniper): Tia mảnh màu Vàng ánh kim rực rỡ kèm lõi siêu nhiệt.
+     * - Đạn chí mạng (Critical Hit): Tia mảnh màu Đỏ cam rực lửa để phân biệt rõ ràng đòn chí mạng.
+     * - Đạn của kẻ thù: Tia mảnh màu Đỏ dã chiến báo động nguy hiểm.
      */
     public void render(Graphics2D g, Camera camera) {
         if (!active) return;
 
         int screenX = camera.worldToScreenX(x);
         int screenY = camera.worldToScreenY(y);
-        int r = (int) radius;
 
-        // Vệt đạn xé gió sắc nét kéo dài cho đạn bắn tỉa xuyên phá
-        if (piercing) {
-            double angle = getAngle();
-            int tailLength = 18;
-            int tailX = screenX - (int) (Math.cos(angle) * tailLength);
-            int tailY = screenY - (int) (Math.sin(angle) * tailLength);
+        double angle = getAngle();
+        double cos = Math.cos(angle);
+        double sin = Math.sin(angle);
 
-            g.setColor(new Color(185, 80, 255, 140)); // Vệt đuôi tím điện quang
-            g.setStroke(new java.awt.BasicStroke(critical ? 3.5f : 2.5f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
-            g.drawLine(tailX, tailY, screenX, screenY);
-        }
+        // Chiều dài tia đạn xé gió: Sniper (xuyên phá) dài nhất (22px), đạn chí mạng (18px), đạn thường (14px)
+        int beamLength = piercing ? 22 : (critical ? 18 : 14);
+        int tailX = (int) Math.round(screenX - cos * beamLength);
+        int tailY = (int) Math.round(screenY - sin * beamLength);
 
-        // Glowing outer halo
-        if (piercing) {
-            g.setColor(critical ? new Color(255, 60, 220, 200) : new Color(185, 80, 255, 160));
-        } else if (critical) {
-            g.setColor(new Color(255, 65, 20, 170)); // Rực lửa đỏ cam kim sắc khi nổ đòn chí mạng
+        // Màu sắc phân tầng: Vàng (thường) & Đỏ (chí mạng) cho toàn bộ vũ khí kể cả Sniper
+        Color glowColor;
+        Color coreColor;
+
+        if (playerBullet) {
+            if (critical) {
+                // Đạn chí mạng: Rực lửa đỏ cam
+                glowColor = new Color(255, 50, 30, 200);
+                coreColor = new Color(255, 235, 210);
+            } else {
+                // Đạn thường (AR, SMG, Shotgun, SCR, Sniper): Vàng ánh kim công nghệ cao
+                glowColor = new Color(255, 205, 45, 180);
+                coreColor = new Color(255, 255, 220);
+            }
         } else {
-            g.setColor(playerBullet ? new Color(255, 200, 50, 100) : new Color(255, 60, 60, 100));
+            // Đạn kẻ địch: Đỏ tươi dã chiến
+            glowColor = new Color(255, 65, 65, 170);
+            coreColor = new Color(255, 215, 210);
         }
-        g.fillOval(screenX - r - 2, screenY - r - 2, (r + 2) * 2, (r + 2) * 2);
 
-        // Solid core bullet
-        if (piercing) {
-            g.setColor(new Color(255, 245, 255)); // Lõi thạch anh ánh trắng tím
-        } else if (critical) {
-            g.setColor(new Color(255, 255, 210)); // Lõi siêu nhiệt ánh vàng trắng
-        } else {
-            g.setColor(playerBullet ? new Color(255, 240, 120) : new Color(255, 100, 100));
-        }
-        g.fillOval(screenX - r, screenY - r, r * 2, r * 2);
+        java.awt.Stroke oldStroke = g.getStroke();
+        Color oldColor = g.getColor();
+
+        // 1. Lớp quầng sáng phát quang khí động học bao quanh (Outer Glow)
+        float glowWidth = critical ? 4.2f : (piercing ? 3.8f : 3.2f);
+        g.setStroke(new java.awt.BasicStroke(glowWidth, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+        g.setColor(glowColor);
+        g.drawLine(tailX, tailY, screenX, screenY);
+
+        // 2. Lõi năng lượng siêu nhiệt sắc nét ở giữa (Core Laser Beam)
+        float coreWidth = critical ? 2.0f : 1.5f;
+        g.setStroke(new java.awt.BasicStroke(coreWidth, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+        g.setColor(coreColor);
+        g.drawLine(tailX, tailY, screenX, screenY);
+
+        // 3. Mũi đạn điểm chạm sáng hội tụ (Leading Spark Dot)
+        g.setColor(Color.WHITE);
+        g.fillOval(screenX - 1, screenY - 1, 3, 3);
+
+        g.setStroke(oldStroke);
+        g.setColor(oldColor);
     }
 
     /**
@@ -237,6 +262,14 @@ public class Projectile {
 
     public boolean isPlayerBullet() {
         return playerBullet;
+    }
+
+    public double getOriginX() {
+        return originX;
+    }
+
+    public double getOriginY() {
+        return originY;
     }
 
     public double getAngle() {

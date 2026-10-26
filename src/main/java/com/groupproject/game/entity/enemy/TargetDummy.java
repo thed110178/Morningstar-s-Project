@@ -328,13 +328,22 @@ public class TargetDummy {
      */
     public void render(Graphics2D g, Camera camera) {
         if (!alive) return;
+
+        int screenCX = camera.worldToScreenX(x);
+        int screenCY = camera.worldToScreenY(y);
+        int bound = (int) (size / 2.0) + 60;
+
+        // Viewport Culling: Không vẽ nếu mục tiêu hoặc quái vật nằm ngoài màn hình camera
+        if (screenCX + bound < 0 || screenCX - bound > com.groupproject.game.core.GameConfig.SCREEN_WIDTH ||
+            screenCY + bound < 0 || screenCY - bound > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT) {
+            return;
+        }
+
         if (isSpawning()) {
             renderSpawnTelegraph(g, camera);
             return;
         }
 
-        int screenCX = camera.worldToScreenX(x);
-        int screenCY = camera.worldToScreenY(y);
         int half = (int) (size / 2.0);
 
         if (!isBoss) {

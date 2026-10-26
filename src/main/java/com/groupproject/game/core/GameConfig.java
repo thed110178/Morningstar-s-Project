@@ -25,6 +25,13 @@ public final class GameConfig {
     public static final String GAME_TITLE = "DontKnow - An unplanned top-down roguelite shooter";
 
     /**
+     * Mã định danh phiên bản trò chơi.
+     * Dùng để kiểm tra tính tương thích của bản lưu tiến trình (Save Checkpoint).
+     * Khi game có bản cập nhật mới, các bản lưu có mã phiên bản cũ sẽ tự động bị xóa.
+     */
+    public static final String GAME_BUILD_VERSION = "1.0.0-DEMO-261027";
+
+    /**
      * Default horizontal resolution matching standard 16:9 HD viewport.
      */
     public static final int SCREEN_WIDTH = 1280;
@@ -108,4 +115,10 @@ public final class GameConfig {
      * Mặc định là bật (true), người chơi có thể tùy ý bật/tắt trong menu Cài đặt (Settings).
      */
     public static boolean showAimGuideline = true;
+
+    /**
+     * Cờ bật/tắt hiển thị chỉ số hiệu năng FPS và UPS trên màn hình (Performance HUD Overlay).
+     * Mặc định là tắt (false), người chơi có thể tùy ý bật/tắt trong menu Cài đặt (Settings).
+     */
+    public static boolean showFpsUps = false;
 }

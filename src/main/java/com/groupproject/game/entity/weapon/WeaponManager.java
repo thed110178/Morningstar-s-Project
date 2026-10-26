@@ -536,4 +536,73 @@ public class WeaponManager {
             }
         }
     }
+
+    /**
+     * Tạo đối tượng vũ khí cụ thể dựa trên tên định danh thô.
+     */
+    public static Weapon createWeaponByName(String rawName) {
+        if (rawName == null) return new Pistol();
+        String clean = rawName.trim();
+        if (clean.startsWith("[S] ")) {
+            clean = clean.substring(4).trim();
+        }
+
+        String lower = clean.toLowerCase();
+        if (lower.contains("knife")) {
+            return new CombatKnife();
+        } else if (lower.contains("semi") || lower.contains("carbine") || lower.contains("scr")) {
+            return new SemiCarbineRifle();
+        } else if (lower.contains("assault") || lower.contains("ar")) {
+            return new AssaultRifle();
+        } else if (lower.contains("shotgun")) {
+            return new Shotgun();
+        } else if (lower.contains("submachine") || lower.contains("smg")) {
+            return new SMG();
+        } else if (lower.contains("sniper") || lower.contains("sr")) {
+            return new SniperRifle();
+        } else if (lower.contains("pistol")) {
+            return new Pistol();
+        }
+
+        return new Pistol();
+    }
+
+    /**
+     * Khôi phục toàn bộ kho vũ khí từ danh sách dữ liệu lưu (Save Checkpoint).
+     */
+    public void restoreFromSave(java.util.List<com.groupproject.game.storage.WeaponSaveData> savedWeapons, int activeSlot) {
+        weaponSlots.clear();
+        activeSlashes.clear();
+
+        if (savedWeapons != null) {
+            for (com.groupproject.game.storage.WeaponSaveData data : savedWeapons) {
+                Weapon w = createWeaponByName(data.getWeaponName());
+                w.setSlotIndex(data.getSlotIndex());
+                w.setLevel(data.getLevel());
+                w.setStars(data.getDamageStars(), data.getFireRateStars(), data.getAccuracyStars());
+                w.setCritStats(data.getCritChance(), data.getCritMultiplier());
+                w.setCurrentAmmo(data.getCurrentAmmo());
+                w.setSTier(data.isSTier());
+                addWeapon(w);
+            }
+        }
+
+        // Đảm bảo tối thiểu phải có Pistol (Slot 3) và Knife (Slot 4) nếu bị thiếu
+        if (!weaponSlots.containsKey(3)) {
+            addWeapon(new Pistol());
+        }
+        if (!weaponSlots.containsKey(4)) {
+            addWeapon(new CombatKnife());
+        }
+
+        // Kích hoạt slot chỉ định
+        if (weaponSlots.containsKey(activeSlot)) {
+            this.activeWeapon = weaponSlots.get(activeSlot);
+        } else if (weaponSlots.containsKey(1)) {
+            this.activeWeapon = weaponSlots.get(1);
+        } else {
+            this.activeWeapon = weaponSlots.get(3);
+        }
+        this.previousWeapon = weaponSlots.get(4);
+    }
 }

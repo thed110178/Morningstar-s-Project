@@ -115,6 +115,12 @@ public class EnemyCorpse {
         int screenX = camera.worldToScreenX(x + size / 2.0);
         int screenY = camera.worldToScreenY(y + size / 2.0);
 
+        // Viewport Culling: Bỏ qua nếu xác kẻ thù nằm ngoài tầm nhìn camera
+        if (screenX < -60 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 60 ||
+            screenY < -60 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 60) {
+            return;
+        }
+
         // Tính toán độ mờ (Alpha) động: rõ nét mờ nhẹ lúc đầu (~0.80), mờ dần ở 1.6s cuối
         float alpha = getAlpha();
         if (alpha <= 0.02f) return;

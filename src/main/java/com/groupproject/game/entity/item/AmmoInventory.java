@@ -122,4 +122,29 @@ public class AmmoInventory {
             reserves.put(type, 0);
         }
     }
+
+    /**
+     * Xuất toàn bộ kho đạn dự trữ sang Map chuỗi phục vụ lưu checkpoint.
+     */
+    public Map<String, Integer> exportAmmoReserves() {
+        Map<String, Integer> exported = new java.util.HashMap<>();
+        for (Map.Entry<AmmoType, Integer> entry : reserves.entrySet()) {
+            exported.put(entry.getKey().name(), entry.getValue());
+        }
+        return exported;
+    }
+
+    /**
+     * Khôi phục số lượng đạn dự trữ từ dữ liệu lưu checkpoint.
+     */
+    public void restoreAmmoReserves(Map<String, Integer> savedReserves) {
+        reset();
+        if (savedReserves == null) return;
+        for (AmmoType type : AmmoType.values()) {
+            Integer val = savedReserves.get(type.name());
+            if (val != null) {
+                setAmmo(type, val);
+            }
+        }
+    }
 }

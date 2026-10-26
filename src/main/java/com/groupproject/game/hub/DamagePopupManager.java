@@ -47,50 +47,58 @@ public class DamagePopupManager {
             return timer <= 0;
         }
 
+        private static final Font FONT_NORMAL = new Font("SansSerif", Font.BOLD, 13);
+        private static final Font FONT_NORMAL_POP = new Font("SansSerif", Font.BOLD, 16);
+        private static final Font FONT_CRIT = new Font("SansSerif", Font.BOLD, 15);
+        private static final Font FONT_CRIT_POP = new Font("SansSerif", Font.BOLD, 19);
+
         public void render(Graphics2D g, Camera camera) {
             if (isFinished()) return;
 
             int screenX = camera.worldToScreenX(x + driftX);
             int screenY = camera.worldToScreenY(y);
 
+            // Viewport Culling
+            if (screenX < -50 || screenX > com.groupproject.game.core.GameConfig.SCREEN_WIDTH + 50 ||
+                screenY < -50 || screenY > com.groupproject.game.core.GameConfig.SCREEN_HEIGHT + 50) {
+                return;
+            }
+
             double progress = 1.0 - (timer / maxDuration);
             int alpha = (int) Math.clamp(255 * (1.0 - progress), 0, 255);
 
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            Font oldFont = g.getFont();
+            Color oldColor = g.getColor();
 
             // Hiệu ứng bay lên trên đầu dummy (bay cao khoảng 35px)
             int textY = screenY - 24 - (int) (32 * Math.sin(progress * Math.PI / 2));
             String text = isCrit ? ("CRIT! " + damage) : ("-" + damage);
 
-            // Pop scale nhẹ ban đầu
-            float fontSize = isCrit ? 15.0f : 13.0f;
-            if (progress < 0.18) {
-                fontSize += (float) (4.0 * (1.0 - progress / 0.18));
-            }
+            // Lấy font đã cache tĩnh theo trạng thái pop
+            boolean isPopping = progress < 0.18;
+            Font font = isCrit ? (isPopping ? FONT_CRIT_POP : FONT_CRIT) : (isPopping ? FONT_NORMAL_POP : FONT_NORMAL);
+            g.setFont(font);
 
-            Font font = new Font("SansSerif", Font.BOLD, (int) fontSize);
-            g2.setFont(font);
-            FontMetrics fm = g2.getFontMetrics();
+            FontMetrics fm = g.getFontMetrics();
             int textW = fm.stringWidth(text);
             int textX = screenX - (textW / 2);
 
             // Đổ bóng viền đen 4 góc
             int shadowAlpha = Math.min(230, alpha);
-            g2.setColor(new Color(0, 0, 0, shadowAlpha));
-            g2.drawString(text, textX + 1, textY + 1);
-            g2.drawString(text, textX - 1, textY - 1);
-            g2.drawString(text, textX + 1, textY - 1);
-            g2.drawString(text, textX - 1, textY + 1);
-            g2.drawString(text, textX, textY + 2);
+            g.setColor(new Color(0, 0, 0, shadowAlpha));
+            g.drawString(text, textX + 1, textY + 1);
+            g.drawString(text, textX - 1, textY - 1);
+            g.drawString(text, textX + 1, textY - 1);
+            g.drawString(text, textX - 1, textY + 1);
+            g.drawString(text, textX, textY + 2);
 
             // Màu chữ nổi bật: Sát thương thường màu vàng kem sáng, chí mạng màu đỏ rực
             Color textColor = isCrit ? new Color(255, 60, 50, alpha) : new Color(255, 230, 110, alpha);
-            g2.setColor(textColor);
-            g2.drawString(text, textX, textY);
+            g.setColor(textColor);
+            g.drawString(text, textX, textY);
 
-            g2.dispose();
+            g.setFont(oldFont);
+            g.setColor(oldColor);
         }
     }
 

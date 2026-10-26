@@ -127,10 +127,10 @@ public class GamePanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        // Apply rendering quality enhancements
+        // Áp dụng cấu hình tối ưu hiệu năng render: Ưu tiên tốc độ (VALUE_RENDER_SPEED) thay vì thuật toán nội suy nặng
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
 
         int panelW = getWidth();
         int panelH = getHeight();
@@ -161,10 +161,64 @@ public class GamePanel extends JPanel {
         synchronized (stateManager) {
             stateManager.render(gameG);
         }
+
+        // Hiển thị khung đo lường thời gian thực số khung hình (FPS) và nhịp cập nhật (UPS) khi được bật trong Cài đặt
+        renderPerformanceOverlay(gameG);
+
+        // Ghi nhận một khung hình đã thực sự được render ra màn hình hiển thị để tính FPS thực tế
+        GameLoop.recordFrameRendered();
+
         gameG.dispose();
 
         // WHY: Disposing the Graphics2D instance frees native system graphics context resources immediately
         g2d.dispose();
+    }
+
+    /**
+     * Hiển thị bảng HUD chẩn đoán hiệu năng FPS & UPS ở góc dưới bên trái màn hình.
+     * Tự động thích ứng màu sắc dựa trên mức độ ổn định khung hình (Xanh >=55, Vàng 30-54, Đỏ <30).
+     */
+    private void renderPerformanceOverlay(Graphics2D g) {
+        if (!GameConfig.showFpsUps) return;
+
+        int fps = GameLoop.getFps();
+        int ups = GameLoop.getUps();
+
+        int boxW = 148;
+        int boxH = 26;
+        int boxX = 20;
+        int boxY = GameConfig.SCREEN_HEIGHT - boxH - 16;
+
+        // Khung nền xám tối bo góc viền công nghệ cao
+        g.setColor(new Color(10, 15, 24, 215));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+        g.setColor(new Color(45, 75, 110, 190));
+        g.setStroke(new java.awt.BasicStroke(1.0f));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+
+        // Biểu tượng xung nhịp radar
+        g.setColor(new Color(0, 220, 255));
+        g.fillOval(boxX + 9, boxY + 9, 8, 8);
+
+        // Màu sắc thích ứng theo FPS
+        Color fpsColor;
+        if (fps >= 55) {
+            fpsColor = new Color(60, 240, 140); // Xanh ngọc mượt mà
+        } else if (fps >= 30) {
+            fpsColor = new Color(255, 205, 55);  // Vàng cảnh báo
+        } else {
+            fpsColor = new Color(255, 75, 75);   // Đỏ báo động
+        }
+
+        g.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 11));
+        g.setColor(fpsColor);
+        g.drawString("FPS: " + fps, boxX + 24, boxY + 17);
+
+        g.setColor(new Color(110, 135, 165));
+        g.drawString("|", boxX + 78, boxY + 17);
+
+        g.setColor(new Color(185, 220, 255));
+        g.drawString("UPS: " + ups, boxX + 88, boxY + 17);
     }
 
     /**
