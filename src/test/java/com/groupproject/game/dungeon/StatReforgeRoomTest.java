@@ -306,4 +306,39 @@ public class StatReforgeRoomTest {
             assertEquals(result.newCritPercent() / 100.0, weapon.getCritChance(), 0.001);
         }
     }
+
+    @Test
+    @DisplayName("Verify executeReforgeStars rejects Lv.1 weapons and does not deduct credits")
+    void testExecuteReforgeStarsRejectsLevel1Weapon() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+
+        StatReforgeStation station = state.getStatReforgeStation();
+        state.setPlayerCredits(500);
+
+        Weapon weapon = state.getWeaponManager().getActiveWeapon();
+        assertEquals(1, weapon.getLevel());
+
+        // 1. Thử reroll sao súng Lv.1 -> Bị từ chối (trả về null, không trừ tiền)
+        Weapon.ReforgeResult failRes = station.executeReforgeStars(state, weapon);
+        assertNull(failRes, "Station must reject star reroll for Lv.1 weapon");
+        assertEquals(500, state.getPlayerCredits(), "Credits must not be deducted");
+        assertEquals(0, station.getStarsReforgeCount());
+
+        // 2. Reroll crit súng Lv.1 -> Cho phép thành công
+        Weapon.ReforgeResult critRes = station.executeReforgeCrit(state, weapon);
+        assertNotNull(critRes, "Station must allow crit reroll for Lv.1 weapon");
+        assertTrue(state.getPlayerCredits() < 500);
+        assertEquals(1, station.getCritReforgeCount());
+
+        // 3. Nâng cấp súng lên Lv.2 -> Reroll sao thành công
+        weapon.upgradeChosenStat(Weapon.UpgradeStatType.FIRE_RATE);
+        assertEquals(2, weapon.getLevel());
+        int creditsBefore = state.getPlayerCredits();
+        Weapon.ReforgeResult starRes = station.executeReforgeStars(state, weapon);
+        assertNotNull(starRes, "Station must allow star reroll for Lv.2+ weapon");
+        assertTrue(state.getPlayerCredits() < creditsBefore);
+        assertEquals(1, station.getStarsReforgeCount());
+    }
 }

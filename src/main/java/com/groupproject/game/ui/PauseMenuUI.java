@@ -49,14 +49,16 @@ public class PauseMenuUI {
     private int selectedMainIndex = 0;
     private final Rectangle[] mainOptionBounds = new Rectangle[3];
 
-    // Cài đặt phím (Keybind Settings)
+    // Cài đặt phím (Keybind Settings) & Hiển thị
     private GameAction rebindingAction = null;
     private final Map<GameAction, Rectangle> keybindBounds = new HashMap<>();
     private final Rectangle resetDefaultsBtnBounds = new Rectangle();
     private final Rectangle backFromSettingsBtnBounds = new Rectangle();
+    private final Rectangle aimGuidelineToggleBounds = new Rectangle();
 
     private boolean isResetHovered = false;
     private boolean isBackHovered = false;
+    private boolean isAimGuidelineHovered = false;
     private GameAction hoveredAction = null;
 
     private String feedbackMessage = "";
@@ -237,6 +239,7 @@ public class PauseMenuUI {
         // 2. Hover chuột
         isResetHovered = resetDefaultsBtnBounds.contains(mouseX, mouseY);
         isBackHovered = backFromSettingsBtnBounds.contains(mouseX, mouseY);
+        isAimGuidelineHovered = aimGuidelineToggleBounds.contains(mouseX, mouseY);
         hoveredAction = null;
         for (Map.Entry<GameAction, Rectangle> entry : keybindBounds.entrySet()) {
             if (entry.getValue().contains(mouseX, mouseY)) {
@@ -256,6 +259,15 @@ public class PauseMenuUI {
             if (isResetHovered) {
                 KeyBindings.resetToDefaults();
                 feedbackMessage = "ĐÃ KHÔI PHỤC TOÀN BỘ PHÍM VỀ MẶC ĐỊNH!";
+                feedbackTimer = 2.0;
+                return PauseAction.NONE;
+            }
+
+            if (isAimGuidelineHovered) {
+                com.groupproject.game.core.GameConfig.showAimGuideline = !com.groupproject.game.core.GameConfig.showAimGuideline;
+                feedbackMessage = com.groupproject.game.core.GameConfig.showAimGuideline
+                        ? "ĐÃ BẬT ĐƯỜNG NGẮM CON TRỎ CHUỘT (AIM GUIDELINE: ON)"
+                        : "ĐÃ TẮT ĐƯỜNG NGẮM CON TRỎ CHUỘT (AIM GUIDELINE: OFF)";
                 feedbackTimer = 2.0;
                 return PauseAction.NONE;
             }
@@ -524,10 +536,62 @@ public class PauseMenuUI {
             }
         }
 
-        // 2 Nút ở đáy: [ ĐẶT LẠI MẶC ĐỊNH ] và [ QUAY LẠI ]
+        // Tùy chọn giao diện: Đường ngắm nét đứt nối con trỏ chuột (Aim Guideline Toggle)
         int botBtnW = 220;
         int botBtnH = 42;
         int botBtnY = panelY + panelH - botBtnH - 22;
+
+        int toggleBoxW = panelW - 60;
+        int toggleBoxH = 38;
+        int toggleBoxX = panelX + 30;
+        int toggleBoxY = botBtnY - toggleBoxH - 12;
+        aimGuidelineToggleBounds.setBounds(toggleBoxX, toggleBoxY, toggleBoxW, toggleBoxH);
+
+        Color toggleBoxBg = isAimGuidelineHovered ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
+        g.setColor(toggleBoxBg);
+        g.fillRoundRect(toggleBoxX, toggleBoxY, toggleBoxW, toggleBoxH, 6, 6);
+        g.setColor(isAimGuidelineHovered ? new Color(0, 210, 255) : new Color(45, 65, 95));
+        g.drawRoundRect(toggleBoxX, toggleBoxY, toggleBoxW, toggleBoxH, 6, 6);
+
+        // Nhãn bên trái
+        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setColor(new Color(230, 245, 255));
+        g.drawString("🎯 ĐƯỜNG NGẮM CHUỘT (AIM GUIDELINE)", toggleBoxX + 14, toggleBoxY + 24);
+
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setColor(new Color(145, 175, 205));
+        g.drawString("Đường kẻ đứt mờ nối từ người chơi đến con trỏ chuột hỗ trợ ngắm bắn", toggleBoxX + 305, toggleBoxY + 24);
+
+        // Nút trạng thái bên phải
+        int statusBtnW = 125;
+        int statusBtnH = 26;
+        int statusBtnX = toggleBoxX + toggleBoxW - statusBtnW - 8;
+        int statusBtnY = toggleBoxY + (toggleBoxH - statusBtnH) / 2;
+
+        boolean isOn = com.groupproject.game.core.GameConfig.showAimGuideline;
+        if (isOn) {
+            g.setColor(new Color(25, 110, 70));
+            g.fillRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(60, 240, 140));
+            g.drawRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            String onText = "✔ ĐANG BẬT";
+            int otw = g.getFontMetrics().stringWidth(onText);
+            g.setColor(Color.WHITE);
+            g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtnY + 18);
+        } else {
+            g.setColor(new Color(45, 50, 60));
+            g.fillRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(110, 115, 130));
+            g.drawRoundRect(statusBtnX, statusBtnY, statusBtnW, statusBtnH, 4, 4);
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            String offText = "✖ ĐANG TẮT";
+            int oftw = g.getFontMetrics().stringWidth(offText);
+            g.setColor(new Color(180, 185, 195));
+            g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtnY + 18);
+        }
+
+        // 2 Nút ở đáy: [ ĐẶT LẠI MẶC ĐỊNH ] và [ QUAY LẠI ]
 
         int resetBtnX = panelX + (panelW / 2) - botBtnW - 15;
         int backBtnX = panelX + (panelW / 2) + 15;
@@ -597,5 +661,9 @@ public class PauseMenuUI {
 
     public void setRebindingAction(GameAction action) {
         this.rebindingAction = action;
+    }
+
+    public Rectangle getAimGuidelineToggleBounds() {
+        return aimGuidelineToggleBounds;
     }
 }

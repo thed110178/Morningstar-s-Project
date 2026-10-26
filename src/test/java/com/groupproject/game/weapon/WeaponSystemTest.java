@@ -1630,4 +1630,38 @@ public class WeaponSystemTest {
 
         g2.dispose();
     }
+
+    @Test
+    @DisplayName("Verify Lv.1 weapons cannot reforge stars but can still reforge crit")
+    void testLevel1WeaponReforgeRules() {
+        AssaultRifle ar = new AssaultRifle();
+        assertEquals(1, ar.getLevel());
+        assertEquals(1, ar.getDamageStars());
+        assertEquals(1, ar.getFireRateStars());
+        assertEquals(1, ar.getAccuracyStars());
+
+        // 1. Súng Lv.1 gọi reforgeStarsOnly() phải trả về null (bị từ chối)
+        Weapon.ReforgeResult starRes = ar.reforgeStarsOnly();
+        assertNull(starRes, "Lv.1 weapon must return null when attempting star reforge");
+        assertEquals(1, ar.getDamageStars());
+        assertEquals(1, ar.getFireRateStars());
+        assertEquals(1, ar.getAccuracyStars());
+
+        // 2. Súng Lv.1 gọi reforgeCritOnly() vẫn hoạt động bình thường
+        Weapon.ReforgeResult critRes = ar.reforgeCritOnly();
+        assertNotNull(critRes, "Lv.1 weapon must still be allowed to reforge crit");
+        assertEquals(1, critRes.level());
+        assertEquals(1, critRes.newDmgStars());
+        assertEquals(1, critRes.newFrStars());
+        assertEquals(1, critRes.newAccStars());
+        assertTrue(ar.getCritChance() >= 0.05 && ar.getCritChance() <= 0.50);
+
+        // 3. Khi nâng súng lên Lv.2+, reforgeStarsOnly() được kích hoạt
+        ar.upgradeChosenStat(Weapon.UpgradeStatType.DAMAGE);
+        assertEquals(2, ar.getLevel());
+        Weapon.ReforgeResult starResLv2 = ar.reforgeStarsOnly();
+        assertNotNull(starResLv2, "Lv.2+ weapon must successfully reforge stars");
+        assertEquals(2, starResLv2.level());
+        assertEquals(4, ar.getDamageStars() + ar.getFireRateStars() + ar.getAccuracyStars());
+    }
 }

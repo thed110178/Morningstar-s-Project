@@ -100,4 +100,12 @@ public final class GameConfig {
      * Energy / Mana reserve used for firing special firearms and weapon skills.
      */
     public static final int PLAYER_MAX_ENERGY = 200;
+
+    // --- Visual and Interface Settings ---
+
+    /**
+     * Cờ bật/tắt đường ngắm nét đứt mờ nối từ nhân vật đến vị trí con trỏ chuột (Aim Guideline).
+     * Mặc định là bật (true), người chơi có thể tùy ý bật/tắt trong menu Cài đặt (Settings).
+     */
+    public static boolean showAimGuideline = true;
 }

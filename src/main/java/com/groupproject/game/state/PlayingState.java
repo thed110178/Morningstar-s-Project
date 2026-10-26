@@ -78,6 +78,7 @@ public class PlayingState extends GameState {
      * Angle in radians from player center to cursor in world space: atan2(dy, dx).
      */
     private double aimAngle = 0.0;
+    private MouseHandler cachedMouseHandler = null;
 
     // Tactical announcement banner timer
     private String bannerMessage = "";
@@ -1161,6 +1162,7 @@ public class PlayingState extends GameState {
         camera.update(camCX, camCY);
 
         // --- 6. 360-Degree Aim Angle Calculation ---
+        this.cachedMouseHandler = mouseH;
         double mouseWorldX = camera.screenToWorldX(mouseH.getScreenX());
         double mouseWorldY = camera.screenToWorldY(mouseH.getScreenY());
         aimAngle = Math.atan2(mouseWorldY - player.getCenterY(), mouseWorldX - player.getCenterX());
@@ -1666,6 +1668,9 @@ public class PlayingState extends GameState {
             cv.render(g, camera);
         }
 
+        // 5.5. Render Faint Dashed Aim Guideline (Đường ngắm nét đứt mờ nối từ người chơi đến con trỏ chuột)
+        renderAimGuideline(g);
+
         // 6. Render Top Sector Information HUD, Player Health Bar HUD, Credits HUD, and Boss Health Bar
         playingHUD.renderSectorHUD(g, currentStage, activeCombatRoom);
         playingHUD.renderPlayerHealthHUD(g, player);
@@ -1742,6 +1747,57 @@ public class PlayingState extends GameState {
         // 14. Cắt cảnh giới thiệu Boss (Letterbox + banner) và hiệu ứng Fade chuyển stage — luôn vẽ trên cùng
         bossIntroCinematic.render(g);
         stageTransition.render(g);
+    }
+
+    /**
+     * Vẽ đường ngắm nét đứt mờ nối từ vị trí người chơi đến con trỏ chuột.
+     * Có thể bật/tắt trong Cài đặt (GameConfig.showAimGuideline).
+     */
+    private void renderAimGuideline(Graphics2D g) {
+        if (!GameConfig.showAimGuideline || cachedMouseHandler == null || player == null || player.isDead()) {
+            return;
+        }
+        // Không vẽ khi đang mở menu tạm dừng hoặc các modal che khuất màn hình
+        if (isPaused || isBackpackOpen || weaponUpgradeModalUI.isVisible() || statReforgeModalUI.isVisible() || characterUpgradeUI.isVisible()) {
+            return;
+        }
+
+        int screenPX = camera.worldToScreenX(player.getCenterX());
+        int screenPY = camera.worldToScreenY(player.getCenterY());
+        int mouseSX = cachedMouseHandler.getScreenX();
+        int mouseSY = cachedMouseHandler.getScreenY();
+
+        double dx = mouseSX - screenPX;
+        double dy = mouseSY - screenPY;
+        double dist = Math.hypot(dx, dy);
+
+        // Bán kính an toàn tránh vẽ đè sát thân người chơi (< 24px)
+        if (dist < 24.0) {
+            return;
+        }
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Điểm bắt đầu ngay đầu nòng súng (~24px)
+        double startOffset = 24.0;
+        int startX = (int) (screenPX + (dx / dist) * startOffset);
+        int startY = (int) (screenPY + (dy / dist) * startOffset);
+
+        // Đường kẻ nét đứt mờ (Faint dashed guideline)
+        float[] dashPattern = { 6.0f, 6.0f };
+        g2.setStroke(new java.awt.BasicStroke(1.2f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND, 1.0f, dashPattern, 0.0f));
+
+        // Màu trắng xanh lơ nhạt mờ màng thanh thoát (alpha 65/255)
+        g2.setColor(new Color(175, 230, 255, 65));
+        g2.drawLine(startX, startY, mouseSX, mouseSY);
+
+        // Vòng tròn chấm tâm ngắm nhỏ mờ nhạt quanh con trỏ chuột
+        g2.setStroke(new java.awt.BasicStroke(1.0f));
+        g2.setColor(new Color(175, 230, 255, 80));
+        g2.drawOval(mouseSX - 3, mouseSY - 3, 6, 6);
+
+        g2.dispose();
     }
 
     public boolean isStandingOnExtract() {

@@ -937,17 +937,20 @@ public class DungeonMap {
      * Renders visible tiles using Viewport Culling.
      */
     public void render(Graphics2D g, Camera camera) {
-        int startCol = Math.max(0, (int) Math.floor(camera.getX() / GameConfig.TILE_SIZE));
-        int endCol = Math.min(COLS - 1, (int) Math.ceil((camera.getX() + camera.getViewportWidth()) / GameConfig.TILE_SIZE));
+        final double camX = camera.getX();
+        final double camY = camera.getY();
 
-        int startRow = Math.max(0, (int) Math.floor(camera.getY() / GameConfig.TILE_SIZE));
-        int endRow = Math.min(ROWS - 1, (int) Math.ceil((camera.getY() + camera.getViewportHeight()) / GameConfig.TILE_SIZE));
+        int startCol = Math.max(0, (int) Math.floor(camX / GameConfig.TILE_SIZE));
+        int endCol = Math.min(COLS - 1, (int) Math.ceil((camX + camera.getViewportWidth()) / GameConfig.TILE_SIZE));
+
+        int startRow = Math.max(0, (int) Math.floor(camY / GameConfig.TILE_SIZE));
+        int endRow = Math.min(ROWS - 1, (int) Math.ceil((camY + camera.getViewportHeight()) / GameConfig.TILE_SIZE));
 
         for (int c = startCol; c <= endCol; c++) {
             for (int r = startRow; r <= endRow; r++) {
                 Tile tile = tiles[c][r];
-                int screenX = camera.worldToScreenX(tile.getWorldX());
-                int screenY = camera.worldToScreenY(tile.getWorldY());
+                int screenX = (int) Math.round(tile.getWorldX() - camX);
+                int screenY = (int) Math.round(tile.getWorldY() - camY);
                 tile.render(g, screenX, screenY);
             }
         }

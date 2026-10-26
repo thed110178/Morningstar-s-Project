@@ -710,24 +710,6 @@ public class BossTank extends TargetDummy {
             g2.drawLine(cx - 10, cSize, cx, 0);
         }
 
-        // 5. Nhãn cảnh báo chiến thuật (Tactical Warning Label)
-        g2.setFont(new Font("SansSerif", Font.BOLD, 11));
-        FontMetrics fm = g2.getFontMetrics();
-        String warningText = isLocked
-                ? "⚠ ĐÃ KHÓA ĐƯỜNG ĐÂM - LAO TỨC THÌ (LOCKED!) ⚠"
-                : "▲ CẢNH BÁO: ĐƯỜNG ĐÂM HÚC TITAN (RAM CORRIDOR) ▲";
-        int textW = fm.stringWidth(warningText);
-        int textX = (int) (ramLength * 0.35) - textW / 2;
-        int textY = 4; // Căn giữa theo trục Y
-
-        // Nền bóng mờ cho chữ
-        g2.setColor(new Color(20, 10, 10, 190));
-        g2.fillRoundRect(textX - 8, -11, textW + 16, 20, 6, 6);
-
-        // Chữ cảnh báo
-        g2.setColor(isLocked ? new Color(255, 230, 80) : new Color(255, 200, 190));
-        g2.drawString(warningText, textX, textY);
-
         g2.dispose();
     }
 

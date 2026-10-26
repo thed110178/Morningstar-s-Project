@@ -154,26 +154,28 @@ public class Tile {
      */
     public void render(Graphics2D g, int screenX, int screenY) {
         int size = GameConfig.TILE_SIZE;
+        // Bù giáp mí 1px (drawSize = size + 1) để triệt tiêu hoàn toàn khe hở subpixel khi cửa sổ game co giãn scale
+        int drawSize = size + 1;
 
         // Base surface fill (Ưu tiên nạp texture Dirt hoặc Grass cho sàn đất / thảm cỏ dã chiến)
         if (type == TileType.FLOOR) {
             BufferedImage floorTex = hasGrass ? GameSpriteManager.getTextureGrass() : GameSpriteManager.getTextureDirt();
             if (floorTex != null) {
-                g.drawImage(floorTex, screenX, screenY, size, size, null);
+                g.drawImage(floorTex, screenX, screenY, drawSize, drawSize, null);
             } else {
                 g.setColor(hasGrass ? new Color(55, 110, 50) : type.getDefaultColor());
-                g.fillRect(screenX, screenY, size, size);
+                g.fillRect(screenX, screenY, drawSize, drawSize);
             }
         } else {
             g.setColor(type.getDefaultColor());
-            g.fillRect(screenX, screenY, size, size);
+            g.fillRect(screenX, screenY, drawSize, drawSize);
         }
 
         // Visual ornamentation based on tile classification
         if (type == TileType.WALL) {
             BufferedImage brickTex = GameSpriteManager.getTextureGreyBrick();
             if (brickTex != null) {
-                g.drawImage(brickTex, screenX, screenY, size, size, null);
+                g.drawImage(brickTex, screenX, screenY, drawSize, drawSize, null);
             } else {
                 // Beveled 3D top-down wall border
                 g.setColor(new Color(65, 75, 100));

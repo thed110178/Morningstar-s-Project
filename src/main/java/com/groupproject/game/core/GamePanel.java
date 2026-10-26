@@ -105,7 +105,10 @@ public class GamePanel extends JPanel {
             toggleFullScreen();
         }
 
-        stateManager.update(deltaTime, keyHandler, mouseHandler);
+        // Đồng bộ hóa với luồng render Swing EDT để đảm bảo state và tọa độ camera không bị thay đổi giữa chừng lúc render
+        synchronized (stateManager) {
+            stateManager.update(deltaTime, keyHandler, mouseHandler);
+        }
         mouseHandler.update();
     }
 
@@ -154,8 +157,10 @@ public class GamePanel extends JPanel {
         gameG.scale(scale, scale);
         gameG.setClip(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
 
-        // Delegate rendering to the currently active GameState
-        stateManager.render(gameG);
+        // Khóa đồng bộ với Game-Loop-Worker để loại bỏ hoàn toàn hiện tượng map bị xé hình (Tearing)
+        synchronized (stateManager) {
+            stateManager.render(gameG);
+        }
         gameG.dispose();
 
         // WHY: Disposing the Graphics2D instance frees native system graphics context resources immediately

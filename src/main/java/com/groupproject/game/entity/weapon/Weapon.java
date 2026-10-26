@@ -943,6 +943,11 @@ public abstract class Weapon {
      * @return Bản ghi kết quả phân bổ sao mới.
      */
     public ReforgeResult reforgeStarsOnly() {
+        // Súng Lv.1 chưa có sao nâng cấp thặng dư để tái phân bổ -> Không áp dụng Reroll Sao
+        if (this.level <= 1 || (this.damageStars + this.fireRateStars + this.accuracyStars <= 3)) {
+            return null;
+        }
+
         int currentLevel = this.level;
         int oldDmg = this.damageStars;
         int oldFr = this.fireRateStars;

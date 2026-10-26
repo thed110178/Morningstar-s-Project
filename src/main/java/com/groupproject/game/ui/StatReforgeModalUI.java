@@ -117,12 +117,15 @@ public class StatReforgeModalUI {
 
         int starsCost = getStarsCost();
         int critCost = getCritCost();
+        boolean isStarsAllowed = targetWeapon != null && targetWeapon.getLevel() > 1;
         boolean canAffordStars = hubMode || (playerCredits >= starsCost);
         boolean canAffordCrit = hubMode || (playerCredits >= critCost);
 
         // 2. Phím tắt số [1] và [2]
         if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
-            if (canAffordStars) {
+            if (!isStarsAllowed) {
+                showFeedback("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ REROLL! HÃY NÂNG CẤP LÊN LV.2+ TRƯỚC.", new Color(255, 140, 60));
+            } else if (canAffordStars) {
                 triggerAction(ReforgeType.STARS_ONLY);
             } else {
                 showFeedback("KHÔNG ĐỦ CREDITS ĐỂ REROLL SAO CHỈ SỐ!", new Color(255, 90, 90));
@@ -157,7 +160,9 @@ public class StatReforgeModalUI {
             for (int i = 0; i < btns.size(); i++) {
                 if (btns.get(i).contains(mx, my) || (i < cards.size() && cards.get(i).contains(mx, my))) {
                     if (i == 0) {
-                        if (canAffordStars) {
+                        if (!isStarsAllowed) {
+                            showFeedback("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ REROLL! HÃY NÂNG CẤP LÊN LV.2+ TRƯỚC.", new Color(255, 140, 60));
+                        } else if (canAffordStars) {
                             triggerAction(ReforgeType.STARS_ONLY);
                         } else {
                             showFeedback("KHÔNG ĐỦ CREDITS ĐỂ REROLL SAO CHỈ SỐ!", new Color(255, 90, 90));
@@ -301,29 +306,32 @@ public class StatReforgeModalUI {
     private void renderStarsCard(Graphics2D g, int cx, int cy, int cw, int ch,
                                  int cost, int reforgeCount, boolean hovered,
                                  boolean canAfford, List<Rectangle> outBtns) {
-        Color themeColor = new Color(75, 175, 255);
+        boolean isStarsAllowed = targetWeapon != null && targetWeapon.getLevel() > 1;
+        Color themeColor = isStarsAllowed ? new Color(75, 175, 255) : new Color(130, 140, 155);
 
         // Nền thẻ
-        Color bgCard = hovered ? new Color(34, 42, 54) : new Color(26, 32, 42);
+        Color bgCard = (hovered && isStarsAllowed) ? new Color(34, 42, 54) : new Color(26, 32, 42);
         g.setColor(bgCard);
         g.fillRoundRect(cx, cy, cw, ch, 8, 8);
 
         // Viền thẻ
-        g.setColor(hovered ? themeColor : new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 120));
-        g.setStroke(new BasicStroke(hovered ? 2.2f : 1.2f));
+        g.setColor((hovered && isStarsAllowed) ? themeColor : new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 120));
+        g.setStroke(new BasicStroke((hovered && isStarsAllowed) ? 2.2f : 1.2f));
         g.drawRoundRect(cx, cy, cw, ch, 8, 8);
 
         // Header thẻ
-        g.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 45));
+        g.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), isStarsAllowed ? 45 : 30));
         g.fillRoundRect(cx + 4, cy + 4, cw - 8, 38, 6, 6);
 
         g.setFont(new Font("SansSerif", Font.BOLD, 14));
         g.setColor(themeColor);
-        g.drawString("[1] REROLL SAO CHỈ SỐ", cx + 14, cy + 26);
+        String headerTitle = isStarsAllowed ? "[1] REROLL SAO CHỈ SỐ" : "[1] REROLL SAO [🔒 KHÓA]";
+        g.drawString(headerTitle, cx + 14, cy + 26);
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 10));
         g.setColor(new Color(190, 210, 225));
-        g.drawString("Tái phân bổ ngẫu nhiên sao thặng dư vào 3 nhánh", cx + 14, cy + 54);
+        String subHeader = isStarsAllowed ? "Tái phân bổ ngẫu nhiên sao thặng dư vào 3 nhánh" : "Yêu cầu vũ khí đạt cấp 2 trở lên (chưa có sao thặng dư)";
+        g.drawString(subHeader, cx + 14, cy + 54);
 
         // --- KHUNG 1: THÔNG SỐ SAO HIỆN TẠI CỦA SÚNG ---
         int boxY = cy + 64;
@@ -358,25 +366,30 @@ public class StatReforgeModalUI {
         rowY += 24;
         if (targetWeapon instanceof SniperRifle sr) {
             drawStatRow(g, boxX + 10, rowY, "Sức xuyên (PIERCE):",
-                    sr.getPierceStars(),
-                    String.format("Xuyên %d mục tiêu (-%d%%)", sr.getMaxPierces(), sr.getPierceFalloffPercent()),
-                    new Color(185, 100, 255));
+                sr.getPierceStars(),
+                String.format("Xuyên %d mục tiêu (-%d%%)", sr.getMaxPierces(), sr.getPierceFalloffPercent()),
+                new Color(185, 100, 255));
         } else {
             drawStatRow(g, boxX + 10, rowY, "Độ chính xác (ACC):",
-                    targetWeapon.getAccuracyStars(),
-                    String.format("±%.2f rad", targetWeapon.getCurrentSpreadAngle()),
-                    new Color(255, 210, 100));
+                targetWeapon.getAccuracyStars(),
+                String.format("±%.2f rad", targetWeapon.getCurrentSpreadAngle()),
+                new Color(255, 210, 100));
         }
 
         // Dòng tổng sao thặng dư
         rowY += 22;
         g.setFont(new Font("SansSerif", Font.ITALIC, 10));
-        g.setColor(new Color(165, 185, 205));
-        int totalExtra = (targetWeapon.getDamageStars() - 1) + (targetWeapon.getFireRateStars() - 1) + (targetWeapon.getAccuracyStars() - 1);
-        g.drawString(String.format("Tổng: %d★ (Lv.%d) ➔ Sẽ chia lại %d sao thặng dư",
-                targetWeapon.getDamageStars() + targetWeapon.getFireRateStars() + targetWeapon.getAccuracyStars(),
-                targetWeapon.getLevel(),
-                totalExtra), boxX + 10, rowY);
+        if (isStarsAllowed) {
+            g.setColor(new Color(165, 185, 205));
+            int totalExtra = (targetWeapon.getDamageStars() - 1) + (targetWeapon.getFireRateStars() - 1) + (targetWeapon.getAccuracyStars() - 1);
+            g.drawString(String.format("Tổng: %d★ (Lv.%d) ➔ Sẽ chia lại %d sao thặng dư",
+                    targetWeapon.getDamageStars() + targetWeapon.getFireRateStars() + targetWeapon.getAccuracyStars(),
+                    targetWeapon.getLevel(),
+                    totalExtra), boxX + 10, rowY);
+        } else {
+            g.setColor(new Color(255, 150, 70));
+            g.drawString("⚠ Súng Lv.1 chưa có sao nâng cấp thặng dư để tái phân bổ!", boxX + 10, rowY);
+        }
 
         // --- KHUNG 2: CAM KẾT BẢO LƯU CHÍ MẠNG ---
         int pledgeY = boxY + boxH + 8;
@@ -410,7 +423,17 @@ public class StatReforgeModalUI {
         Rectangle btnRect = new Rectangle(btnX, btnY, btnW, btnH);
         outBtns.add(btnRect);
 
-        if (canAfford) {
+        if (!isStarsAllowed) {
+            g.setColor(new Color(45, 48, 56));
+            g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
+            g.setColor(new Color(80, 85, 100));
+            g.drawRoundRect(btnX, btnY, btnW, btnH, 6, 6);
+            g.setColor(new Color(255, 150, 70));
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            String btnText = "🔒 KHÓA (YÊU CẦU SÚNG LV.2+)";
+            FontMetrics fm = g.getFontMetrics();
+            g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 23);
+        } else if (canAfford) {
             g.setColor(hovered ? themeColor : new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 180));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(20, 25, 30));

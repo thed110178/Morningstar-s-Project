@@ -62,6 +62,11 @@ public class KeyBindingsAndPauseMenuTest {
         mouseH.mousePressed(press);
     }
 
+    private void moveMouse(int x, int y) {
+        MouseEvent move = new MouseEvent(dummyComponent, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, x, y, 0, false);
+        mouseH.mouseMoved(move);
+    }
+
     @Test
     @DisplayName("Kiểm tra cấu hình phím mặc định của toàn bộ 16 hành động tác chiến")
     void testDefaultKeyBindings() {
@@ -318,5 +323,56 @@ public class KeyBindingsAndPauseMenuTest {
         releaseKey(KeyEvent.VK_ESCAPE, (char) 27);
 
         assertFalse(menuState.isShowSettings(), "Bấm ESC phải đóng Cài đặt phím và quay về Main Menu");
+    }
+
+    @Test
+    @DisplayName("Kiểm tra Bật / Tắt Đường ngắm chuột (Aim Guideline) trong Cài đặt và tích hợp với PlayingState")
+    void testAimGuidelineToggleInSettings() {
+        PauseMenuUI menu = new PauseMenuUI();
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        // Ban đầu mặc định là TRUE
+        com.groupproject.game.core.GameConfig.showAimGuideline = true;
+
+        // Chuyển sang menu SETTINGS và render 1 frame để khởi tạo bounds
+        menu.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+        menu.render(g, 1280, 720);
+        g.dispose();
+
+        java.awt.Rectangle toggleBounds = menu.getAimGuidelineToggleBounds();
+        assertNotNull(toggleBounds, "Vùng toggle đường ngắm phải được khởi tạo");
+        assertTrue(toggleBounds.width > 0 && toggleBounds.height > 0, "Kích thước toggle box phải hợp lệ");
+
+        // Click vào nút toggle
+        int clickX = (int) toggleBounds.getCenterX();
+        int clickY = (int) toggleBounds.getCenterY();
+        clickMouse(MouseEvent.BUTTON1, clickX, clickY);
+
+        menu.update(keyH, mouseH, 0.016);
+        assertFalse(com.groupproject.game.core.GameConfig.showAimGuideline, "Click vào toggle phải tắt đường ngắm (false)");
+
+        // Click lần thứ 2 -> Bật lại
+        clickMouse(MouseEvent.BUTTON1, clickX, clickY);
+        menu.update(keyH, mouseH, 0.016);
+        assertTrue(com.groupproject.game.core.GameConfig.showAimGuideline, "Click lần nữa phải bật lại đường ngắm (true)");
+
+        // Kiểm tra render trong PlayingState không throw exception dù bật hay tắt
+        GameStateManager gsm = new GameStateManager();
+        PlayingState playingState = new PlayingState(gsm);
+        playingState.init();
+
+        moveMouse(600, 400);
+        playingState.update(0.016, keyH, mouseH);
+
+        java.awt.Graphics2D gPlay = img.createGraphics();
+        assertDoesNotThrow(() -> playingState.render(gPlay), "Render PlayingState khi bật đường ngắm không được ném Exception");
+
+        com.groupproject.game.core.GameConfig.showAimGuideline = false;
+        assertDoesNotThrow(() -> playingState.render(gPlay), "Render PlayingState khi tắt đường ngắm không được ném Exception");
+        gPlay.dispose();
+
+        // Khôi phục mặc định
+        com.groupproject.game.core.GameConfig.showAimGuideline = true;
     }
 }

@@ -191,11 +191,17 @@ public class StatReforgeStation {
      */
     public Weapon.ReforgeResult executeReforgeStars(PlayingState state, Weapon weapon) {
         if (state == null || weapon == null) return null;
+        if (weapon.getLevel() <= 1) {
+            state.showTacticalBanner("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ TÁI CHẾ!", new Color(255, 140, 60), 2.5);
+            return null;
+        }
         int cost = getStarsReforgeCost(weapon);
         if (state.getPlayerCredits() < cost) return null;
 
-        state.deductCredits(cost);
         Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
+        if (res == null) return null;
+
+        state.deductCredits(cost);
         starsReforgeCount++;
         reforgeCount++;
         flashTimer = 0.50;

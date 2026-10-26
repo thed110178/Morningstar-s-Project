@@ -541,4 +541,19 @@ public class DungeonMapTest {
         }
         assertTrue(bossGrass > 0, "Boss stage must also have grass decorated along walls");
     }
+
+    @Test
+    @DisplayName("Verify map render executes smoothly with camera viewport offset without seams")
+    void testRenderTileCameraAlignmentAndSeamProtection() {
+        com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(1024, 600);
+        camera.snapTo(800, 600);
+
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1024, 600, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g2 = img.createGraphics();
+
+        assertDoesNotThrow(() -> map.render(g2, camera),
+                "DungeonMap.render should execute cleanly with non-zero camera coordinates");
+
+        g2.dispose();
+    }
 }

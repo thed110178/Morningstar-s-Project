@@ -38,7 +38,14 @@ public class HubRerollStation extends HubStation {
 
     public Weapon.ReforgeResult executeReforgeStars(HubRangeState hub, Weapon weapon) {
         if (weapon == null) return null;
+        if (weapon.getLevel() <= 1) {
+            if (hub != null) {
+                hub.showNotification("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ REROLL!");
+            }
+            return null;
+        }
         Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
+        if (res == null) return null;
         if (hub != null) {
             hub.showNotification("★ REROLL SAO: DMG " + res.newDmgStars() + "★ | RPM " + res.newFrStars() + "★ | ACC " + res.newAccStars() + "★ ★");
         }

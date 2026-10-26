@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 19/10/2026
+Cập nhật mới nhất vào ngày: 26/10/2026
 
 # Project DontKnow – Final Project Report & Documentation
 
@@ -20,7 +20,7 @@ Cập nhật mới nhất vào ngày: 19/10/2026
 | *(Your ID)* | *(Your Name)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Multi-Stage Dungeon, Multi-Phase Combat Lockdown, State Pattern. |
 | *(Member 2)* | *(Member Name)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Star-Level AR Accuracy Recoil, Melee Slashes, Spare Ammo Reserves. |
 | *(Member 3)* | *(Member Name)* | **Enemy AI & Encounter Systems**: BFS Tile Pathfinding, Obstacle Steering Feelers, Tactical Strafing, Spawn Telegraph Portals. |
-| *(Member 4)* | *(Member Name)* | **UI, Telemetry & QA Engineer**: Automated JUnit 5 Test Suite (**99/99 unit tests**), Sci-Fi HUD & Quick-Slots, Portable JRE Packaging. |
+| *(Member 4)* | *(Member Name)* | **UI, Telemetry & QA Engineer**: Automated JUnit 5 Test Suite (**226/226 unit tests**), Sci-Fi HUD & Quick-Slots, Portable JRE Packaging. |
 
 ---
 
@@ -40,7 +40,7 @@ This project bridges the gap between theoretical software engineering principles
 * Implement a **procedural room-based dungeon generator** that dynamically lays out Spawn, Combat, Shop, and Boss sectors across 4 Stages (3 standard stages + 1 Titan Boss Arena) with multi-phase combat door lockout mechanics.
 * Design a comprehensive **tactical weapon and ballistics framework** supporting varied weapon classes (Pistol, AR, SMG, Shotgun, Combat Knife), star-tier recoil dispersion, magazine reloads, spare ammo reserves, and physical projectile simulation.
 * Implement an intuitive **Player Health, Economy, and HUD System** featuring a high-tech on-screen HUD, equipment quick-slots, under-operative reload progress bar, manual pickup interactions, shop supply pedestal rotation, and an in-game inventory backpack.
-* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**99/99 tests passing**).
+* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**226/226 tests passing**).
 
 ## 2.4. Scope
 
@@ -96,35 +96,56 @@ This project bridges the gap between theoretical software engineering principles
     * *Layer 2 (Middle)*: Heavy tank cannon turret locked to chassis when $\text{HP} \ge 50\%$, and awakened with independent laser targeting and supersonic explosive ordnance when $\text{HP} < 50\%$.
     * *Layer 3 (Bottom)*: Armored chassis and caterpillar treads strictly aligned with actual locomotion movement vector.
   * **Multi-Phase Moveset**:
-    * *Lightning Ram / Charge (950 px/s Rocket Charge, Obstacle Impact Stop, Exclamation Warning)*: Rapid $0.30\text{s}$ steering wind-up displaying an overhead pulsing warning badge with a bold exclamation mark `"!"`; explosive $950\text{ px/s}$ charge dealing $40\text{ HP}$ contact damage. Striking any obstacle (walls, pillars, or destructible cover) immediately halts the charge, crushes destructible cover into rubble, triggers a $65\text{px}$ impact shockwave explosion, spouts fiery sparks and billowing smoke from the front bumper, triggers $0.45\text{s}$ screen shake, and stuns the tank for $0.8\text{s}$.
+    * *Lightning Ram / Charge (Rocket Charge, Impact Stop & Red Telegraph)*: $0.45\text{s}$ steering wind-up displaying dynamic red trajectory telegraph with pulsating laser borders, progressive energy charging bar, and radar chevron arrows (unobtrusive visual telegraph with clutter-free floor view); explosive $950\text{ px/s}$ charge dealing $40\text{ HP}$ contact damage. Striking any obstacle (walls, pillars, or destructible cover) immediately halts the charge, crushes destructible cover into rubble, triggers a $65\text{px}$ impact shockwave explosion, spouts fiery sparks and billowing smoke from the front bumper, triggers $0.45\text{s}$ screen shake, and stuns the tank for $0.8\text{s}$.
     * *Phase 1 Moveset Balance & Anti-Ram Spam*: In the first half of the health bar ($\text{HP} \ge 50\%$), attacks are balanced between machine gun bursts (55%) and ram charges (45%). Consecutive ram attacks are strictly prohibited, guaranteeing alternating machine gun suppression after every ram.
     * *Machine Gun Bursts*: 6-round bursts ($9\text{ HP/bullet}$) with a 60% chance of lateral strafe-fire to flank player cover.
     * *Supersonic High-Explosive Cannon (Zero-Lag Laser Lock-On & Dodge Freeze Window - HP < 50%)*: $0.90\text{s}$ laser aiming that locks directly onto operative world coordinates in real-time with zero trailing delay; laser and optical reticle then freeze locked in place for $0.40\text{s}$ (the operative's sole window to dodge); followed by an instantaneous $1350\text{ px/s}$ supersonic shell dealing $35\text{ HP}$ damage in an $85\text{px}$ AoE that penetrates all cover and terrain.
   * **Minion Guardian Reinforcements Wave System**:
     * Clearing all escort minions in the Grand Boss Arena triggers a 5-second countdown timer displayed in the top HUD below the Boss Health Bar.
-    * When the countdown reaches zero, $5 - 6$ mixed reinforcements (Melee Chasers and Rogue Pistol Scouts) spawn evenly around the arena with safe $0.40\text{s}$ portal telegraphs.
+    * When the countdown reaches zero, $5 - 6$ mixed reinforcements (Melee Chasers, Rogue Scouts, Combat Medics, and Grenadiers) spawn evenly around the arena with safe $0.40\text{s}$ portal telegraphs.
     * Reinforcement waves continuously respawn every 5 seconds after minions are cleared until the Boss Tank is eliminated.
-* **360° Omnidirectional Aiming & Star-Level Ballistics**:
+* **360° Omnidirectional Aiming & Aim Guideline**:
   * Mouse crosshair aiming via $\theta = \text{atan2}(\Delta y, \Delta x)$.
-  * **Star-Level AR Accuracy Curve**: Pinpoint initial burst accuracy with dynamic recoil dispersion blooming during sustained automatic fire. Higher star ratings (Level 1 to 5) grant tighter initial cones and reduced maximum spread.
-* **Weapon Arsenal & Spare Ammo Reserves**:
-  * **Pistol (P-9 Tactical)**: Semi-automatic sidearm with unlimited spare reserves.
+  * **Tactical Aim Guideline (Đường ngắm chuột nét đứt mờ)**: Subtle dashed guide vector extending from the operative's muzzle toward the cursor reticle, aiding precision deflection calculations; customizable toggle (ON/OFF) directly inside the Settings menu.
+  * **Star-Level AR Accuracy Curve**: Pinpoint initial burst accuracy with dynamic recoil dispersion blooming during sustained automatic fire. Higher star ratings grant tighter initial cones and reduced maximum spread.
+* **Specialized Weapon Arsenal & Ballistics Framework**:
+  * **Tactical Pistol (P-9 Tactical)**: Semi-automatic sidearm with unlimited spare reserves.
   * **Assault Rifle (Viper AR)**: Full-automatic primary rifle, max 150 reserve.
   * **Submachine Gun (Spectre SMG)**: Ultra-rapid fire rate, close-range spread, max 180 reserve.
   * **Combat Shotgun (Bulldog SG)**: 6-pellet kinetic spread, high knockback, max 50 reserve.
+  * **Sniper Rifle (M-200 Shadowstrike)**: Long-range precision rifle with specialized **Pierce Power (Sức Xuyên)** replacing Accuracy — rounds penetrate 2 to 5 consecutive hostiles with reduced damage falloff.
+  * **Semi-Carbine Rifle (Scout Carbine)**: Semi-automatic designated marksman rifle offering pinpoint first-shot accuracy and high per-bullet stopping power.
   * **Tactical Knife**: Instant close-quarters emergency slash.
-  * **Ground Ammo Pickups**: Destroyed hostiles have a 35% chance to drop matching ammo stacks.
+* **Selective 3-Branch Weapon Upgrade System**:
+  * Field Gunsmith Workbench allowing operatives to choose 1 of 3 core branches per upgrade (up to Level 10):
+    * **[1] DAMAGE (DMG)**: +20% base damage boost per star.
+    * **[2] FIRE RATE (RPM)**: -15% cooldown reduction between shots per star.
+    * **[3] ACCURACY / PIERCE (ACC/PIERCE)**: Tighter spread cone, or increased target penetration for Sniper Rifles.
+  * Interactive modal displaying Before $\to$ After values and estimated DPS increases.
+* **Dual-Category Weapon Reforge (Reroll Súng 2 Mục Độc Lập)**:
+  * **Category 1 - Star Reforge (Reroll Sao Chỉ Số)**: Redistributes all accumulated surplus stars randomly across the 3 branches, preserving 100% of the weapon's existing Crit Chance and Crit Multiplier. **Locked for Level 1 weapons** (since Lv.1 weapons have 0 surplus stars).
+  * **Category 2 - Crit Reforge (Reroll Chí Mạng)**: Re-rolls Crit Chance (5% - 50%) and Crit Multiplier (1.50x - 2.00x), preserving 100% of the weapon's star configuration. Available for weapons of all levels.
+  * Visual modal displaying live stars, damage, RPM, accuracy spread, crit ratings, and lock states.
+* **The Range (Trường Bắn Thử Nghiệm Dã Chiến)**:
+  * Central practice facility featuring combat dummy targets with live DPS readout, weapon armory dispensers, free weapon upgrade workbench, free dual-category reforge station, and incinerator trash bin.
+* **Character Permanent Buff System**:
+  * Field augmentation lab providing permanent operative stat upgrades: Max HP (+10), Movement Speed (+6%), Incoming Damage Resistance (+5%), Reload Speed (+8%), and Inter-Stage Health Regeneration.
+* **Expanded Enemy Roster (Combat Medic & Heavy Grenadier)**:
+  * **Combat Medic**: Tactical support specialist emitting a regenerative nanite aura, healing wounded allies in range and fleeing when cornered.
+  * **Heavy Grenadier**: Siege specialist launching timed fuse grenades that detonate in high-damage kinetic shockwaves after 1.5 seconds.
+* **Pixel Art Refresh, Seamless Tiling & Anti-Tearing Engine**:
+  * Complete removal of harsh map grid lines; seamless texture blending for Dirt, Grass, Stone, Brick, and Barrel Crates.
+  * Dynamic natural grass fringe decoration along dungeon and range wall perimeters.
+  * **Anti-Tearing 3-Tier Fix**: Thread synchronization `synchronized (stateManager)` between Worker loop and Swing EDT, single-frame camera snapshot projection, and 1px subpixel rasterization overlap eliminating vertical map tearing.
+* **Tactical Minimap Radar**:
+  * Real-time top-down minimap displaying chamber layouts, active chamber location, cleared rooms, and special facility markers (Shop, Reforge, Upgrade, Boss).
 * **High-Tech Sci-Fi HUD & Tactile UI**:
-  * **Stage Indicator**: Clear top-left designation formatted as `Stage [Biome]|[Stage]` (e.g. `Stage 1|1`, `Stage 1|2`, `Stage 1|3`, `Stage 1|4 [BOSS]`).
-  * **Weapon Cards**: Displays equipped weapon name with Star Level indicator (`⭐ Lvl X`).
-  * **Equipment Quick-Slot Belt**: Bottom-center hotkey bar showing `[1] AR`, `[2] SG`, `[3] Pistol`, `[4] Knife` with active weapon illumination.
-  * **Reserve Ammo Display**: Displays live counts with distinct color identities (Yellow for AR, Cyan for SMG, Crimson for Shotgun).
-  * **Under-Operative Reload Bar**: Circular countdown ring floating directly below the operative during magazine reload.
-* **Interactive Shop & Dynamic Economy**:
-  * Credit drops from cleared challenges.
-  * Supply pedestal dynamically rotating between Ammo Crates and Nanite Medkits per stage.
+  * Stage indicator formatted as `Stage [Biome]|[Stage]`.
+  * Weapon cards displaying equipped weapon name with Star Level indicator (`⭐ Lvl X`).
+  * Equipment Quick-Slot Belt: Bottom-center hotkey bar showing `[1] Primary`, `[2] Secondary`, `[3] Pistol`, `[4] Knife`.
+  * Under-Operative Reload Bar: Circular countdown ring floating directly below the operative during magazine reload.
 * **Tactical Backpack / Inventory UI (`TAB`)**:
-  * Glassmorphism modal displaying active weapons, spare ammo caps, and collected credits.
+  * Glassmorphism modal displaying active weapons, spare ammo caps, permanent perks, and collected credits.
 
 ---
 
@@ -392,17 +413,26 @@ Run the complete automated test suite via:
 mvn test
 ```
 
-## 11.3. Test Cases Summary (110 Tests – 100% Passing)
+## 11.3. Test Cases Summary (226 Tests – 100% Passing)
 
 | Test Suite Class | Tests Run | Failures | Errors | Coverage Focus |
 |---|---|---|---|---|
-| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 31 | 0 | 0 | Weapon creation, star-level AR accuracy curve, continuous auto-fire recoil bloom, magazine reloads, fire rates, cycling, slot constraints, knife nerfed damage (22 HP), and anti-multi-hit tracking. |
-| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 15 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss dummy lifecycle (1250 HP, 96px), door unlock on room clear. |
-| [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 15 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed room types across 3 stages + Boss stage. |
-| [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 11 | 0 | 0 | AR/SMG/Shotgun reserve caps, reload ammo deduction from reserve, pickup stacking, distinct color identities, infinite pistol ammo. |
-| [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | 7 | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap at 100, death trigger, manual `[F]` interaction, shop medkit purchase. |
-| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 31 | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, minimum 130px safe spawn distance, tactical kiting, active lateral strafing, cover flanking, direction-inverting wall reflexes, 1-3 round pistol burst fire, BossTank 3-layer decoupled rotations, cannon unlock threshold <50% HP, ram charge into solid obstacle -> stun, ram into destructible cover -> crush, BossCannonShell AoE blast, BossTank 1250 HP/96px default attributes, mouse viewport scaling across resolutions, and Boss Arena 5s minion reinforcements wave respawn. |
-| **Total** | **110** | **0** | **0** | **100% BUILD SUCCESS** |
+| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 50 | 0 | 0 | Weapon creation, selective 3-branch upgrades (DMG/RPM/ACC), Sniper Rifle Pierce specialization, dual-category reforge, Lv.1 weapon star reforge lock, crit reforge bounds, recoil bloom, magazine reloads, and cycling constraints. |
+| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 38 | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, safe 130px spawn distance, tactical kiting, lateral strafing, BossTank 3-layer decoupled rotations, cannon unlock threshold, ram charge stun, and Boss Arena 5s reinforcement waves. |
+| [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 19 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed special rooms (Spawn, Shop, Reforge, Upgrade, Boss), wall grass fringe decoration, and camera viewport offset & anti-tearing seam protection. |
+| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 15 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss dummy lifecycle (1250 HP, 96px), and door unlock on room clear. |
+| [`MedicAndGrenadierEnemyTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/MedicAndGrenadierEnemyTest.java) | 14 | 0 | 0 | Combat Medic regenerative nanite aura, low-HP retreat AI, Heavy Grenadier timed fuse grenades, and kinetic shockwave radius. |
+| [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 13 | 0 | 0 | AR/SMG/Shotgun/Sniper/Carbine reserve caps, reload ammo deduction from reserve, pickup stacking, distinct color identities, and infinite pistol ammo. |
+| [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | 12 | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap, death trigger, manual `[F]` interaction, and shop medkit purchase. |
+| [`HubRangeTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/hub/HubRangeTest.java) | 11 | 0 | 0 | The Range practice mode, target dummy DPS telemetry, armory dispenser, free upgrade station, free dual-category reforge station, and incinerator trash bin. |
+| [`CharacterBuffSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/entity/buff/CharacterBuffSystemTest.java) | 11 | 0 | 0 | Permanent character stat augmentations: Max HP (+10), Movement Speed (+6%), Damage Resistance (+5%), Reload Speed (+8%), and Inter-stage Health Regen. |
+| [`KeyBindingsAndPauseMenuTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/input/KeyBindingsAndPauseMenuTest.java) | 10 | 0 | 0 | Settings menu, custom keybinds, full-screen toggle, aim guideline toggle (ON/OFF), and master volume slider. |
+| [`StatReforgeRoomTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/StatReforgeRoomTest.java) | 10 | 0 | 0 | Field Gunsmith Workbench room generation, interaction modal, dual-category reforge execution, credit costs, and Lv.1 weapon star reforge rejection. |
+| [`SemiCarbineRifleTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/SemiCarbineRifleTest.java) | 8 | 0 | 0 | Semi-Carbine Rifle attributes, semi-automatic fire cooldown, pinpoint accuracy, and star-level scaling. |
+| [`MinimapSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/MinimapSystemTest.java) | 6 | 0 | 0 | Tactical minimap projection, chamber discovery, active operative tracking, and special facility markers. |
+| [`GameSpriteManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameSpriteManagerTest.java) | 6 | 0 | 0 | Material assets loading, rotated sprite rendering, nearest-neighbor filtering, and fallback vector rendering. |
+| [`WeaponSpriteManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSpriteManagerTest.java) | 3 | 0 | 0 | Weapon sprite asset loading and fallback vector rendering. |
+| **Total** | **226** | **0** | **0** | **100% BUILD SUCCESS** |
 
 ---
 
@@ -503,7 +533,7 @@ Report/GroupXX_DontKnow_Report.docx
 * [x] Project runs successfully (`mvn exec:java` and executable JAR).
 * [x] Complete source code included in `src/main/java`.
 * [x] README is completed and formatted according to the course rubric.
-* [x] Automated test suite completed (109/109 tests passing in `mvn test`).
+* [x] Automated test suite completed (226/226 tests passing in `mvn test`).
 * [x] Experimental evaluation and telemetry results included.
 * [x] Novelty and technical contributions clearly identified.
 * [x] All group members understand the architecture and codebase.

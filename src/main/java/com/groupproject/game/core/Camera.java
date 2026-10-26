@@ -12,10 +12,10 @@ package com.groupproject.game.core;
  */
 public class Camera {
 
-    private double x;
-    private double y;
-    private double targetX;
-    private double targetY;
+    private volatile double x;
+    private volatile double y;
+    private volatile double targetX;
+    private volatile double targetY;
     private final int viewportWidth;
     private final int viewportHeight;
 
