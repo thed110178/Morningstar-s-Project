@@ -248,18 +248,39 @@ public class WeaponManager {
     }
 
     /**
-     * Renders equipped weapon on operative and all active melee slash animations.
+     * Vẽ vũ khí đang trang bị (nòng súng, lưỡi dao) ở layer DƯỚI nhân vật theo yêu cầu thiết kế.
+     *
+     * @param g       Đối tượng đồ họa Graphics2D.
+     * @param camera  Camera quan sát.
+     * @param originX Tọa độ X tâm nhân vật.
+     * @param originY Tọa độ Y tâm nhân vật.
+     * @param aimAngle Góc ngắm chuột.
      */
-    public void render(Graphics2D g, Camera camera, double originX, double originY, double aimAngle) {
-        // Draw weapon barrel or blade
+    public void renderWeapon(Graphics2D g, Camera camera, double originX, double originY, double aimAngle) {
         if (activeWeapon != null) {
             activeWeapon.render(g, camera, originX, originY, aimAngle);
         }
+    }
 
-        // Draw active melee slashes
+    /**
+     * Vẽ toàn bộ hiệu ứng chém dao cận chiến (Melee Slash VFX) ở layer TRÊN nhân vật.
+     *
+     * @param g      Đối tượng đồ họa Graphics2D.
+     * @param camera Camera quan sát.
+     */
+    public void renderSlashes(Graphics2D g, Camera camera) {
         for (MeleeSlash slash : activeSlashes) {
             slash.render(g, camera);
         }
+    }
+
+    /**
+     * Renders equipped weapon on operative and all active melee slash animations.
+     * (Giữ nguyên để tương thích ngược)
+     */
+    public void render(Graphics2D g, Camera camera, double originX, double originY, double aimAngle) {
+        renderWeapon(g, camera, originX, originY, aimAngle);
+        renderSlashes(g, camera);
     }
 
     /**

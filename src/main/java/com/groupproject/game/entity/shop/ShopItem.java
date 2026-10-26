@@ -138,12 +138,19 @@ public class ShopItem {
                 return false;
             }
 
-            // Trừ tiền và thăng cấp +1 sao ngẫu nhiên
-            state.deductCredits(price);
-            String boostedStat = activeW.upgradeLevel();
-            state.showTacticalBanner("★ NÂNG CẤP THÀNH CÔNG: " + activeW.getShortDisplayName() +
-                    " [NÂNG: " + activeW.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "] (+1★ " + boostedStat + ") (-" + price + "C) ★",
-                    new Color(60, 240, 140), 3.5);
+            // Mở Modal Nâng Cấp Vũ Khí cho phép người chơi chủ động chọn 1 trong 3 chỉ số (DMG, RPM, ACC)
+            state.openWeaponUpgradeModal(activeW, price, false, selectedStat -> {
+                if (state.getPlayerCredits() < price) {
+                    state.showTacticalBanner("KHÔNG ĐỦ CREDITS ĐỂ HOÀN TẤT NÂNG CẤP!", new Color(255, 75, 75), 2.0);
+                    return;
+                }
+                state.deductCredits(price);
+                String upgradedStatName = activeW.upgradeChosenStat(selectedStat);
+                String statLabel = upgradedStatName != null ? upgradedStatName : activeW.getStatDisplayName(selectedStat);
+                state.showTacticalBanner("★ NÂNG CẤP THÀNH CÔNG: " + activeW.getShortDisplayName() +
+                        " [NÂNG: " + activeW.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "] (+1★ " + statLabel + ") (-" + price + "C) ★",
+                        new Color(60, 240, 140), 3.5);
+            });
             return true;
         }
 

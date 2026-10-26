@@ -1,14 +1,17 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.state.PlayingState;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Stroke;
+import java.awt.image.BufferedImage;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -307,50 +310,86 @@ public class RangedPistolEnemy extends TargetDummy {
         g.setColor(new Color(0, 0, 0, 95));
         g.fillOval(screenCX - half, screenCY + half - 5, (int) size, 10);
 
-        // 2. Thân người mặc áo giáp trinh sát dã chiến (Tactical Urban Plate Carrier)
-        if (critFlashTimer > 0) {
-            g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi chịu sát thương chí mạng
-        } else if (hitFlashTimer > 0) {
-            g.setColor(Color.WHITE);
+        // 2. Thử nạp và hiển thị Sprite Enemy Gun xoay theo hướng đối mặt
+        BufferedImage sprite = GameSpriteManager.getEnemyGunSprite();
+        if (sprite != null) {
+            // Nòng súng lục nhô ra trước (vẽ ở layer dưới thân nhân vật kẻ địch)
+            int barrelLen = 14;
+            int gunStartX = (int) (screenCX + Math.cos(facingAngle + 0.3) * 8);
+            int gunStartY = (int) (screenCY + Math.sin(facingAngle + 0.3) * 8);
+            int gunEndX = (int) (gunStartX + Math.cos(facingAngle) * barrelLen);
+            int gunEndY = (int) (gunStartY + Math.sin(facingAngle) * barrelLen);
+
+            Stroke oldStroke = g.getStroke();
+            g.setStroke(new BasicStroke(3.0f));
+            g.setColor(new Color(25, 30, 38)); // Gunmetal
+            g.drawLine(gunStartX, gunStartY, gunEndX, gunEndY);
+            g.setStroke(oldStroke);
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            if (critFlashTimer > 0) {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+            } else if (hitFlashTimer > 0) {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.65f));
+            }
+            int spriteDrawSize = (int) Math.round(size * 1.35);
+            GameSpriteManager.renderRotatedSprite(g2, sprite, screenCX, screenCY, facingAngle, spriteDrawSize, spriteDrawSize);
+            g2.dispose();
+
+            // Muzzle Flash Star upon firing
+            if (muzzleFlashTimer > 0) {
+                g.setColor(new Color(255, 200, 50, 220));
+                g.fillOval(gunEndX - 5, gunEndY - 5, 10, 10);
+                g.setColor(new Color(255, 255, 150));
+                g.fillOval(gunEndX - 2, gunEndY - 2, 4, 4);
+            }
         } else {
-            g.setColor(new Color(42, 48, 52)); // Xám than quân sự dã chiến
-        }
-        g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-        if (critFlashTimer > 0) {
-            g.setColor(new Color(255, 140, 140));
-            g.setStroke(new BasicStroke(2.0f));
-            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-            g.setStroke(new BasicStroke(1.0f));
-        } else {
-            g.setColor(new Color(78, 88, 95));
-            g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
-        }
+            // --- Dự phòng Vector Fallback ---
+            // 2. Thân người mặc áo giáp trinh sát dã chiến (Tactical Urban Plate Carrier)
+            if (critFlashTimer > 0) {
+                g.setColor(new Color(255, 45, 45)); // Chớp đỏ rực khi chịu sát thương chí mạng
+            } else if (hitFlashTimer > 0) {
+                g.setColor(Color.WHITE);
+            } else {
+                g.setColor(new Color(42, 48, 52)); // Xám than quân sự dã chiến
+            }
+            g.fillRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+            if (critFlashTimer > 0) {
+                g.setColor(new Color(255, 140, 140));
+                g.setStroke(new BasicStroke(2.0f));
+                g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+                g.setStroke(new BasicStroke(1.0f));
+            } else {
+                g.setColor(new Color(78, 88, 95));
+                g.drawRoundRect(screenCX - half, screenCY - half, (int) size, (int) size, 8, 8);
+            }
 
-        // 3. Mũ bảo hộ & kính ngắm quang học tác chiến màu hổ phách (Tactical Recon Visor)
-        g.setColor(new Color(245, 185, 40)); // Kính ngắm màu hổ phách quân sự
-        int eyeX = (int) (screenCX + Math.cos(facingAngle) * 5);
-        int eyeY = (int) (screenCY + Math.sin(facingAngle) * 5);
-        g.fillOval(eyeX - 4, eyeY - 4, 8, 8);
+            // 3. Mũ bảo hộ & kính ngắm quang học tác chiến màu hổ phách (Tactical Recon Visor)
+            g.setColor(new Color(245, 185, 40)); // Kính ngắm màu hổ phách quân sự
+            int eyeX = (int) (screenCX + Math.cos(facingAngle) * 5);
+            int eyeY = (int) (screenCY + Math.sin(facingAngle) * 5);
+            g.fillOval(eyeX - 4, eyeY - 4, 8, 8);
 
-        // 4. Equipped Tactical Pistol
-        int barrelLen = 15;
-        int gunStartX = (int) (screenCX + Math.cos(facingAngle + 0.3) * 10);
-        int gunStartY = (int) (screenCY + Math.sin(facingAngle + 0.3) * 10);
-        int gunEndX = (int) (gunStartX + Math.cos(facingAngle) * barrelLen);
-        int gunEndY = (int) (gunStartY + Math.sin(facingAngle) * barrelLen);
+            // 4. Equipped Tactical Pistol
+            int barrelLen = 15;
+            int gunStartX = (int) (screenCX + Math.cos(facingAngle + 0.3) * 10);
+            int gunStartY = (int) (screenCY + Math.sin(facingAngle + 0.3) * 10);
+            int gunEndX = (int) (gunStartX + Math.cos(facingAngle) * barrelLen);
+            int gunEndY = (int) (gunStartY + Math.sin(facingAngle) * barrelLen);
 
-        Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(3.5f));
-        g.setColor(new Color(25, 30, 38)); // Gunmetal
-        g.drawLine(gunStartX, gunStartY, gunEndX, gunEndY);
-        g.setStroke(oldStroke);
+            Stroke oldStroke = g.getStroke();
+            g.setStroke(new BasicStroke(3.5f));
+            g.setColor(new Color(25, 30, 38)); // Gunmetal
+            g.drawLine(gunStartX, gunStartY, gunEndX, gunEndY);
+            g.setStroke(oldStroke);
 
-        // 5. Muzzle Flash Star upon firing
-        if (muzzleFlashTimer > 0) {
-            g.setColor(new Color(255, 200, 50, 220));
-            g.fillOval(gunEndX - 5, gunEndY - 5, 10, 10);
-            g.setColor(new Color(255, 255, 150));
-            g.fillOval(gunEndX - 2, gunEndY - 2, 4, 4);
+            // 5. Muzzle Flash Star upon firing
+            if (muzzleFlashTimer > 0) {
+                g.setColor(new Color(255, 200, 50, 220));
+                g.fillOval(gunEndX - 5, gunEndY - 5, 10, 10);
+                g.setColor(new Color(255, 255, 150));
+                g.fillOval(gunEndX - 2, gunEndY - 2, 4, 4);
+            }
         }
 
         // 6. Overhead Health Bar

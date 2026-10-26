@@ -8,8 +8,11 @@ import com.groupproject.game.entity.weapon.MeleeSlash;
 import com.groupproject.game.entity.weapon.Pistol;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.Shotgun;
+import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
+import com.groupproject.game.ui.WeaponUpgradeModalUI;
+import com.groupproject.game.ui.StatReforgeModalUI;
 import java.util.ArrayList;
 import java.util.List;
 import com.groupproject.game.entity.buff.CharacterBuff;
@@ -670,6 +673,8 @@ public class WeaponSystemTest {
         // 1. Nâng cấp lần 1: từ Level I lên Level II (tốn 80 Credits)
         boolean upgrade1 = upgradeBench.purchase(state);
         assertTrue(upgrade1, "Upgrade to Level II must succeed with 100 Credits");
+        assertTrue(state.getWeaponUpgradeModalUI().isVisible(), "WeaponUpgradeModalUI must open on upgrade station purchase");
+        state.getWeaponUpgradeModalUI().triggerSelection(Weapon.UpgradeStatType.DAMAGE);
         assertEquals(20, state.getPlayerCredits(), "100 - 80 = 20 Credits remaining");
         assertEquals(2, playerAr.getLevel(), "Weapon must be upgraded to Level II");
         assertEquals(1, playerAr.getUpgradeCount(), "Upgrade count must be 1/3");
@@ -683,6 +688,7 @@ public class WeaponSystemTest {
         state.addCredits(80); // Lên 100 Credits
         boolean upgrade2 = upgradeBench.purchase(state);
         assertTrue(upgrade2, "Upgrade to Level III must succeed");
+        state.getWeaponUpgradeModalUI().triggerSelection(Weapon.UpgradeStatType.FIRE_RATE);
         assertEquals(20, state.getPlayerCredits());
         assertEquals(3, playerAr.getLevel(), "Weapon must be upgraded to Level III");
         assertEquals(2, playerAr.getUpgradeCount(), "Upgrade count must be 2/3");
@@ -691,6 +697,7 @@ public class WeaponSystemTest {
         state.addCredits(80);
         boolean upgrade3 = upgradeBench.purchase(state);
         assertTrue(upgrade3, "Upgrade to Level IV must succeed (3rd upgrade)");
+        state.getWeaponUpgradeModalUI().triggerSelection(Weapon.UpgradeStatType.ACCURACY);
         assertEquals(20, state.getPlayerCredits());
         assertEquals(4, playerAr.getLevel(), "Weapon must be upgraded to Level IV");
         assertEquals(3, playerAr.getUpgradeCount(), "Upgrade count must be 3/3");
@@ -1476,5 +1483,151 @@ public class WeaponSystemTest {
         assertEquals(4, sr.getMaxPierces(), "3-star pierce must allow 4 penetrations");
         assertEquals(0.15, sr.getPierceDamageFalloff(), 0.001, "3-star pierce damage falloff must decrease to 15%");
         assertEquals(15, sr.getPierceFalloffPercent());
+    }
+
+    @Test
+    @DisplayName("Verify upgradeChosenStat increases chosen stat star only and previews are accurate")
+    void testUpgradeChosenStatAndPreviews() {
+        AssaultRifle ar = new AssaultRifle();
+        assertEquals(1, ar.getLevel());
+        assertEquals(1, ar.getDamageStars());
+        assertEquals(1, ar.getFireRateStars());
+        assertEquals(1, ar.getAccuracyStars());
+
+        // 1. Kiểm tra Preview Sát thương trước khi nâng
+        int previewDmg = ar.getPreviewDamage(Weapon.UpgradeStatType.DAMAGE);
+        assertTrue(previewDmg > ar.getDamage(), "Preview damage must be strictly higher than current damage");
+
+        // Nâng Sát Thương
+        String boosted1 = ar.upgradeChosenStat(Weapon.UpgradeStatType.DAMAGE);
+        assertEquals("SÁT THƯƠNG (DMG)", boosted1);
+        assertEquals(2, ar.getLevel());
+        assertEquals(2, ar.getDamageStars());
+        assertEquals(1, ar.getFireRateStars());
+        assertEquals(1, ar.getAccuracyStars());
+        assertEquals(previewDmg, ar.getDamage(), "Actual damage after upgrade must equal preview damage");
+
+        // 2. Nâng Tốc Bắn
+        double previewCd = ar.getPreviewFireRateCooldown(Weapon.UpgradeStatType.FIRE_RATE);
+        assertTrue(previewCd < ar.getFireRateCooldown(), "Preview cooldown must be lower (faster fire rate)");
+        String boosted2 = ar.upgradeChosenStat(Weapon.UpgradeStatType.FIRE_RATE);
+        assertEquals("TỐC ĐỘ BẮN (RPM)", boosted2);
+        assertEquals(3, ar.getLevel());
+        assertEquals(2, ar.getDamageStars());
+        assertEquals(2, ar.getFireRateStars());
+        assertEquals(1, ar.getAccuracyStars());
+        assertEquals(previewCd, ar.getFireRateCooldown(), 0.0001);
+
+        // 3. Nâng Độ Chính Xác
+        double previewSpread = ar.getPreviewSpreadAngle(Weapon.UpgradeStatType.ACCURACY);
+        assertTrue(previewSpread < ar.getSpreadAngle(), "Preview spread must be tighter (higher accuracy)");
+        String boosted3 = ar.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
+        assertEquals("ĐỘ CHÍNH XÁC (ACC)", boosted3);
+        assertEquals(4, ar.getLevel());
+        assertEquals(2, ar.getDamageStars());
+        assertEquals(2, ar.getFireRateStars());
+        assertEquals(2, ar.getAccuracyStars());
+        assertEquals(previewSpread, ar.getSpreadAngle(), 0.0001);
+    }
+
+    @Test
+    @DisplayName("Verify reforgeStarsOnly and reforgeCritOnly operate independently")
+    void testReforgeStarsOnlyAndCritOnly() {
+        AssaultRifle ar = new AssaultRifle();
+        ar.configureLevel(4); // 3 sao thặng dư
+        assertEquals(4, ar.getLevel());
+
+        double initialCritChance = ar.getCritChance();
+        double initialCritMult = ar.getCritMultiplier();
+
+        // 1. reforgeStarsOnly: phải giữ nguyên crit
+        for (int i = 0; i < 20; i++) {
+            Weapon.ReforgeResult res = ar.reforgeStarsOnly();
+            assertNotNull(res);
+            assertEquals(4, ar.getLevel());
+            assertEquals(initialCritChance, ar.getCritChance(), 0.0001, "reforgeStarsOnly must not change crit chance");
+            assertEquals(initialCritMult, ar.getCritMultiplier(), 0.0001, "reforgeStarsOnly must not change crit multiplier");
+            int totalExtra = (ar.getDamageStars() - 1) + (ar.getFireRateStars() - 1) + (ar.getAccuracyStars() - 1);
+            assertEquals(3, totalExtra, "Total extra stars must remain 3");
+        }
+
+        int fixedDmg = ar.getDamageStars();
+        int fixedFr = ar.getFireRateStars();
+        int fixedAcc = ar.getAccuracyStars();
+
+        // 2. reforgeCritOnly: phải giữ nguyên sao
+        for (int i = 0; i < 20; i++) {
+            Weapon.ReforgeResult res = ar.reforgeCritOnly();
+            assertNotNull(res);
+            assertEquals(fixedDmg, ar.getDamageStars(), "reforgeCritOnly must not change DMG stars");
+            assertEquals(fixedFr, ar.getFireRateStars(), "reforgeCritOnly must not change RPM stars");
+            assertEquals(fixedAcc, ar.getAccuracyStars(), "reforgeCritOnly must not change ACC stars");
+            assertTrue(ar.getCritChance() >= 0.05 && ar.getCritChance() <= 0.50);
+            assertTrue(ar.getCritMultiplier() >= 1.50 && ar.getCritMultiplier() <= 2.00);
+        }
+    }
+
+    @Test
+    @DisplayName("Verify Sniper Rifle specializes the 3rd star branch as Pierce Power instead of Accuracy")
+    void testSniperRiflePierceSpecialization() {
+        SniperRifle sr = new SniperRifle(1);
+
+        // 1. Kiểm tra tên nhánh và mô tả động
+        assertEquals("SỨC XUYÊN (PIERCE)", sr.getStatDisplayName(Weapon.UpgradeStatType.ACCURACY),
+                "Sniper Rifle's 3rd upgrade branch must be named Pierce Power");
+        assertTrue(sr.getStatDescription(Weapon.UpgradeStatType.ACCURACY).contains("Xuyên qua"),
+                "Sniper Rifle's 3rd branch description must describe penetration");
+
+        // Nhánh 1 & 2 vẫn giữ nguyên chuẩn tắc
+        assertEquals("SÁT THƯƠNG (DMG)", sr.getStatDisplayName(Weapon.UpgradeStatType.DAMAGE));
+        assertEquals("TỐC ĐỘ BẮN (RPM)", sr.getStatDisplayName(Weapon.UpgradeStatType.FIRE_RATE));
+
+        // 2. Chỉ số ban đầu (1 sao)
+        assertEquals(1, sr.getPierceStars());
+        assertEquals(1, sr.getAccuracyStars());
+        assertEquals(SniperRifle.BASE_PIERCES, sr.getMaxPierces(), "Base pierces must be 2");
+        assertEquals(25, sr.getPierceFalloffPercent(), "Base falloff must be 25%");
+
+        // 3. Nâng cấp nhánh Sức Xuyên (ACCURACY)
+        String upgraded1 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
+        assertEquals("SỨC XUYÊN (PIERCE)", upgraded1, "Upgrade return value must reflect Pierce Power");
+        assertEquals(2, sr.getLevel());
+        assertEquals(2, sr.getPierceStars());
+        assertEquals(3, sr.getMaxPierces(), "Level 2 Pierce star must pierce 3 targets");
+        assertEquals(20, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 20%");
+
+        // 4. Nâng cấp tiếp nhánh Sức Xuyên lần 2
+        String upgraded2 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
+        assertEquals("SỨC XUYÊN (PIERCE)", upgraded2);
+        assertEquals(3, sr.getLevel());
+        assertEquals(3, sr.getPierceStars());
+        assertEquals(4, sr.getMaxPierces(), "Level 3 Pierce star must pierce 4 targets");
+        assertEquals(15, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 15%");
+    }
+
+    @Test
+    @DisplayName("Verify WeaponUpgradeModalUI and StatReforgeModalUI render correctly with Sniper Rifle")
+    void testSniperRifleModalRendering() {
+        SniperRifle sr = new SniperRifle(1);
+        sr.setPierceStars(2); // 2★ Pierce
+
+        WeaponUpgradeModalUI upgradeModal = new WeaponUpgradeModalUI();
+        upgradeModal.open(sr, 150, false, null);
+        assertTrue(upgradeModal.isVisible());
+
+        BufferedImage img = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+
+        assertDoesNotThrow(() -> upgradeModal.render(g2, 1280, 720, 500),
+                "WeaponUpgradeModalUI should render smoothly with Sniper Rifle");
+
+        StatReforgeModalUI reforgeModal = new StatReforgeModalUI();
+        reforgeModal.open(sr, null, false, null);
+        assertTrue(reforgeModal.isVisible());
+
+        assertDoesNotThrow(() -> reforgeModal.render(g2, 1280, 720, 500),
+                "StatReforgeModalUI should render smoothly with Sniper Rifle");
+
+        g2.dispose();
     }
 }

@@ -1,10 +1,13 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSpriteManager;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -120,6 +123,18 @@ public class MeleeSlash {
         // Alpha fade-out based on remaining lifetime
         float progress = (float) (lifetime / maxLifetime);
         int alpha = Math.clamp((int) (progress * 220), 40, 220);
+
+        // 1. Thử nạp và hiển thị Sprite Slash.png theo hướng chém
+        BufferedImage slashSprite = GameSpriteManager.getEffectSlash();
+        if (slashSprite != null) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            float alphaNorm = Math.clamp(progress, 0.15f, 1.0f);
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alphaNorm));
+            int drawSize = (int) Math.round(hitboxSize * 1.35);
+            GameSpriteManager.renderRotatedSprite(g2, slashSprite, screenCX, screenCY, angle, drawSize, drawSize);
+            g2.dispose();
+            return;
+        }
 
         // Draw translucent tactical damage sector
         if (critical) {

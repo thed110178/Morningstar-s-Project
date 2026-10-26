@@ -6,7 +6,7 @@ trigger: always_on
 
 ## Chào mừng đến với Project Dontknow
 
-Trước khi bắt đầu hỗ trợ dự án, AI Agent phải dành thời gian tìm hiểu về cấu trúc, tài liệu và mã nguồn của Project Unknown.
+Trước khi bắt đầu hỗ trợ dự án, AI Agent phải dành thời gian tìm hiểu về cấu trúc, tài liệu và mã nguồn của Project DOntKnow.
 
 ---
 
@@ -231,7 +231,7 @@ Không được ghi đè hoặc xóa lịch sử cập nhật cũ.
 Khi sửa đổi hoặc viết mới mã nguồn, AI Agent phải bổ sung hoặc cập nhật comment cho các đoạn code liên quan.
 
 ### Bắt buộc
-
+- Mọi thông thông số của 1 thực thể (VD: tốc độ di chuyển của nhân vật; bán kính nổ của 1 vụ nổ;...) đều được đánh dấu để người dùng có thể nhận biết và dễ dàng điều chỉnh và cân bằng gameplay.
 - Mọi hàm (Method) mới phải có comment tóm tắt chức năng (`/// <summary>` nếu phù hợp).
 - Các biến hoặc thuộc tính quan trọng cần có comment giải thích vai trò nếu tên gọi chưa đủ rõ nghĩa.
 - Khi thay đổi logic của một hệ thống, phải cập nhật comment của các đoạn code liên quan để phản ánh đúng hành vi mới.

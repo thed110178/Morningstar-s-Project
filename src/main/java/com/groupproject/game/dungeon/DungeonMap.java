@@ -559,6 +559,7 @@ public class DungeonMap {
             if (this.spawnRoom != null) {
                 this.spawnRoom.setDiscovered(true);
             }
+            decorateGrass();
             success = true;
         }
     }
@@ -1254,6 +1255,53 @@ public class DungeonMap {
         this.activeConnections.add(new RoomConnection(spawnRoom, bossRoom, Direction.EAST));
         if (this.spawnRoom != null) {
             this.spawnRoom.setDiscovered(true);
+        }
+        decorateGrass();
+    }
+
+    /**
+     * Tự động trang trí thảm cỏ ở các ô sàn (FLOOR) sát rìa tường nhằm tăng tính sinh động, dã chiến.
+     * Cỏ thường mọc tự nhiên ở mép tường, bờ bao và các góc phòng.
+     */
+    private void decorateGrass() {
+        for (int c = 0; c < COLS; c++) {
+            for (int r = 0; r < ROWS; r++) {
+                Tile tile = tiles[c][r];
+                if (tile == null || tile.getType() != TileType.FLOOR) {
+                    continue;
+                }
+                // Kiểm tra xem ô sàn này có kề cạnh bất kỳ ô tường (WALL) nào không (8 hướng lân cận)
+                boolean adjacentToWall = false;
+                for (int dc = -1; dc <= 1 && !adjacentToWall; dc++) {
+                    for (int dr = -1; dr <= 1; dr++) {
+                        if (dc == 0 && dr == 0) continue;
+                        int nc = c + dc;
+                        int nr = r + dr;
+                        if (isValidGrid(nc, nr)) {
+                            Tile neighbor = tiles[nc][nr];
+                            if (neighbor != null && neighbor.getType() == TileType.WALL) {
+                                adjacentToWall = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (adjacentToWall) {
+                    // Dùng hàm băm ngẫu nhiên theo tọa độ cố định để vạt cỏ mọc tự nhiên (~70% ô sát tường)
+                    // vừa sinh động, vừa không bị thay đổi mỗi frame
+                    int hash = (c * 31 + r * 17 + (c ^ r) * 7) & 0x7FFFFFFF;
+                    if (hash % 100 < 70) {
+                        tile.setHasGrass(true);
+                    }
+                } else {
+                    // Ngoài ra, có một tỷ lệ rất nhỏ (~3%) cỏ mọc lác đác giữa phòng cho thêm tự nhiên
+                    int hash = (c * 43 + r * 19 + (c * r)) & 0x7FFFFFFF;
+                    if (hash % 100 < 3) {
+                        tile.setHasGrass(true);
+                    }
+                }
+            }
         }
     }
 

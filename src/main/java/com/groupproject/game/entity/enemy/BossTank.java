@@ -34,7 +34,7 @@ public class BossTank extends TargetDummy {
 
     public enum TankState {
         PATROL_REPOSITION, // Chạy quanh buồng đấu tìm góc chiến thuật (0.20s - 0.55s)
-        RAM_WINDUP, // Lấy đà bẻ lái cực nhanh (0.22s - 0.25s)
+        RAM_WINDUP, // Lấy đà bẻ lái và phát vệt đỏ cảnh báo đường đâm (0.48s - 0.58s)
         RAM_RUSH, // Lao vọt tới tốc độ cực đại (950 px/s) gây 40 HP va chạm
         RAM_STUN, // Khựng lại 0.38s - 0.45s sau khi đâm sầm vào tường/cột cover cứng
         MG_BURST, // Xả loạt đạn súng máy 6-8 viên (bắn tại chỗ hoặc vừa chạy ngang vừa bắn)
@@ -61,6 +61,7 @@ public class BossTank extends TargetDummy {
     private double chargeTargetAngle = 0.0;
     private double chargeDistRemaining = 0.0;
     private double crashEffectTimer = 0.0; // Hiệu ứng va chạm chấn động khi đâm trúng vật cản
+    private double ramWindupDuration = 0.58; // Tổng thời gian wind-up lấy đà (0.58s Phase 1, 0.48s Phase 2) để tính tiến trình nạp lực cảnh báo
 
     // --- Machine Gun Burst Fields ---
     private int mgBulletsLeft = 0;
@@ -100,9 +101,20 @@ public class BossTank extends TargetDummy {
 
     public void setState(TankState state) {
         this.state = state;
-        if (state == TankState.RAM_RUSH && this.chargeDistRemaining <= 0) {
+        if (state == TankState.RAM_WINDUP) {
+            this.ramWindupDuration = isCannonAwakened() ? 0.48 : 0.58;
+            this.stateTimer = this.ramWindupDuration;
+        } else if (state == TankState.RAM_RUSH && this.chargeDistRemaining <= 0) {
             this.chargeDistRemaining = 800.0;
         }
+    }
+
+    public double getRamWindupDuration() {
+        return ramWindupDuration;
+    }
+
+    public void setRamWindupDuration(double ramWindupDuration) {
+        this.ramWindupDuration = ramWindupDuration;
     }
 
     public double getChargeDistRemaining() {
@@ -305,15 +317,15 @@ public class BossTank extends TargetDummy {
             return;
         }
 
-        // Khi HP >= 50% (nửa thanh máu đầu): Cân bằng kết hợp súng máy (50%) và đâm húc
-        // (50%)
+        // Khi HP >= 50% (nửa thanh máu đầu): Cân bằng kết hợp súng máy (50%) và đâm húc (50%)
         if (!isCannonAwakened()) {
             if (roll < 50) {
                 triggerMachineGunBurst();
                 lastAttackWasRam = false;
             } else {
                 state = TankState.RAM_WINDUP;
-                stateTimer = 0.25; // 0.25s (rút ngắn từ 0.30s) bẻ lái cực nhanh rồi phóng vọt đi tức thì
+                ramWindupDuration = 0.58; // 0.58s lấy đà bẻ lái và phát vệt đỏ cảnh báo đường đâm (tăng từ 0.25s)
+                stateTimer = ramWindupDuration;
                 lastAttackWasRam = true;
             }
             return;
@@ -322,7 +334,8 @@ public class BossTank extends TargetDummy {
         // Khi HP < 50%: nếu không dùng đại pháo thì đâm hoặc súng máy
         if (distToPlayer >= 140.0 && roll < 70) {
             state = TankState.RAM_WINDUP;
-            stateTimer = 0.22;
+            ramWindupDuration = 0.48; // 0.48s lấy đà trong Phase 2 thức tỉnh (tăng từ 0.22s)
+            stateTimer = ramWindupDuration;
             lastAttackWasRam = true;
             return;
         }
@@ -346,17 +359,22 @@ public class BossTank extends TargetDummy {
 
     /**
      * Chiêu 1: Giai đoạn lấy đà đâm húc (Wind-up).
-     * Bẻ lái cực nhanh thẳng hướng người chơi và lao vút tới mà không hiện vệt cảnh
-     * báo hướng đâm.
+     * Bẻ lái bám theo người chơi kèm vệt đỏ cảnh báo đường đâm (Ram Telegraph Corridor).
+     * Ở khoảng thời gian cuối (~0.16s / 0.14s), góc đâm được KHÓA CỐ ĐỊNH giúp người chơi
+     * có cửa sổ phản xạ lướt né ra khỏi vùng nguy hiểm.
      */
     private void handleRamWindupState(double deltaTime, double angleToPlayer) {
         stateTimer -= deltaTime;
-        chargeTargetAngle = angleToPlayer;
-        // Bánh xích và thân xe xoay bám rất nhanh về hướng người chơi
-        chassisAngle = smoothRotate(chassisAngle, chargeTargetAngle, 18.0 * deltaTime);
+
+        double lockWindow = isCannonAwakened() ? 0.14 : 0.16;
+        if (stateTimer > lockWindow) {
+            chargeTargetAngle = angleToPlayer;
+            // Bánh xích và thân xe xoay bám theo người chơi
+            chassisAngle = smoothRotate(chassisAngle, chargeTargetAngle, 14.0 * deltaTime);
+        }
 
         if (stateTimer <= 0) {
-            chassisAngle = chargeTargetAngle; // Khóa chính xác góc đâm theo người chơi
+            chassisAngle = chargeTargetAngle; // Khóa chính xác góc đâm theo hướng đã khóa
             state = TankState.RAM_RUSH;
             stateTimer = 0.90; // Tối đa lao trong 0.90s
             chargeDistRemaining = 800.0;
@@ -607,6 +625,9 @@ public class BossTank extends TargetDummy {
         int screenCX = camera.worldToScreenX(x);
         int screenCY = camera.worldToScreenY(y);
 
+        // 0. RENDER RAM TELEGRAPH (Vùng đỏ cảnh báo đường đi đòn đâm khi RAM_WINDUP)
+        renderRamTelegraph(g, screenCX, screenCY);
+
         // 1. RENDER WARNING TELEGRAPHS (Laser đại pháo lock-on hoặc khóa góc cố định)
         renderWarningTelegraphs(g, camera, screenCX, screenCY);
 
@@ -627,9 +648,92 @@ public class BossTank extends TargetDummy {
     }
 
     /**
+     * Vẽ vùng đỏ cảnh báo đường đi đòn đâm của Boss Xe Tăng (Ram Telegraph Corridor).
+     * Hiển thị dải hình chữ nhật phát quang trải dài dọc theo hướng đâm của thân xe (chassisAngle)
+     * với thanh đo nạp năng lượng (charge progress fill), hai biên viền laser cảnh báo và các
+     * mũi tên chỉ hướng xung kích.
+     */
+    private void renderRamTelegraph(Graphics2D g, int screenCX, int screenCY) {
+        if (state != TankState.RAM_WINDUP) {
+            return;
+        }
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Di chuyển tọa độ gốc về tâm xe tăng và xoay theo góc đâm của khung gầm
+        g2.translate(screenCX, screenCY);
+        g2.rotate(chassisAngle);
+
+        double ramLength = 800.0; // Chiều dài quãng đường đâm tương đương 800px
+        double ramWidth = size;   // Chiều rộng tương đương hitbox xe tăng (96px)
+        int halfW = (int) (ramWidth / 2.0);
+
+        double totalDur = Math.max(0.01, ramWindupDuration);
+        double progress = Math.max(0.0, Math.min(1.0, 1.0 - (stateTimer / totalDur)));
+        double lockWindow = isCannonAwakened() ? 0.14 : 0.16;
+        boolean isLocked = (stateTimer <= lockWindow);
+
+        // 1. Nền vùng đỏ cảnh báo tĩnh (Ground Danger Zone)
+        int baseAlpha = isLocked ? 75 : 45;
+        g2.setColor(new Color(255, 30, 20, baseAlpha));
+        g2.fillRect(0, -halfW, (int) ramLength, (int) ramWidth);
+
+        // 2. Vệt nạp lực đâm dâng dần theo tiến trình (Charge Fill Surge)
+        int fillLen = (int) (ramLength * progress);
+        int fillAlpha = isLocked ? 115 : 75;
+        g2.setColor(new Color(255, 50, 30, fillAlpha));
+        g2.fillRect(0, -halfW, fillLen, (int) ramWidth);
+
+        // 3. Hai đường biên viền laser cảnh báo nguy hiểm (Side Danger Rails)
+        float railStroke = isLocked ? 3.0f : 2.0f;
+        Color railColor = isLocked
+                ? new Color(255, 220, 50, 240) // Vàng cam neon khi đã khóa góc
+                : new Color(255, 50, 40, 210); // Đỏ rực khi đang bẻ lái
+        g2.setColor(railColor);
+        g2.setStroke(new BasicStroke(railStroke, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.drawLine(0, -halfW, (int) ramLength, -halfW);
+        g2.drawLine(0, halfW, (int) ramLength, halfW);
+        g2.drawLine((int) ramLength, -halfW, (int) ramLength, halfW); // Vạch chặn cuối đường đâm
+
+        // 4. Các mũi tên chữ V chỉ hướng xung kích (Directional Chevrons >>>)
+        double animOffset = (System.currentTimeMillis() * 0.22) % 70.0;
+        g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        Color chevColor = isLocked
+                ? new Color(255, 235, 90, 225)
+                : new Color(255, 130, 110, 175);
+        g2.setColor(chevColor);
+        for (double ax = 55.0 + animOffset; ax < ramLength - 25.0; ax += 70.0) {
+            int cx = (int) ax;
+            int cSize = 16;
+            g2.drawLine(cx - 10, -cSize, cx, 0);
+            g2.drawLine(cx - 10, cSize, cx, 0);
+        }
+
+        // 5. Nhãn cảnh báo chiến thuật (Tactical Warning Label)
+        g2.setFont(new Font("SansSerif", Font.BOLD, 11));
+        FontMetrics fm = g2.getFontMetrics();
+        String warningText = isLocked
+                ? "⚠ ĐÃ KHÓA ĐƯỜNG ĐÂM - LAO TỨC THÌ (LOCKED!) ⚠"
+                : "▲ CẢNH BÁO: ĐƯỜNG ĐÂM HÚC TITAN (RAM CORRIDOR) ▲";
+        int textW = fm.stringWidth(warningText);
+        int textX = (int) (ramLength * 0.35) - textW / 2;
+        int textY = 4; // Căn giữa theo trục Y
+
+        // Nền bóng mờ cho chữ
+        g2.setColor(new Color(20, 10, 10, 190));
+        g2.fillRoundRect(textX - 8, -11, textW + 16, 20, 6, 6);
+
+        // Chữ cảnh báo
+        g2.setColor(isLocked ? new Color(255, 230, 80) : new Color(255, 200, 190));
+        g2.drawString(warningText, textX, textY);
+
+        g2.dispose();
+    }
+
+    /**
      * Vẽ các đường dẫn cảnh báo chiến thuật (Tia laser ngắm bắn đại pháo lock on
      * hoặc khóa góc cố định).
-     * Tuyệt đối không vẽ vệt cảnh báo hướng đâm theo đúng yêu cầu thiết kế.
      */
     private void renderWarningTelegraphs(Graphics2D g, Camera camera, int screenCX, int screenCY) {
         Graphics2D g2 = (Graphics2D) g.create();

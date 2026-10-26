@@ -490,4 +490,55 @@ public class DungeonMapTest {
         assertTrue(sawDifferentHeights, "Combat rooms must have varied heights (not solely 10)");
         assertTrue(observedLayouts.size() >= 3, "Combat rooms must exhibit multiple diverse tactical cover layouts");
     }
+
+    @Test
+    @DisplayName("Verify grass tiles decorate procedural dungeons primarily along wall boundaries")
+    void testGrassDecorationNearWalls() {
+        int totalGrass = 0;
+        int grassNearWall = 0;
+
+        for (int c = 0; c < DungeonMap.COLS; c++) {
+            for (int r = 0; r < DungeonMap.ROWS; r++) {
+                Tile tile = map.getTile(c, r);
+                if (tile != null && tile.getType() == TileType.FLOOR && tile.hasGrass()) {
+                    totalGrass++;
+                    // Check if adjacent to WALL
+                    boolean adjacentToWall = false;
+                    for (int dc = -1; dc <= 1 && !adjacentToWall; dc++) {
+                        for (int dr = -1; dr <= 1; dr++) {
+                            if (dc == 0 && dr == 0) continue;
+                            int nc = c + dc;
+                            int nr = r + dr;
+                            if (map.isValidGrid(nc, nr)) {
+                                Tile neighbor = map.getTile(nc, nr);
+                                if (neighbor != null && neighbor.getType() == TileType.WALL) {
+                                    adjacentToWall = true;
+                                }
+                            }
+                        }
+                    }
+                    if (adjacentToWall) {
+                        grassNearWall++;
+                    }
+                }
+            }
+        }
+
+        assertTrue(totalGrass > 0, "Dungeon must have grass tiles decorated");
+        assertTrue((double) grassNearWall / totalGrass >= 0.75,
+                "The vast majority of grass tiles must appear along wall boundaries (expected >= 75%, got " + ((double) grassNearWall / totalGrass * 100) + "%)");
+
+        // Verify Boss Stage also decorates grass
+        map.generateBossStage();
+        int bossGrass = 0;
+        for (int c = 0; c < DungeonMap.COLS; c++) {
+            for (int r = 0; r < DungeonMap.ROWS; r++) {
+                Tile tile = map.getTile(c, r);
+                if (tile != null && tile.getType() == TileType.FLOOR && tile.hasGrass()) {
+                    bossGrass++;
+                }
+            }
+        }
+        assertTrue(bossGrass > 0, "Boss stage must also have grass decorated along walls");
+    }
 }

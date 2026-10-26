@@ -42,8 +42,8 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
 
 ### 3.1. Chiêu 1: Đâm Húc Thần Tốc Kinh Hoàng (Ram / Charge - 950 px/s, Biển Cảnh Báo "!" & Dừng Va Chạm)
 * **Quy trình hoạt động**:
-  1. *Lấy đà (RAM_WINDUP - 0.55s ở Phase 1, 0.45s ở Phase 2)*: Khung gầm bẻ lái thần tốc ($18.0\text{ rad/s}$) ngắm thẳng về phía người chơi. **Hiển thị biển cảnh báo nhấp nháy dấu "!" màu vàng viền đỏ rực rỡ** ngay phía trên đầu xe tăng để báo hiệu hiểm họa lao tới cấp kỳ (không hiện vệt hướng đâm trên sàn). Thời gian wind up được kéo dài hơn (tăng từ 0.25s lên 0.55s / 0.45s) để người chơi có cửa sổ phản xạ né tránh hoặc tìm cover che chắn kịp thời.
-  2. *Lao vọt thần tốc (RAM_RUSH - 950 px/s)*: Cả cỗ xe tăng thiết giáp $84\text{px}$ phóng vụt đi như một quả tên lửa mặt đất với vận tốc kinh hoàng $950.0\text{ px/s}$.
+  1. *Lấy đà (RAM_WINDUP - 0.58s ở Phase 1, 0.48s ở Phase 2)*: Khung gầm bẻ lái hướng về phía người chơi. **Hiển thị vệt đỏ cảnh báo đường đâm (Ram Telegraph Corridor)** dài $800\text{px}$, rộng $96\text{px}$ trên mặt đất kèm thanh nạp lực dâng dần và các mũi tên xung kích `>>>`. Ở $0.16\text{s}$ cuối (Phase 1) hoặc $0.14\text{s}$ cuối (Phase 2), góc đâm được KHÓA CỐ ĐỊNH và viền chuyển sang màu vàng cam phát quang chói lòa, đồng thời biển cảnh báo nhấp nháy dấu "!" màu vàng viền đỏ rực rỡ hiển thị trên đầu xe tăng, tạo cơ hội vàng cho người chơi lướt né ra khỏi vùng nguy hiểm.
+  2. *Lao vọt thần tốc (RAM_RUSH - 950 px/s)*: Cả cỗ xe tăng thiết giáp $96\text{px}$ phóng vụt đi như một quả tên lửa mặt đất với vận tốc kinh hoàng $950.0\text{ px/s}$.
 * **Cơ chế chống spam đâm ở nửa thanh máu đầu (Phase 1 Anti-Ram Spam)**:
   - Ở nửa thanh máu đầu ($\text{HP} \ge 50\%$), tỉ lệ ra chiêu được tái cân bằng: $55\%$ Bắn súng máy và $45\%$ Đâm húc.
   - Sau khi vừa tung ra một đòn đâm húc, boss **tuyệt đối bị cấm đâm liên tiếp đòn tiếp theo** (`lastAttackWasRam = true`), bắt buộc phải chuyển sang bắn súng máy (`MG_BURST`), giúp nhịp độ trận đấu cân bằng, kịch tính và không gây ức chế.

@@ -35,6 +35,8 @@ import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import com.groupproject.game.ui.BackpackUI;
 import com.groupproject.game.ui.CharacterUpgradeUI;
+import com.groupproject.game.ui.WeaponUpgradeModalUI;
+import com.groupproject.game.ui.StatReforgeModalUI;
 import com.groupproject.game.ui.MinimapHUD;
 import com.groupproject.game.ui.PauseMenuUI;
 import com.groupproject.game.ui.PlayingHUD;
@@ -133,6 +135,10 @@ public class PlayingState extends GameState {
     private CharacterUpgradeStation basicUpgradeStation;
     private CharacterUpgradeStation specialUpgradeStation;
     private final CharacterUpgradeUI characterUpgradeUI = new CharacterUpgradeUI();
+
+    // Hệ thống Modal UI Nâng Cấp Vũ Khí & Tái Phân Bổ (Reforge) Súng
+    private final WeaponUpgradeModalUI weaponUpgradeModalUI = new WeaponUpgradeModalUI();
+    private final StatReforgeModalUI statReforgeModalUI = new StatReforgeModalUI();
 
     /**
      * Constructs the playing state, builds the dungeon facility, camera, and combat managers.
@@ -807,8 +813,9 @@ public class PlayingState extends GameState {
                         // Stage 2 Phase 1: Bổ sung Medic hỗ trợ
                         spawnMedicEnemySafely(arena, cx + 120, cy - 80, 40);
                     } else {
-                        // Stage 3+ Phase 1: Bổ sung Grenadier ép góc
-                        spawnGrenadierEnemySafely(arena, cx + 120, cy - 80, 55);
+                        // Stage 3+ Phase 1: Bổ sung cả Medic hỗ trợ và Grenadier ép góc
+                        spawnMedicEnemySafely(arena, cx + 120, cy - 80, 40);
+                        spawnGrenadierEnemySafely(arena, cx - 140, cy + 70, 55);
                     }
                 } else {
                     // Phase 2: Đợt quái tiếp viện bất ngờ từ các góc phòng
@@ -965,10 +972,18 @@ public class PlayingState extends GameState {
             return; // Đóng băng toàn bộ hoạt động chiến trường khi đang tạm dừng
         }
 
-        // --- 0.5. Handle Character Upgrade Modal UI ---
-        // WHY: Khi đang mở Bảng Nâng Cấp Nhân Vật, đóng băng vòng lặp chiến đấu để người chơi tương tác an toàn
+        // --- 0.5. Handle Character Upgrade Modal UI & Weapon Modals ---
+        // WHY: Khi đang mở Bảng Nâng Cấp Nhân Vật hoặc Modal Nâng Cấp / Reroll Súng, đóng băng vòng lặp chiến đấu để người chơi tương tác an toàn
         if (characterUpgradeUI.isVisible()) {
             characterUpgradeUI.update(keyH, mouseH, this, deltaTime);
+            return;
+        }
+        if (weaponUpgradeModalUI.isVisible()) {
+            weaponUpgradeModalUI.update(keyH, mouseH, playerCredits, deltaTime);
+            return;
+        }
+        if (statReforgeModalUI.isVisible()) {
+            statReforgeModalUI.update(keyH, mouseH, playerCredits, deltaTime);
             return;
         }
 
@@ -1635,13 +1650,16 @@ public class PlayingState extends GameState {
             specialUpgradeStation.render(g, camera, player.getX(), player.getY(), player.getSize());
         }
 
-        // 4. Render Player Operative (Screen Space)
-        player.render(g, camera);
+        // 4. Render Equipped Weapon (Layer súng ở DƯỚI layer ảnh nhân vật theo yêu cầu thiết kế)
+        weaponManager.renderWeapon(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
+
+        // 5. Render Player Operative (Screen Space)
+        player.render(g, camera, weaponManager.getActiveWeapon());
         player.renderReloadIndicator(g, camera, weaponManager.getActiveWeapon());
         player.renderOutOfAmmoWarning(g, camera, weaponManager.isCurrentWeaponOutOfAmmo());
 
-        // 5. Render Equipped Weapon & Melee Slash VFX
-        weaponManager.render(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
+        // 5.1. Render Melee Slash VFX (Vệt chém dao ở layer trên nhân vật)
+        weaponManager.renderSlashes(g, camera);
 
         // 5.1. Render Critical Hit Visual Effects (Expanding golden rings, starbursts, sparks, and floating CRIT! numbers)
         for (CriticalHitVisual cv : activeCritVisuals) {
@@ -1711,6 +1729,14 @@ public class PlayingState extends GameState {
         // 13. Giao diện Bảng Nâng Cấp Nhân Vật (Character Upgrade Modal UI Overlay)
         if (characterUpgradeUI.isVisible()) {
             characterUpgradeUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, this);
+        }
+
+        // 13.5. Giao diện Nâng Cấp Vũ Khí & Reroll Súng (Weapon Upgrade & Reforge Modal UI Overlays)
+        if (weaponUpgradeModalUI.isVisible()) {
+            weaponUpgradeModalUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, playerCredits);
+        }
+        if (statReforgeModalUI.isVisible()) {
+            statReforgeModalUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, playerCredits);
         }
 
         // 14. Cắt cảnh giới thiệu Boss (Letterbox + banner) và hiệu ứng Fade chuyển stage — luôn vẽ trên cùng
@@ -2032,6 +2058,36 @@ public class PlayingState extends GameState {
 
     public CharacterUpgradeUI getCharacterUpgradeUI() {
         return characterUpgradeUI;
+    }
+
+    public WeaponUpgradeModalUI getWeaponUpgradeModalUI() {
+        return weaponUpgradeModalUI;
+    }
+
+    public StatReforgeModalUI getStatReforgeModalUI() {
+        return statReforgeModalUI;
+    }
+
+    /**
+     * Mở Modal Nâng Cấp Vũ Khí cho phép người chơi chủ động chọn 1 trong 3 chỉ số (DMG, RPM, ACC).
+     */
+    public void openWeaponUpgradeModal(Weapon weapon, int cost, boolean hubMode, WeaponUpgradeModalUI.UpgradeSelectionCallback callback) {
+        if (weapon == null) return;
+        this.weaponUpgradeModalUI.open(weapon, cost, hubMode, callback);
+    }
+
+    /**
+     * Mở Modal Tái Chế Quân Khí Dã Chiến (Reroll Súng) phân chia độc lập giữa Reroll Sao và Reroll Chí Mạng.
+     */
+    public void openStatReforgeModal(Weapon weapon, StatReforgeStation station) {
+        if (weapon == null || station == null) return;
+        this.statReforgeModalUI.open(weapon, station, false, type -> {
+            if (type == StatReforgeModalUI.ReforgeType.STARS_ONLY) {
+                station.executeReforgeStars(this, weapon);
+            } else if (type == StatReforgeModalUI.ReforgeType.CRIT_ONLY) {
+                station.executeReforgeCrit(this, weapon);
+            }
+        });
     }
 
     public MinimapHUD getMinimapHUD() {

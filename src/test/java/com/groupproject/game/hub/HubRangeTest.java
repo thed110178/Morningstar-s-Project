@@ -157,21 +157,25 @@ class HubRangeTest {
 
         assertEquals(1, ar.getLevel());
 
-        // Nâng cấp liên tục 9 lần lên Lv 10
+        // Kiểm tra tương tác mở Modal UI
+        upgradeStation.onInteract(hub);
+        assertTrue(hub.getWeaponUpgradeModalUI().isVisible(), "Tương tác với bàn nâng cấp phải mở Modal UI");
+
+        // Nâng cấp liên tục 9 lần lên Lv 10 bằng cách chọn nhánh Sát Thương
         for (int i = 2; i <= 10; i++) {
-            upgradeStation.onInteract(hub);
+            upgradeStation.executeUpgrade(hub, ar, Weapon.UpgradeStatType.DAMAGE);
             assertEquals(i, ar.getLevel(), "Cấp độ súng phải tăng lên " + i);
         }
 
         assertEquals(10, ar.getLevel());
 
         // Cố gắng nâng cấp lần thứ 11 -> Bị chặn lại ở Lv 10
-        upgradeStation.onInteract(hub);
+        upgradeStation.executeUpgrade(hub, ar, Weapon.UpgradeStatType.DAMAGE);
         assertEquals(10, ar.getLevel(), "Không được phép vượt quá cấp độ tối đa Lv 10");
     }
 
     @Test
-    @DisplayName("Kiểm tra Trạm tái rèn (HubRerollStation) tái phân bổ sao và roll crit miễn phí")
+    @DisplayName("Kiểm tra Trạm tái rèn (HubRerollStation) mở Modal và hỗ trợ Reroll Sao / Reroll Chí Mạng riêng biệt")
     void testHubRerollStation() {
         WeaponManager wm = hub.getWeaponManager();
         Weapon scr = new SemiCarbineRifle();
@@ -185,12 +189,27 @@ class HubRangeTest {
                 .findFirst().orElse(null);
         assertNotNull(rerollStation);
 
-        int oldTotalStars = scr.getDamageStars() + scr.getFireRateStars() + scr.getAccuracyStars();
+        // Kiểm tra tương tác mở Modal UI
         rerollStation.onInteract(hub);
+        assertTrue(hub.getStatReforgeModalUI().isVisible(), "Tương tác với trạm tái rèn phải mở Modal UI");
+
+        // 1. Kiểm tra Reroll toàn diện (tương thích ngược)
+        int oldTotalStars = scr.getDamageStars() + scr.getFireRateStars() + scr.getAccuracyStars();
+        rerollStation.executeReforge(hub, scr);
 
         int newTotalStars = scr.getDamageStars() + scr.getFireRateStars() + scr.getAccuracyStars();
         assertEquals(oldTotalStars, newTotalStars, "Tổng số sao phải được bảo toàn nguyên vẹn sau khi tái rèn");
         assertEquals(5, scr.getLevel(), "Cấp độ phải được bảo toàn nguyên vẹn");
+
+        // 2. Kiểm tra Reroll Sao Chỉ Số độc lập (bảo lưu chí mạng)
+        double fixedCrit = scr.getCritChance();
+        rerollStation.executeReforgeStars(hub, scr);
+        assertEquals(fixedCrit, scr.getCritChance(), 0.0001, "Reroll Sao phải bảo lưu tỉ lệ chí mạng");
+
+        // 3. Kiểm tra Reroll Chí Mạng độc lập (bảo lưu sao)
+        int fixedStars = scr.getDamageStars() + scr.getFireRateStars() + scr.getAccuracyStars();
+        rerollStation.executeReforgeCrit(hub, scr);
+        assertEquals(fixedStars, scr.getDamageStars() + scr.getFireRateStars() + scr.getAccuracyStars(), "Reroll Chí Mạng phải bảo lưu sao");
     }
 
     @Test

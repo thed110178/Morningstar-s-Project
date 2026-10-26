@@ -39,13 +39,30 @@ public class HubUpgradeStation extends HubStation {
             return;
         }
 
-        // Tăng cấp độ và cộng sao ngẫu nhiên
-        int oldLvl = current.getLevel();
-        current.setLevel(oldLvl + 1);
-        String statName = current.addRandomStar();
-        current.recalculateStatsFromStars();
+        // Mở Modal Nâng Cấp Súng để người chơi chủ động chọn 1 trong 3 chỉ số
+        hub.openWeaponUpgradeModal(current, selectedStat -> {
+            executeUpgrade(hub, current, selectedStat);
+        });
+    }
 
-        hub.showNotification("ĐÃ NÂNG CẤP " + current.getShortDisplayName() + "! (+1 SAO " + statName + ")");
+    /**
+     * Thực thi nâng cấp trực tiếp (dùng cho callback modal hoặc gọi trực tiếp).
+     */
+    public void executeUpgrade(HubRangeState hub, Weapon weapon, Weapon.UpgradeStatType selectedStat) {
+        if (hub == null || weapon == null) return;
+        if (weapon.getLevel() >= MAX_HUB_LEVEL) {
+            hub.showNotification(weapon.getName() + " ĐÃ ĐẠT CẤP TỐI ĐA (LV." + MAX_HUB_LEVEL + ")!");
+            return;
+        }
+        if (selectedStat != null) {
+            weapon.upgradeChosenStat(selectedStat, true);
+        } else {
+            weapon.setLevel(weapon.getLevel() + 1);
+            weapon.addRandomStar();
+            weapon.recalculateStatsFromStars();
+        }
+        String statName = selectedStat != null ? weapon.getStatDisplayName(selectedStat) : "Ngẫu nhiên";
+        hub.showNotification("ĐÃ NÂNG CẤP " + weapon.getShortDisplayName() + "! (+1 SAO " + statName + ")");
     }
 
     @Override

@@ -1,14 +1,17 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.state.PlayingState;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.List;
 
 /**
@@ -285,50 +288,65 @@ public class MedicEnemy extends TargetDummy {
         g2.setColor(new Color(0, 0, 0, 95));
         g2.fillOval(screenCX - half, screenCY + 2, (int) size, 12);
 
-        // Armor body - Dark Military Gray with Hostile Red Trims
-        int bx = screenCX - half;
-        int by = screenCY - half;
-        int bSize = (int) size;
-
-        if (critFlashTimer > 0) {
-            g2.setColor(new Color(255, 45, 45));
-            g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
-        } else if (hitFlashTimer > 0) {
-            g2.setColor(Color.WHITE);
-            g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+        // 2. Thử nạp và hiển thị Sprite Quân Y (Combat Field Medic) xoay theo hướng di chuyển
+        BufferedImage sprite = GameSpriteManager.getEnemyMedicSprite();
+        if (sprite != null) {
+            Graphics2D gSprite = (Graphics2D) g2.create();
+            if (critFlashTimer > 0) {
+                gSprite.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+            } else if (hitFlashTimer > 0) {
+                gSprite.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.65f));
+            }
+            int spriteDrawSize = (int) Math.round(size * 1.35);
+            GameSpriteManager.renderRotatedSprite(gSprite, sprite, screenCX, screenCY, facingAngle, spriteDrawSize, spriteDrawSize);
+            gSprite.dispose();
         } else {
-            // Dark military gray chassis (phù hợp màu mặc định của kẻ địch)
-            g2.setColor(new Color(68, 74, 84));
-            g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            // --- Dự phòng Vector Fallback ---
+            // Armor body - Dark Military Gray with Hostile Red Trims
+            int bx = screenCX - half;
+            int by = screenCY - half;
+            int bSize = (int) size;
 
-            // Sub-armor carbon plating
-            g2.setColor(new Color(48, 53, 62));
-            g2.fillRoundRect(bx + 4, by + 4, bSize - 8, bSize - 8, 5, 5);
+            if (critFlashTimer > 0) {
+                g2.setColor(new Color(255, 45, 45));
+                g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            } else if (hitFlashTimer > 0) {
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            } else {
+                // Dark military gray chassis (phù hợp màu mặc định của kẻ địch)
+                g2.setColor(new Color(68, 74, 84));
+                g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
 
-            // Rear twin thruster nubs
-            g2.setColor(new Color(55, 60, 70));
-            g2.fillRoundRect(bx + 4, by - 4, bSize - 8, 5, 3, 3);
-            g2.setColor(new Color(220, 40, 45));
-            g2.fillRect(bx + bSize / 2 - 2, by - 4, 4, 5);
+                // Sub-armor carbon plating
+                g2.setColor(new Color(48, 53, 62));
+                g2.fillRoundRect(bx + 4, by + 4, bSize - 8, bSize - 8, 5, 5);
 
-            // Crimson hostile hazard trims
-            g2.setColor(new Color(195, 45, 50));
-            g2.setStroke(new BasicStroke(1.5f));
-            g2.drawRoundRect(bx, by, bSize, bSize, 8, 8);
+                // Rear twin thruster nubs
+                g2.setColor(new Color(55, 60, 70));
+                g2.fillRoundRect(bx + 4, by - 4, bSize - 8, 5, 3, 3);
+                g2.setColor(new Color(220, 40, 45));
+                g2.fillRect(bx + bSize / 2 - 2, by - 4, 4, 5);
+
+                // Crimson hostile hazard trims
+                g2.setColor(new Color(195, 45, 50));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(bx, by, bSize, bSize, 8, 8);
+            }
+
+            // Hostile red medical cross '+' emblem at center chest
+            g2.setColor(new Color(230, 40, 40));
+            g2.fillRect(screenCX - 2, screenCY - 6, 4, 12);
+            g2.fillRect(screenCX - 6, screenCY - 2, 12, 4);
+
+            // Glowing center core of the cross
+            g2.setColor(new Color(255, 140, 140));
+            g2.fillRect(screenCX - 2, screenCY - 2, 4, 4);
+
+            // Glowing red optic sensor eye
+            g2.setColor(new Color(255, 60, 60));
+            g2.fillOval(screenCX - 3, screenCY - 3, 6, 6);
         }
-
-        // Hostile red medical cross '+' emblem at center chest
-        g2.setColor(new Color(230, 40, 40));
-        g2.fillRect(screenCX - 2, screenCY - 6, 4, 12);
-        g2.fillRect(screenCX - 6, screenCY - 2, 12, 4);
-
-        // Glowing center core of the cross
-        g2.setColor(new Color(255, 140, 140));
-        g2.fillRect(screenCX - 2, screenCY - 2, 4, 4);
-
-        // Glowing red optic sensor eye
-        g2.setColor(new Color(255, 60, 60));
-        g2.fillOval(screenCX - 3, screenCY - 3, 6, 6);
 
         // Overhead health bar - luôn luôn màu đỏ
         int barW = 34;

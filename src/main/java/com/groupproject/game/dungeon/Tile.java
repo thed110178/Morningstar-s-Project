@@ -1,9 +1,11 @@
 package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameSpriteManager;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 
 /**
  * Represents an individual square terrain unit positioned on the discrete dungeon grid.
@@ -21,6 +23,7 @@ public class Tile {
     private TileType type;
     private int health = 0;
     private int maxHealth = 0;
+    private boolean hasGrass = false;
 
     /**
      * Constructs a tile at the designated grid coordinates.
@@ -92,6 +95,17 @@ public class Tile {
             this.health = 0;
             this.maxHealth = 0;
         }
+        if (type != TileType.FLOOR) {
+            this.hasGrass = false;
+        }
+    }
+
+    public boolean hasGrass() {
+        return hasGrass;
+    }
+
+    public void setHasGrass(boolean hasGrass) {
+        this.hasGrass = hasGrass;
     }
 
     /**
@@ -141,40 +155,65 @@ public class Tile {
     public void render(Graphics2D g, int screenX, int screenY) {
         int size = GameConfig.TILE_SIZE;
 
-        // Base surface fill
-        g.setColor(type.getDefaultColor());
-        g.fillRect(screenX, screenY, size, size);
+        // Base surface fill (Ưu tiên nạp texture Dirt hoặc Grass cho sàn đất / thảm cỏ dã chiến)
+        if (type == TileType.FLOOR) {
+            BufferedImage floorTex = hasGrass ? GameSpriteManager.getTextureGrass() : GameSpriteManager.getTextureDirt();
+            if (floorTex != null) {
+                g.drawImage(floorTex, screenX, screenY, size, size, null);
+            } else {
+                g.setColor(hasGrass ? new Color(55, 110, 50) : type.getDefaultColor());
+                g.fillRect(screenX, screenY, size, size);
+            }
+        } else {
+            g.setColor(type.getDefaultColor());
+            g.fillRect(screenX, screenY, size, size);
+        }
 
         // Visual ornamentation based on tile classification
         if (type == TileType.WALL) {
-            // Beveled 3D top-down wall border
-            g.setColor(new Color(65, 75, 100));
-            g.drawRect(screenX, screenY, size - 1, size - 1);
-            g.setColor(new Color(30, 35, 48));
-            g.fillRect(screenX + 4, screenY + 4, size - 8, size - 8);
+            BufferedImage brickTex = GameSpriteManager.getTextureGreyBrick();
+            if (brickTex != null) {
+                g.drawImage(brickTex, screenX, screenY, size, size, null);
+            } else {
+                // Beveled 3D top-down wall border
+                g.setColor(new Color(65, 75, 100));
+                g.drawRect(screenX, screenY, size - 1, size - 1);
+                g.setColor(new Color(30, 35, 48));
+                g.fillRect(screenX + 4, screenY + 4, size - 8, size - 8);
+            }
         } else if (type == TileType.COVER) {
-            // Tactical cover block with cross-hatch pattern
-            g.setColor(new Color(90, 105, 135));
-            g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
-            g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
-            g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
+            BufferedImage stoneTex = GameSpriteManager.getCoverStoneSprite();
+            if (stoneTex != null) {
+                g.drawImage(stoneTex, screenX, screenY, size, size, null);
+            } else {
+                // Tactical cover block with cross-hatch pattern
+                g.setColor(new Color(90, 105, 135));
+                g.drawRect(screenX + 2, screenY + 2, size - 5, size - 5);
+                g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
+                g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
+            }
         } else if (type == TileType.DESTRUCTIBLE_COVER) {
-            // Thùng gỗ che chắn chiến thuật phá hủy được (Tactical Wooden Crate)
-            g.setColor(new Color(85, 55, 30));
-            g.drawRect(screenX + 1, screenY + 1, size - 3, size - 3);
+            BufferedImage barrelTex = GameSpriteManager.getCoverBarrelSprite();
+            if (barrelTex != null) {
+                g.drawImage(barrelTex, screenX, screenY, size, size, null);
+            } else {
+                // Thùng gỗ che chắn chiến thuật phá hủy được (Tactical Wooden Crate)
+                g.setColor(new Color(85, 55, 30));
+                g.drawRect(screenX + 1, screenY + 1, size - 3, size - 3);
 
-            // Nan gỗ chéo chữ X gia cố
-            g.setColor(new Color(105, 75, 40));
-            g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
-            g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
+                // Nan gỗ chéo chữ X gia cố
+                g.setColor(new Color(105, 75, 40));
+                g.drawLine(screenX + 4, screenY + 4, screenX + size - 5, screenY + size - 5);
+                g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
 
-            // 4 Nẹp kim loại ở các góc
-            g.setColor(new Color(70, 75, 85));
-            int bSize = 6;
-            g.fillRect(screenX + 2, screenY + 2, bSize, bSize);
-            g.fillRect(screenX + size - 2 - bSize, screenY + 2, bSize, bSize);
-            g.fillRect(screenX + 2, screenY + size - 2 - bSize, bSize, bSize);
-            g.fillRect(screenX + size - 2 - bSize, screenY + size - 2 - bSize, bSize, bSize);
+                // 4 Nẹp kim loại ở các góc
+                g.setColor(new Color(70, 75, 85));
+                int bSize = 6;
+                g.fillRect(screenX + 2, screenY + 2, bSize, bSize);
+                g.fillRect(screenX + size - 2 - bSize, screenY + 2, bSize, bSize);
+                g.fillRect(screenX + 2, screenY + size - 2 - bSize, bSize, bSize);
+                g.fillRect(screenX + size - 2 - bSize, screenY + size - 2 - bSize, bSize, bSize);
+            }
 
             // Hiệu ứng rạn nứt khi bị nhận sát thương
             if (health < maxHealth) {
@@ -370,10 +409,6 @@ public class Tile {
             g.fillOval(screenX + size - 5, screenY + 2, 3, 3);
             g.fillOval(screenX + 2, screenY + size - 5, 3, 3);
             g.fillOval(screenX + size - 5, screenY + size - 5, 3, 3);
-        } else if (type == TileType.FLOOR) {
-            // Subtle floor tile separation line
-            g.setColor(new Color(35, 42, 58));
-            g.drawRect(screenX, screenY, size - 1, size - 1);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.groupproject.game.enemy;
 
+import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.enemy.BossTank;
@@ -14,6 +15,8 @@ import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.weapon.MeleeSlash;
 import com.groupproject.game.state.GameStateManager;
 import com.groupproject.game.state.PlayingState;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -1162,5 +1165,50 @@ class EnemyAITest {
         com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
         state.update(0.016, keyH, mouseH);
         assertTrue(state.getActiveCorpses().isEmpty(), "Finished corpse must be removed from activeCorpses list");
+    }
+
+    @Test
+    @DisplayName("Verify BossTank ram windup duration is extended with red telegraph corridor and lock-in window")
+    void testBossTankRamWindupExtensionAndRedTelegraphCorridor() {
+        BossTank tank = new BossTank(400, 300);
+        tank.setSpawnTelegraph(0.0);
+
+        // 1. Kiểm tra thời gian windup ở Phase 1 (HP >= 50%)
+        tank.setState(BossTank.TankState.RAM_WINDUP);
+        assertEquals(0.58, tank.getRamWindupDuration(), 0.001,
+                "Phase 1 RAM_WINDUP duration must be extended to 0.58s");
+        assertEquals(0.58, tank.getStateTimer(), 0.001);
+
+        // 2. Kiểm tra trong giai đoạn đầu windup: thân xe xoay bám theo người chơi
+        // Người chơi ở (600, 300) -> góc = 0 rad
+        tank.updateAI(0.10, 600.0, 300.0, 28.0, null, projectileManager, null);
+        assertEquals(BossTank.TankState.RAM_WINDUP, tank.getState());
+        assertTrue(tank.getStateTimer() > 0.16, "Still in tracking wind-up window");
+
+        // 3. Kiểm tra ở cửa sổ cuối (lock-in window <= 0.16s): góc đâm được khóa cố định
+        tank.setStateTimer(0.12); // Nằm trong lock-in window (0.12s <= 0.16s)
+        double frozenAngle = tank.getChassisAngle();
+        // Người chơi bất ngờ né sang (400, 600) -> góc Math.PI / 2
+        tank.updateAI(0.05, 400.0, 600.0, 28.0, null, projectileManager, null);
+        assertEquals(frozenAngle, tank.getChassisAngle(), 0.001,
+                "Chassis angle must freeze during lock-in window to allow player dodge");
+
+        // 4. Kiểm tra thời gian windup ở Phase 2 (HP < 50% thức tỉnh đại pháo)
+        tank.takeDamage(700);
+        assertTrue(tank.isCannonAwakened());
+        tank.setState(BossTank.TankState.RAM_WINDUP);
+        assertEquals(0.48, tank.getRamWindupDuration(), 0.001,
+                "Phase 2 RAM_WINDUP duration must be 0.48s");
+        assertEquals(0.48, tank.getStateTimer(), 0.001);
+
+        // 5. Kiểm tra render vùng đỏ cảnh báo đường đâm (Ram Telegraph Corridor) an toàn không văng lỗi
+        BufferedImage img = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        Camera cam = new Camera(0, 0);
+
+        assertDoesNotThrow(() -> tank.render(g2, cam),
+                "BossTank rendering with active RAM_WINDUP red corridor telegraph should be smooth and error-free");
+
+        g2.dispose();
     }
 }

@@ -26,6 +26,8 @@ import com.groupproject.game.state.PlayingState;
 import com.groupproject.game.ui.BackpackUI;
 import com.groupproject.game.ui.PauseMenuUI;
 import com.groupproject.game.ui.PlayingHUD;
+import com.groupproject.game.ui.WeaponUpgradeModalUI;
+import com.groupproject.game.ui.StatReforgeModalUI;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -90,6 +92,8 @@ public class HubRangeState extends GameState {
     private final PlayingHUD playingHUD = new PlayingHUD();
     private final BackpackUI backpackUI = new BackpackUI();
     private final PauseMenuUI pauseMenuUI = new PauseMenuUI();
+    private final WeaponUpgradeModalUI weaponUpgradeModalUI = new WeaponUpgradeModalUI();
+    private final StatReforgeModalUI statReforgeModalUI = new StatReforgeModalUI();
     private boolean isBackpackOpen = false;
     private boolean isPaused = false;
 
@@ -287,7 +291,21 @@ public class HubRangeState extends GameState {
         // Đảm bảo kho đạn luôn đầy đặn
         replenishInfiniteAmmo();
 
-        // --- 0. Xử lý Menu Tạm Dừng (ESC / PAUSE_MENU) ---
+        // --- 0. Xử lý Modal UI Nâng Cấp & Reroll Súng (Đóng băng khi đang mở) ---
+        if (weaponUpgradeModalUI.isVisible()) {
+            if (keyH != null && mouseH != null) {
+                weaponUpgradeModalUI.update(keyH, mouseH, 9999, deltaTime);
+            }
+            return;
+        }
+        if (statReforgeModalUI.isVisible()) {
+            if (keyH != null && mouseH != null) {
+                statReforgeModalUI.update(keyH, mouseH, 9999, deltaTime);
+            }
+            return;
+        }
+
+        // --- 0.1. Xử lý Menu Tạm Dừng (ESC / PAUSE_MENU) ---
         if (isPaused) {
             if (keyH != null && (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE))) {
                 PauseMenuUI.PauseAction escAction = pauseMenuUI.handleEsc();
@@ -529,12 +547,13 @@ public class HubRangeState extends GameState {
         // --- 5. Vẽ vệt đạn Recoil Tracer Lines 3 giây (Trường bắn phải) ---
         tracerManager.render(g, camera);
 
-        // --- 6. Vẽ đạn & operative & súng trên tay & thanh đếm ngược nạp đạn ---
+        // --- 6. Vẽ đạn & vũ khí (layer dưới) & operative & thanh đếm ngược nạp đạn & vệt chém ---
         projectileManager.render(g, camera);
-        player.render(g, camera);
+        weaponManager.renderWeapon(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
+        player.render(g, camera, weaponManager.getActiveWeapon());
         player.renderReloadIndicator(g, camera, weaponManager.getActiveWeapon());
         player.renderOutOfAmmoWarning(g, camera, weaponManager.isCurrentWeaponOutOfAmmo());
-        weaponManager.render(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
+        weaponManager.renderSlashes(g, camera);
 
         // --- 7. Vẽ số sát thương bay lên (Damage Popups) ---
         popupManager.render(g, camera);
@@ -573,6 +592,22 @@ public class HubRangeState extends GameState {
                     }
                 }
                 hubTiles[x][y] = new com.groupproject.game.dungeon.Tile(x, y, type);
+            }
+        }
+
+        // Trang trí vạt cỏ ở rìa tường bao The Range
+        for (int x = 1; x < cols - 1; x++) {
+            for (int y = 1; y < rows - 1; y++) {
+                com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
+                if (t != null && t.getType() == com.groupproject.game.dungeon.TileType.FLOOR) {
+                    boolean nearWall = (x == 1 || x == cols - 2 || y == 1 || y == rows - 2);
+                    if (nearWall) {
+                        int hash = (x * 31 + y * 17 + (x ^ y) * 7) & 0x7FFFFFFF;
+                        if (hash % 100 < 70) {
+                            t.setHasGrass(true);
+                        }
+                    }
+                }
             }
         }
     }
@@ -675,6 +710,14 @@ public class HubRangeState extends GameState {
         // 6. Giao diện Menu Tạm dừng (ESC Overlay)
         if (isPaused) {
             pauseMenuUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
+        }
+
+        // 7. Giao diện Modal Nâng Cấp & Reroll Súng
+        if (weaponUpgradeModalUI.isVisible()) {
+            weaponUpgradeModalUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, 9999);
+        }
+        if (statReforgeModalUI.isVisible()) {
+            statReforgeModalUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, 9999);
         }
     }
 
@@ -814,5 +857,37 @@ public class HubRangeState extends GameState {
 
     public List<HubStation> getStations() {
         return stations;
+    }
+
+    public WeaponUpgradeModalUI getWeaponUpgradeModalUI() {
+        return weaponUpgradeModalUI;
+    }
+
+    public StatReforgeModalUI getStatReforgeModalUI() {
+        return statReforgeModalUI;
+    }
+
+    /**
+     * Mở Modal Nâng Cấp Súng trong The Range (miễn phí, tối đa Cấp 10).
+     */
+    public void openWeaponUpgradeModal(Weapon weapon, WeaponUpgradeModalUI.UpgradeSelectionCallback callback) {
+        if (weapon == null) return;
+        this.weaponUpgradeModalUI.open(weapon, 0, true, callback);
+    }
+
+    /**
+     * Mở Modal Reroll Súng trong The Range (miễn phí 2 mục Reroll Sao & Reroll Chí Mạng).
+     */
+    public void openStatReforgeModal(Weapon weapon) {
+        if (weapon == null) return;
+        this.statReforgeModalUI.open(weapon, null, true, type -> {
+            if (type == StatReforgeModalUI.ReforgeType.STARS_ONLY) {
+                Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
+                showNotification("★ REROLL SAO: DMG " + res.newDmgStars() + "★ | RPM " + res.newFrStars() + "★ | ACC " + res.newAccStars() + "★ ★");
+            } else if (type == StatReforgeModalUI.ReforgeType.CRIT_ONLY) {
+                Weapon.ReforgeResult res = weapon.reforgeCritOnly();
+                showNotification("★ REROLL CHÍ MẠNG: CRIT " + res.newCritPercent() + "% (x" + String.format(java.util.Locale.US, "%.2f", weapon.getCritMultiplier()) + ") ★");
+            }
+        });
     }
 }

@@ -332,6 +332,13 @@ public abstract class Weapon {
      * Thêm 1 sao ngẫu nhiên vào 1 trong 3 chỉ số chính.
      * Trả về tên chỉ số vừa được tăng (để hiển thị thông báo phản hồi).
      */
+    /**
+     * Thêm 1 sao ngẫu nhiên vào 1 trong 3 chỉ số chính.
+     * Trả về tên chỉ số vừa được tăng (để hiển thị thông báo phản hồi).
+     *
+     * <p>WHY: Riêng Sniper Rifle không sử dụng độ chính xác do đường đạn đã thẳng tuyệt đối,
+     * nhánh sao thứ 3 chuyên trách nâng cấp Sức xuyên (Pierce Power) qua nhiều mục tiêu.
+     */
     public String addRandomStar() {
         int pick = ThreadLocalRandom.current().nextInt(3);
         if (pick == 0) {
@@ -342,8 +349,57 @@ public abstract class Weapon {
             return "TỐC BẮN (RPM)";
         } else {
             accuracyStars++;
-            return "CHÍNH XÁC (ACC)";
+            return (this instanceof SniperRifle) ? "SỨC XUYÊN (PIERCE)" : "CHÍNH XÁC (ACC)";
         }
+    }
+
+    /**
+     * Định nghĩa 3 nhánh chỉ số có thể nâng cấp của vũ khí.
+     */
+    public enum UpgradeStatType {
+        DAMAGE("SÁT THƯƠNG (DMG)", "Tăng +20% sát thương cơ bản và DPS"),
+        FIRE_RATE("TỐC ĐỘ BẮN (RPM)", "Tăng +15% tốc bắn, xả đạn dồn dập hơn"),
+        ACCURACY("ĐỘ CHÍNH XÁC (ACC)", "Gom chùm đạn chặt hơn, giảm góc tản đạn");
+
+        private final String displayName;
+        private final String description;
+
+        UpgradeStatType(String displayName, String description) {
+            this.displayName = displayName;
+            this.description = description;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
+
+    /**
+     * Lấy tên hiển thị phù hợp với đặc thù của từng loại vũ khí.
+     * Riêng khẩu Sniper Rifle, nhánh thứ 3 là SỨC XUYÊN (PIERCE) thay vì ĐỘ CHÍNH XÁC (ACC).
+     */
+    public String getStatDisplayName(UpgradeStatType statType) {
+        if (statType == null) return "";
+        if (statType == UpgradeStatType.ACCURACY && this instanceof SniperRifle) {
+            return "SỨC XUYÊN (PIERCE)";
+        }
+        return statType.getDisplayName();
+    }
+
+    /**
+     * Lấy mô tả chi tiết phù hợp với đặc thù của từng loại vũ khí.
+     * Với Sniper Rifle: giải thích cơ chế đâm xuyên nhiều mục tiêu và giảm hao hụt sát thương.
+     */
+    public String getStatDescription(UpgradeStatType statType) {
+        if (statType == null) return "";
+        if (statType == UpgradeStatType.ACCURACY && this instanceof SniperRifle) {
+            return "Xuyên qua nhiều kẻ địch/vật cản, giảm hao hụt sát thương";
+        }
+        return statType.getDescription();
     }
 
     /**
@@ -355,7 +411,81 @@ public abstract class Weapon {
     }
 
     /**
-     * Nâng cấp khẩu súng lên 1 cấp tại bàn nâng cấp Shop.
+     * Nâng cấp khẩu súng theo đúng 1 trong 3 chỉ số mà người chơi chủ động lựa chọn.
+     *
+     * @param statType           Chỉ số được chọn (DAMAGE, FIRE_RATE hoặc ACCURACY).
+     * @param ignoreUpgradeLimit {@code true} nếu cho phép vượt quá giới hạn 3 lần nâng của Shop (dùng cho The Range lên tới Lv.10).
+     * @return Tên hiển thị của chỉ số vừa được nâng cấp nếu thành công; {@code null} nếu không thể nâng.
+     */
+    public String upgradeChosenStat(UpgradeStatType statType, boolean ignoreUpgradeLimit) {
+        if (statType == null || isMelee()) {
+            return null;
+        }
+        if (!ignoreUpgradeLimit && upgradeCount >= MAX_UPGRADE_COUNT) {
+            return null;
+        }
+        level++;
+        upgradeCount++;
+        switch (statType) {
+            case DAMAGE -> damageStars++;
+            case FIRE_RATE -> fireRateStars++;
+            case ACCURACY -> accuracyStars++;
+        }
+        recalculateStatsFromStars();
+        return getStatDisplayName(statType);
+    }
+
+    /**
+     * Nâng cấp súng theo chỉ số chỉ định, tuân thủ giới hạn tối đa 3 lần nâng của Dungeon Shop.
+     */
+    public String upgradeChosenStat(UpgradeStatType statType) {
+        return upgradeChosenStat(statType, false);
+    }
+
+    /**
+     * Tính toán trước sát thương giả định nếu nâng cấp nhánh statType.
+     */
+    public int getPreviewDamage(UpgradeStatType statType) {
+        int simStars = damageStars + (statType == UpgradeStatType.DAMAGE ? 1 : 0);
+        return Math.max(1, (int) Math.round(baseDamage * (1.0 + (simStars - 1) * 0.20)));
+    }
+
+    /**
+     * Tính toán trước DPS thường giả định nếu nâng cấp nhánh statType.
+     */
+    public int getPreviewNormalDPS(UpgradeStatType statType) {
+        int simDmg = getPreviewDamage(statType);
+        int simFrStars = fireRateStars + (statType == UpgradeStatType.FIRE_RATE ? 1 : 0);
+        double simCooldown = baseFireRateCooldown > 0
+                ? Math.max(0.02, baseFireRateCooldown / (1.0 + (simFrStars - 1) * 0.15))
+                : fireRateCooldown;
+        if (simCooldown <= 0.0001) return 0;
+        double shotsPerSec = 1.0 / simCooldown;
+        return (int) Math.round(simDmg * getProjectilesPerShot() * shotsPerSec);
+    }
+
+    /**
+     * Tính toán trước thời gian trễ bắn giả định nếu nâng cấp nhánh statType.
+     */
+    public double getPreviewFireRateCooldown(UpgradeStatType statType) {
+        int simFrStars = fireRateStars + (statType == UpgradeStatType.FIRE_RATE ? 1 : 0);
+        return baseFireRateCooldown > 0
+                ? Math.max(0.02, baseFireRateCooldown / (1.0 + (simFrStars - 1) * 0.15))
+                : fireRateCooldown;
+    }
+
+    /**
+     * Tính toán trước góc tản đạn giả định nếu nâng cấp nhánh statType.
+     */
+    public double getPreviewSpreadAngle(UpgradeStatType statType) {
+        int simAccStars = accuracyStars + (statType == UpgradeStatType.ACCURACY ? 1 : 0);
+        return baseSpreadAngle > 0.0001
+                ? baseSpreadAngle * Math.pow(0.65, simAccStars - 1)
+                : 0.0;
+    }
+
+    /**
+     * Nâng cấp khẩu súng lên 1 cấp tại bàn nâng cấp Shop (chọn sao ngẫu nhiên - tương thích ngược).
      * Tối đa 3 lần nâng cấp cho mỗi khẩu súng.
      *
      * @return Tên chỉ số vừa được cộng thêm sao nếu nâng cấp thành công; {@code null} nếu đã đạt giới hạn 3 lần nâng hoặc là vũ khí cận chiến.
@@ -481,6 +611,10 @@ public abstract class Weapon {
     }
 
     public double getCurrentSpreadAngle() {
+        return currentSpreadAngle;
+    }
+
+    public double getSpreadAngle() {
         return currentSpreadAngle;
     }
 
@@ -798,6 +932,66 @@ public abstract class Weapon {
                 oldDmg, this.damageStars,
                 oldFr, this.fireRateStars,
                 oldAcc, this.accuracyStars,
+                oldCrit, getCritChancePercent()
+        );
+    }
+
+    /**
+     * Chỉ tái phân bổ ngẫu nhiên lại các sao thặng dư vào 3 nhánh (DMG, RPM, ACC).
+     * BẢO LƯU 100% tỉ lệ chí mạng và hệ số chí mạng hiện tại của súng.
+     *
+     * @return Bản ghi kết quả phân bổ sao mới.
+     */
+    public ReforgeResult reforgeStarsOnly() {
+        int currentLevel = this.level;
+        int oldDmg = this.damageStars;
+        int oldFr = this.fireRateStars;
+        int oldAcc = this.accuracyStars;
+        int currentCrit = getCritChancePercent();
+
+        int totalExtraStars = (oldDmg - 1) + (oldFr - 1) + (oldAcc - 1);
+        this.damageStars = 1;
+        this.fireRateStars = 1;
+        this.accuracyStars = 1;
+
+        for (int i = 0; i < totalExtraStars; i++) {
+            addRandomStar();
+        }
+        recalculateStatsFromStars();
+
+        return new ReforgeResult(
+                currentLevel,
+                oldDmg, this.damageStars,
+                oldFr, this.fireRateStars,
+                oldAcc, this.accuracyStars,
+                currentCrit, currentCrit
+        );
+    }
+
+    /**
+     * Chỉ gieo lại ngẫu nhiên tỉ lệ chí mạng [5%, 50%] và hệ số chí mạng [1.5x, 2.0x].
+     * BẢO LƯU 100% số sao các nhánh chỉ số (DMG, RPM, ACC) hiện tại của súng.
+     *
+     * @return Bản ghi kết quả chí mạng mới.
+     */
+    public ReforgeResult reforgeCritOnly() {
+        int currentLevel = this.level;
+        int oldCrit = getCritChancePercent();
+
+        if (this.sTier) {
+            int critPct = 35 + ThreadLocalRandom.current().nextInt(16);
+            setCritChance(critPct / 100.0);
+        } else {
+            double newCritChance = rollRandomCritChance();
+            setCritChance(newCritChance);
+        }
+        this.critMultiplier = rollRandomCritMultiplier();
+
+        return new ReforgeResult(
+                currentLevel,
+                this.damageStars, this.damageStars,
+                this.fireRateStars, this.fireRateStars,
+                this.accuracyStars, this.accuracyStars,
                 oldCrit, getCritChancePercent()
         );
     }

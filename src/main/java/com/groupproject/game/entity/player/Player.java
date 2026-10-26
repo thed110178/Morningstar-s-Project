@@ -2,13 +2,16 @@ package com.groupproject.game.entity.player;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.weapon.Weapon;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
@@ -451,6 +454,19 @@ public class Player {
      * @param camera Camera chuyển đổi thế giới sang màn hình.
      */
     public void render(Graphics2D g, Camera camera) {
+        render(g, camera, null);
+    }
+
+    /**
+     * Vẽ mô hình đặc nhiệm chiến thuật trong không gian màn hình:
+     * - Ưu tiên nạp và vẽ Sprite pixel art (PlayerGun / PlayerMelee) xoay theo góc ngắm chuột.
+     * - Khi không có sprite: tự động chuyển sang vẽ mô hình Vector dã chiến dự phòng.
+     *
+     * @param g            Đối tượng đồ họa Graphics2D.
+     * @param camera       Camera chuyển đổi thế giới sang màn hình.
+     * @param activeWeapon Vũ khí hiện đang kích hoạt (để chọn form cầm súng hoặc cầm dao).
+     */
+    public void render(Graphics2D g, Camera camera, Weapon activeWeapon) {
         if (isDead) {
             renderDeathSkull(g, camera);
             return;
@@ -469,6 +485,35 @@ public class Player {
         // 1. Bóng đổ dã chiến (Shadow)
         g.setColor(new Color(0, 0, 0, 100));
         g.fillOval(screenPX - 14, screenPY - 8, 28, 16);
+
+        // 2. Thử nạp và hiển thị Sprite nhân vật (PlayerGun hoặc PlayerMelee)
+        BufferedImage sprite = (activeWeapon != null && activeWeapon.isMelee())
+                ? GameSpriteManager.getPlayerMeleeSprite()
+                : GameSpriteManager.getPlayerGunSprite();
+
+        if (sprite != null) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            // Khi bất tử (invulnerableTimer > 0): Nhấp nháy chớp phản hồi lực va chạm
+            if (invulnerableTimer > 0 && ((int) (invulnerableTimer * 18)) % 2 == 0) {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+            }
+            int spriteDrawSize = (int) Math.round(getSize() * 1.4); // ~40-42px, cân xứng với hitbox 30px
+            GameSpriteManager.renderRotatedSprite(g2, sprite, screenPX, screenPY, aimAngle, spriteDrawSize, spriteDrawSize);
+            g2.dispose();
+
+            // Hiệu ứng vòng hào quang khí động học và vệt sóng xung chấn khi đang lướt né (i-frames)
+            if (dodging) {
+                g.setColor(new Color(0, 235, 255, 140));
+                g.setStroke(new BasicStroke(2.0f));
+                g.drawOval(screenPX - 18, screenPY - 18, 36, 36);
+                g.setColor(new Color(0, 210, 255, 60));
+                g.fillOval(screenPX - 17, screenPY - 17, 34, 34);
+                g.setStroke(new BasicStroke(1.0f));
+            }
+            return;
+        }
+
+        // --- Dự phòng an toàn (Vector Fallback) nếu chưa nạp được sprite ---
 
         // 2. Thân chiến binh (Áo giáp Plate Carrier màu Sa Mạc / Coyote Tan)
         // Khi bất tử (invulnerableTimer > 0): Nhấp nháy chớp đỏ phản hồi lực va chạm

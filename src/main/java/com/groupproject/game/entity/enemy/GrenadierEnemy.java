@@ -1,15 +1,18 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.projectile.EnemyGrenade;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.state.PlayingState;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -208,53 +211,78 @@ public class GrenadierEnemy extends TargetDummy {
         g2.setColor(new Color(0, 0, 0, 95));
         g2.fillOval(screenCX - half, screenCY + 2, (int) size, 12);
 
-        // 2. Chassis body
-        int bx = screenCX - half;
-        int by = screenCY - half;
-        int bSize = (int) size;
+        // 2. Thử nạp và hiển thị Sprite Lính Ném Lựu (Heavy Grenadier) xoay theo hướng đối mặt
+        BufferedImage sprite = GameSpriteManager.getEnemyGrenadierSprite();
+        if (sprite != null) {
+            Graphics2D gSprite = (Graphics2D) g2.create();
+            if (critFlashTimer > 0) {
+                gSprite.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+            } else if (hitFlashTimer > 0) {
+                gSprite.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.65f));
+            }
+            int spriteDrawSize = (int) Math.round(size * 1.35);
+            GameSpriteManager.renderRotatedSprite(gSprite, sprite, screenCX, screenCY, facingAngle, spriteDrawSize, spriteDrawSize);
+            gSprite.dispose();
 
-        if (critFlashTimer > 0) {
-            g2.setColor(new Color(255, 45, 45));
-            g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
-        } else if (hitFlashTimer > 0) {
-            g2.setColor(Color.WHITE);
-            g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            // Tư thế vung tay ném lựu đạn khi kích hoạt kỹ năng
+            if (throwAnimTimer > 0) {
+                int armLen = 14;
+                int armEndX = (int) (screenCX + Math.cos(facingAngle) * armLen);
+                int armEndY = (int) (screenCY + Math.sin(facingAngle) * armLen);
+                g2.setColor(new Color(255, 140, 30));
+                g2.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(screenCX, screenCY, armEndX, armEndY);
+            }
         } else {
-            // Heavy ordnance matte armor: Charcoal slate
-            g2.setColor(new Color(55, 65, 75));
-            g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            // --- Dự phòng Vector Fallback ---
+            // 2. Chassis body
+            int bx = screenCX - half;
+            int by = screenCY - half;
+            int bSize = (int) size;
 
-            // Heavy explosive bandolier belt diagonally across chest
-            g2.setColor(new Color(30, 35, 40));
-            g2.fillRect(bx + 4, by + 4, bSize - 8, 5);
+            if (critFlashTimer > 0) {
+                g2.setColor(new Color(255, 45, 45));
+                g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            } else if (hitFlashTimer > 0) {
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
+            } else {
+                // Heavy ordnance matte armor: Charcoal slate
+                g2.setColor(new Color(55, 65, 75));
+                g2.fillRoundRect(bx, by, bSize, bSize, 8, 8);
 
-            // 3 Grenade canisters on chest bandolier
-            g2.setColor(new Color(255, 120, 20));
-            g2.fillRoundRect(bx + 6, by + 4, 4, 5, 2, 2);
-            g2.fillRoundRect(bx + 13, by + 4, 4, 5, 2, 2);
-            g2.fillRoundRect(bx + 20, by + 4, 4, 5, 2, 2);
+                // Heavy explosive bandolier belt diagonally across chest
+                g2.setColor(new Color(30, 35, 40));
+                g2.fillRect(bx + 4, by + 4, bSize - 8, 5);
 
-            // Ordnance hazard orange trims
-            g2.setColor(new Color(255, 130, 30));
-            g2.setStroke(new BasicStroke(1.5f));
-            g2.drawRoundRect(bx, by, bSize, bSize, 8, 8);
+                // 3 Grenade canisters on chest bandolier
+                g2.setColor(new Color(255, 120, 20));
+                g2.fillRoundRect(bx + 6, by + 4, 4, 5, 2, 2);
+                g2.fillRoundRect(bx + 13, by + 4, 4, 5, 2, 2);
+                g2.fillRoundRect(bx + 20, by + 4, 4, 5, 2, 2);
+
+                // Ordnance hazard orange trims
+                g2.setColor(new Color(255, 130, 30));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(bx, by, bSize, bSize, 8, 8);
+            }
+
+            // Arm throw indicator pose
+            if (throwAnimTimer > 0) {
+                int armLen = 14;
+                int armEndX = (int) (screenCX + Math.cos(facingAngle) * armLen);
+                int armEndY = (int) (screenCY + Math.sin(facingAngle) * armLen);
+                g2.setColor(new Color(255, 140, 30));
+                g2.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(screenCX, screenCY, armEndX, armEndY);
+            }
+
+            // Glowing orange demolition optic eye
+            g2.setColor(new Color(255, 175, 40));
+            g2.fillOval(screenCX - 4, screenCY - 4, 8, 8);
+            g2.setColor(new Color(255, 245, 160));
+            g2.fillOval(screenCX - 2, screenCY - 2, 4, 4);
         }
-
-        // Arm throw indicator pose
-        if (throwAnimTimer > 0) {
-            int armLen = 14;
-            int armEndX = (int) (screenCX + Math.cos(facingAngle) * armLen);
-            int armEndY = (int) (screenCY + Math.sin(facingAngle) * armLen);
-            g2.setColor(new Color(255, 140, 30));
-            g2.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.drawLine(screenCX, screenCY, armEndX, armEndY);
-        }
-
-        // Glowing orange demolition optic eye
-        g2.setColor(new Color(255, 175, 40));
-        g2.fillOval(screenCX - 4, screenCY - 4, 8, 8);
-        g2.setColor(new Color(255, 245, 160));
-        g2.fillOval(screenCX - 2, screenCY - 2, 4, 4);
 
         // Overhead health bar - luôn luôn màu đỏ
         int barW = 34;

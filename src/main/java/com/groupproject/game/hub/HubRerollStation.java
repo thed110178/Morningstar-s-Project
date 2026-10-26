@@ -32,9 +32,36 @@ public class HubRerollStation extends HubStation {
             return;
         }
 
-        Weapon.ReforgeResult res = current.reforge();
-        hub.showNotification("TÁI RÈN THÀNH CÔNG! DMG: " + res.newDmgStars() + "★ | RPM: " + res.newFrStars()
-                + "★ | ACC: " + res.newAccStars() + "★ | CRIT: " + res.newCritPercent() + "%");
+        // Mở Modal Reroll Súng với 2 lựa chọn Reroll Sao & Reroll Chí Mạng riêng biệt
+        hub.openStatReforgeModal(current);
+    }
+
+    public Weapon.ReforgeResult executeReforgeStars(HubRangeState hub, Weapon weapon) {
+        if (weapon == null) return null;
+        Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
+        if (hub != null) {
+            hub.showNotification("★ REROLL SAO: DMG " + res.newDmgStars() + "★ | RPM " + res.newFrStars() + "★ | ACC " + res.newAccStars() + "★ ★");
+        }
+        return res;
+    }
+
+    public Weapon.ReforgeResult executeReforgeCrit(HubRangeState hub, Weapon weapon) {
+        if (weapon == null) return null;
+        Weapon.ReforgeResult res = weapon.reforgeCritOnly();
+        if (hub != null) {
+            hub.showNotification("★ REROLL CHÍ MẠNG: CRIT " + res.newCritPercent() + "% (x" + String.format(java.util.Locale.US, "%.2f", weapon.getCritMultiplier()) + ") ★");
+        }
+        return res;
+    }
+
+    public Weapon.ReforgeResult executeReforge(HubRangeState hub, Weapon weapon) {
+        if (weapon == null) return null;
+        Weapon.ReforgeResult res = weapon.reforge();
+        if (hub != null) {
+            hub.showNotification("TÁI RÈN THÀNH CÔNG! DMG: " + res.newDmgStars() + "★ | RPM: " + res.newFrStars()
+                    + "★ | ACC: " + res.newAccStars() + "★ | CRIT: " + res.newCritPercent() + "%");
+        }
+        return res;
     }
 
     @Override

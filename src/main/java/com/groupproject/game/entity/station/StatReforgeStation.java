@@ -24,6 +24,8 @@ public class StatReforgeStation {
     private final double interactionRadius = 65.0;
 
     private int reforgeCount = 0;
+    private int starsReforgeCount = 0;
+    private int critReforgeCount = 0;
     private double animTimer = 0.0;
     private double flashTimer = 0.0;
 
@@ -36,18 +38,31 @@ public class StatReforgeStation {
     }
 
     /**
-     * Tính toán chi phí Credits cho lần hiệu chỉnh khí tài kế tiếp dựa trên cấp độ của vũ khí.
-     * Quy tắc phân cấp:
-     * - Vũ khí Cấp 1 (Level 1): Chỉ roll lại tỉ lệ chí mạng (Critical Chance) do chưa có sao thặng dư:
-     *   + Lần 1: 15 Credits (giảm sâu từ 40 xuống 15 để người chơi khởi đầu có thể tinh chỉnh súng)
-     *   + Lần 2: 25 Credits (+10)
-     *   + Lần 3: 40 Credits (+15)
-     *   + Lần 4: 60 Credits (+20)
-     * - Vũ khí Cấp 2 trở lên (Level >= 2): Tái phân bổ sao và roll chí mạng:
-     *   + Lần 1: 30 Credits
-     *   + Lần 2: 50 Credits (+20)
-     *   + Lần 3: 75 Credits (+25)
-     *   + Lần 4: 105 Credits (+30)
+     * Chi phí Credits để Reroll Sao Chỉ Số (DMG, RPM, ACC).
+     */
+    public int getStarsReforgeCost(Weapon weapon) {
+        int base = (weapon != null && weapon.getLevel() <= 1) ? 20 : 25;
+        int cost = base;
+        for (int i = 0; i < starsReforgeCount; i++) {
+            cost += 15 + i * 5;
+        }
+        return cost;
+    }
+
+    /**
+     * Chi phí Credits để Reroll Tỉ Lệ & Hệ Số Chí Mạng.
+     */
+    public int getCritReforgeCost(Weapon weapon) {
+        int base = 15;
+        int cost = base;
+        for (int i = 0; i < critReforgeCount; i++) {
+            cost += 10 + i * 5;
+        }
+        return cost;
+    }
+
+    /**
+     * Tính toán chi phí Credits chung (phục vụ tương thích ngược).
      */
     public int getCurrentCost(Weapon weapon) {
         boolean isLevel1 = (weapon != null && weapon.getLevel() <= 1);
@@ -83,6 +98,22 @@ public class StatReforgeStation {
         this.reforgeCount = Math.max(0, count);
     }
 
+    public int getStarsReforgeCount() {
+        return starsReforgeCount;
+    }
+
+    public void setStarsReforgeCount(int count) {
+        this.starsReforgeCount = Math.max(0, count);
+    }
+
+    public int getCritReforgeCount() {
+        return critReforgeCount;
+    }
+
+    public void setCritReforgeCount(int count) {
+        this.critReforgeCount = Math.max(0, count);
+    }
+
     public double getX() {
         return x;
     }
@@ -106,10 +137,10 @@ public class StatReforgeStation {
     }
 
     /**
-     * Thực hiện tương tác hiệu chỉnh khí tài khi người chơi bấm phím [F].
+     * Mở Modal UI Xưởng Quân Khí Dã Chiến để người chơi chọn 1 trong 2 mục Reroll.
      *
      * @param state Trạng thái màn chơi chứa ví Credits và kho khí tài của người chơi.
-     * @return {@code true} nếu hiệu chỉnh thành công; {@code false} nếu thiếu Credits hoặc không có vũ khí.
+     * @return {@code true} nếu mở Modal thành công; {@code false} nếu không có vũ khí trên tay.
      */
     public boolean interact(PlayingState state) {
         if (state == null) return false;
@@ -120,6 +151,16 @@ public class StatReforgeStation {
             return false;
         }
 
+        // Mở Modal UI Xưởng Quân Khí
+        state.openStatReforgeModal(weapon, this);
+        return true;
+    }
+
+    /**
+     * Thực hiện hiệu chỉnh toàn diện (cả sao lẫn chí mạng) trực tiếp — Phục vụ tương thích ngược.
+     */
+    public boolean executeReforge(PlayingState state, Weapon weapon) {
+        if (state == null || weapon == null) return false;
         int cost = getCurrentCost(weapon);
         if (state.getPlayerCredits() < cost) {
             state.showTacticalBanner("KHÔNG ĐỦ CREDITS! (CẦN " + cost + " CREDITS - HIỆN CÓ: "
@@ -127,20 +168,12 @@ public class StatReforgeStation {
             return false;
         }
 
-        // Khấu trừ ngân sách tác chiến Credits
         state.deductCredits(cost);
-
-        // Thực hiện hiệu chỉnh lại thông số sao và tỉ lệ chí mạng
         Weapon.ReforgeResult result = weapon.reforgeStats();
-
-        // Tăng số lần sử dụng tại bàn kỹ thuật để kích hoạt tăng giá cho lần kế tiếp
         reforgeCount++;
         flashTimer = 0.50;
-
-        // Rung chấn màn hình nhẹ tạo cảm giác nảy nở uy lực cơ khí
         state.triggerScreenShake(0.12);
 
-        // Hiển thị biểu ngữ chiến thuật phong cách quân sự hiện đại với đầy đủ phân bổ sao các nhánh
         String bannerMsg = String.format("★ HIỆU CHỈNH: %s (Lv.%d) [DMG: %d★ | RPM: %d★ | ACC: %d★] (CHÍ MẠNG: %d%%) [-%d CREDITS] ★",
                 weapon.getShortDisplayName().toUpperCase(),
                 result.level(),
@@ -151,6 +184,56 @@ public class StatReforgeStation {
                 cost);
         state.showTacticalBanner(bannerMsg, new Color(255, 215, 60), 3.4);
         return true;
+    }
+
+    /**
+     * Thực thi Reroll Sao Chỉ Số (bảo lưu 100% chí mạng).
+     */
+    public Weapon.ReforgeResult executeReforgeStars(PlayingState state, Weapon weapon) {
+        if (state == null || weapon == null) return null;
+        int cost = getStarsReforgeCost(weapon);
+        if (state.getPlayerCredits() < cost) return null;
+
+        state.deductCredits(cost);
+        Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
+        starsReforgeCount++;
+        reforgeCount++;
+        flashTimer = 0.50;
+        state.triggerScreenShake(0.12);
+
+        String msg = String.format("★ REROLL SAO: %s (Lv.%d) [DMG: %d★ | RPM: %d★ | ACC: %d★] [-%d CREDITS] ★",
+                weapon.getShortDisplayName().toUpperCase(),
+                res.level(),
+                res.newDmgStars(),
+                res.newFrStars(),
+                res.newAccStars(),
+                cost);
+        state.showTacticalBanner(msg, new Color(80, 180, 255), 3.2);
+        return res;
+    }
+
+    /**
+     * Thực thi Reroll Tỉ Lệ & Hệ Số Chí Mạng (bảo lưu 100% sao chỉ số).
+     */
+    public Weapon.ReforgeResult executeReforgeCrit(PlayingState state, Weapon weapon) {
+        if (state == null || weapon == null) return null;
+        int cost = getCritReforgeCost(weapon);
+        if (state.getPlayerCredits() < cost) return null;
+
+        state.deductCredits(cost);
+        Weapon.ReforgeResult res = weapon.reforgeCritOnly();
+        critReforgeCount++;
+        reforgeCount++;
+        flashTimer = 0.50;
+        state.triggerScreenShake(0.12);
+
+        String msg = String.format("★ REROLL CHÍ MẠNG: %s [CRIT: %d%% x%.2f] [-%d CREDITS] ★",
+                weapon.getShortDisplayName().toUpperCase(),
+                res.newCritPercent(),
+                weapon.getCritMultiplier(),
+                cost);
+        state.showTacticalBanner(msg, new Color(255, 140, 60), 3.2);
+        return res;
     }
 
     /**

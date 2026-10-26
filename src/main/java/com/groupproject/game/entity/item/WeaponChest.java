@@ -4,6 +4,7 @@ import com.groupproject.game.core.Camera;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.Shotgun;
+import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
 import com.groupproject.game.state.PlayingState;
@@ -453,11 +454,12 @@ public class WeaponChest {
         g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
 
         // 3. 5 hàng chỉ số đo bằng sao, chí mạng và DPS
+        boolean isSniper = weapon instanceof SniperRifle;
         g.setFont(new Font("SansSerif", Font.PLAIN, 10));
         g.setColor(new Color(200, 220, 240));
         g.drawString("• Sát thương:", boxX + 14, boxY + 36);
         g.drawString("• Tốc ra đạn:", boxX + 14, boxY + 51);
-        g.drawString("• Chính xác:", boxX + 14, boxY + 66);
+        g.drawString(isSniper ? "• Sức xuyên:" : "• Chính xác:", boxX + 14, boxY + 66);
         g.drawString("• Chí mạng:", boxX + 14, boxY + 81);
         g.drawString("• Chỉ số DPS:", boxX + 14, boxY + 96);
 
@@ -466,7 +468,12 @@ public class WeaponChest {
         g.setColor(new Color(255, 225, 75));
         g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", boxX + 88, boxY + 36);
         g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", boxX + 88, boxY + 51);
-        g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", boxX + 88, boxY + 66);
+        if (isSniper) {
+            SniperRifle sr = (SniperRifle) weapon;
+            g.drawString(Weapon.formatStars(sr.getPierceStars()) + " (" + sr.getMaxPierces() + " mục tiêu | -" + sr.getPierceFalloffPercent() + "%)", boxX + 88, boxY + 66);
+        } else {
+            g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", boxX + 88, boxY + 66);
+        }
         g.setColor(new Color(255, 130, 90));
         g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.2f", weapon.getCritMultiplier()) + " DMG)", boxX + 88, boxY + 81);
         g.setColor(new Color(0, 225, 255));

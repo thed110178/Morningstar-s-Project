@@ -138,7 +138,7 @@ public class StatReforgeRoomTest {
     }
 
     @Test
-    @DisplayName("Verify reforge interaction deducts credits, advances price, and rerolls star & crit")
+    @DisplayName("Verify reforge interaction opens modal, and executeReforge deducts credits and advances price")
     void testReforgeInteractionWithPlayingState() {
         GameStateManager gsm = new GameStateManager();
         PlayingState state = new PlayingState(gsm);
@@ -155,8 +155,13 @@ public class StatReforgeRoomTest {
         assertNotNull(activeWeapon, "Player must have an active weapon in hand");
         assertEquals(1, activeWeapon.getLevel(), "Default starting weapon in hand must be Level 1");
 
+        // Interacting with station opens the StatReforgeModalUI
+        boolean opened = station.interact(state);
+        assertTrue(opened, "Interact should succeed and open modal");
+        assertTrue(state.getStatReforgeModalUI().isVisible(), "StatReforgeModalUI must be visible after interact");
+
         // First reforge: Cost for Lv.1 weapon is 15 Credits
-        boolean success1 = station.interact(state);
+        boolean success1 = station.executeReforge(state, activeWeapon);
         assertTrue(success1, "Reforge with 200 credits should succeed");
         assertEquals(185, state.getPlayerCredits(), "Credits must be 200 - 15 = 185");
         assertEquals(1, station.getReforgeCount(), "Reforge count should now be 1");
@@ -169,14 +174,14 @@ public class StatReforgeRoomTest {
                 "Weapon crit chance must be within 5% to 50%, got: " + activeWeapon.getCritChance());
 
         // Second reforge: Cost is 25 Credits
-        boolean success2 = station.interact(state);
+        boolean success2 = station.executeReforge(state, activeWeapon);
         assertTrue(success2, "Second reforge with 185 credits should succeed");
         assertEquals(160, state.getPlayerCredits(), "Credits must be 185 - 25 = 160");
         assertEquals(2, station.getReforgeCount(), "Reforge count should now be 2");
         assertEquals(40, station.getCurrentCost(activeWeapon), "Next reforge cost for Lv.1 must be 40");
 
         // Third reforge: Cost is 40 Credits
-        boolean success3 = station.interact(state);
+        boolean success3 = station.executeReforge(state, activeWeapon);
         assertTrue(success3, "Third reforge with 160 credits should succeed");
         assertEquals(120, state.getPlayerCredits(), "Credits must be 160 - 40 = 120");
         assertEquals(3, station.getReforgeCount(), "Reforge count should now be 3");
@@ -196,11 +201,11 @@ public class StatReforgeRoomTest {
         // Player has 10 credits (cost for Lv.1 weapon is 15 credits)
         state.setPlayerCredits(10);
 
-        boolean success = station.interact(state);
+        Weapon activeWeapon = state.getWeaponManager().getActiveWeapon();
+        boolean success = station.executeReforge(state, activeWeapon);
         assertFalse(success, "Reforge must fail when player has less than 15 credits for Lv.1 weapon");
         assertEquals(10, state.getPlayerCredits(), "Credits should not be deducted upon failure");
         assertEquals(0, station.getReforgeCount(), "Reforge count must remain 0");
-        Weapon activeWeapon = state.getWeaponManager().getActiveWeapon();
         assertEquals(15, station.getCurrentCost(activeWeapon), "Current cost for Lv.1 weapon must remain 15");
     }
 
@@ -220,7 +225,7 @@ public class StatReforgeRoomTest {
         assertTrue(knife instanceof CombatKnife, "Slot 4 must be CombatKnife");
 
         int oldKnifeLevel = knife.getLevel();
-        boolean knifeSuccess = station.interact(state);
+        boolean knifeSuccess = station.executeReforge(state, knife);
         assertTrue(knifeSuccess, "Reforging CombatKnife should succeed");
         assertEquals(oldKnifeLevel, knife.getLevel(), "Cấp độ CombatKnife phải được giữ nguyên sau khi hiệu chỉnh");
         assertTrue(knife.getCritChance() >= 0.05 && knife.getCritChance() <= 0.50);
@@ -231,10 +236,50 @@ public class StatReforgeRoomTest {
         assertTrue(pistol instanceof Pistol, "Slot 3 must be Pistol");
 
         int oldPistolLevel = pistol.getLevel();
-        boolean pistolSuccess = station.interact(state);
+        boolean pistolSuccess = station.executeReforge(state, pistol);
         assertTrue(pistolSuccess, "Reforging Pistol should succeed");
         assertEquals(oldPistolLevel, pistol.getLevel(), "Cấp độ Pistol phải được giữ nguyên sau khi hiệu chỉnh");
         assertTrue(pistol.getCritChance() >= 0.05 && pistol.getCritChance() <= 0.50);
+    }
+
+    @Test
+    @DisplayName("Verify independent Reroll Stars Only and Reroll Crit Only preserve unrelated stats")
+    void testIndependentReforgeStarsAndCrit() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+
+        StatReforgeStation station = state.getStatReforgeStation();
+        state.setPlayerCredits(1000);
+
+        Weapon activeWeapon = state.getWeaponManager().getActiveWeapon();
+        activeWeapon.configureLevel(3); // Level 3: tổng 2 sao thặng dư
+
+        // Ghi nhận chỉ số chí mạng trước khi Reroll Sao
+        double fixedCritChance = activeWeapon.getCritChance();
+        double fixedCritMult = activeWeapon.getCritMultiplier();
+
+        // 1. Thực thi Reroll Sao Chỉ Số
+        Weapon.ReforgeResult starsResult = station.executeReforgeStars(state, activeWeapon);
+        assertNotNull(starsResult);
+        assertEquals(fixedCritChance, activeWeapon.getCritChance(), 0.0001, "Reroll Sao phải bảo lưu 100% tỉ lệ chí mạng");
+        assertEquals(fixedCritMult, activeWeapon.getCritMultiplier(), 0.0001, "Reroll Sao phải bảo lưu 100% hệ số sát thương chí mạng");
+        assertEquals(3, activeWeapon.getLevel());
+        assertEquals(2, (activeWeapon.getDamageStars() - 1) + (activeWeapon.getFireRateStars() - 1) + (activeWeapon.getAccuracyStars() - 1));
+
+        // Ghi nhận sao trước khi Reroll Chí Mạng
+        int fixedDmgStars = activeWeapon.getDamageStars();
+        int fixedFrStars = activeWeapon.getFireRateStars();
+        int fixedAccStars = activeWeapon.getAccuracyStars();
+
+        // 2. Thực thi Reroll Chí Mạng
+        Weapon.ReforgeResult critResult = station.executeReforgeCrit(state, activeWeapon);
+        assertNotNull(critResult);
+        assertEquals(fixedDmgStars, activeWeapon.getDamageStars(), "Reroll Chí Mạng phải bảo lưu 100% sao Sát thương");
+        assertEquals(fixedFrStars, activeWeapon.getFireRateStars(), "Reroll Chí Mạng phải bảo lưu 100% sao Tốc bắn");
+        assertEquals(fixedAccStars, activeWeapon.getAccuracyStars(), "Reroll Chí Mạng phải bảo lưu 100% sao Độ chính xác");
+        assertTrue(activeWeapon.getCritChance() >= 0.05 && activeWeapon.getCritChance() <= 0.50);
+        assertTrue(activeWeapon.getCritMultiplier() >= 1.50 && activeWeapon.getCritMultiplier() <= 2.00);
     }
 
     @Test
