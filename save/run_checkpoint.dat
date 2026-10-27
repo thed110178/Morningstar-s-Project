@@ -1,0 +1,27 @@
+# DONTKNOW RUN CHECKPOINT
+version=1.0.0-DEMO-261027
+timestamp=1793112594580
+stage=1
+playerHealth=56
+playerMaxHealth=100
+playerCredits=68
+activeWeaponSlot=1
+enemiesKilled=0
+bossesDefeated=0
+damageDealt=0
+shotsFired=0
+shotsHit=0
+creditsCollected=0
+
+[AMMO]
+AR=60
+SHOTGUN=20
+SMG=14
+SR=7
+
+[BUFFS]
+
+[WEAPONS]
+weapon=1;Submachine Gun (SMG);1;1;1;1;0.0700;1.7000;0;false
+weapon=3;Tactical 9mm Pistol;1;1;1;1;0.0900;1.5500;7;false
+weapon=4;Combat Knife;1;1;1;1;0.0600;1.6500;0;false

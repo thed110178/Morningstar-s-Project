@@ -487,11 +487,46 @@ class HubRangeTest {
         assertDoesNotThrow(() -> upgrade.render(g, camera, true), "Render Bàn Nâng Cấp Bio-Tech");
         assertDoesNotThrow(() -> reroll.render(g, camera, true), "Render Bàn Tái Rèn Quân Khí Dã Chiến");
 
+        // Kiểm tra WeaponRackStation (hiển thị vũ khí drop lơ lửng và bảng chỉ số chi tiết)
+        WeaponRackStation rack = new WeaponRackStation(760, 860, "AR", "Assault Rifle",
+                com.groupproject.game.entity.weapon.WeaponSpriteManager.SPRITE_AR, AssaultRifle::new);
+        rack.update(0.1);
+        assertNotNull(rack.getPreviewWeapon(), "Preview weapon must be initialized");
+        assertDoesNotThrow(() -> rack.render(g, camera, false), "Render Weapon Rack đứng xa với nhãn nổi");
+        assertDoesNotThrow(() -> rack.render(g, camera, true), "Render Weapon Rack lại gần với thẻ chỉ số chi tiết");
+
         // Kiểm tra Banner FIGHT! và CLEAR
         com.groupproject.game.ui.PlayingHUD hud = new com.groupproject.game.ui.PlayingHUD();
         assertDoesNotThrow(() -> hud.renderBanner(g, "FIGHT!", new Color(255, 65, 65), false), "Render banner FIGHT!");
         assertDoesNotThrow(() -> hud.renderBanner(g, "CLEAR", new Color(60, 235, 130), false), "Render banner CLEAR");
 
+        g.dispose();
+    }
+
+    @Test
+    @DisplayName("Kiểm tra Đường Ngắm Nét Đứt (Aim Guideline) tại The Range render chính xác theo chuột và cài đặt")
+    void testHubRangeAimGuidelineRendering() {
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+
+        // 1. Cập nhật vị trí chuột cách xa Operative
+        mouseH.mouseMoved(new java.awt.event.MouseEvent(
+                new java.awt.Component() {}, 0, 0, 0, 800, 300, 0, false));
+        hub.update(0.016, keyH, mouseH);
+
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        // 2. Khi bật GameConfig.showAimGuideline = true -> render trơn tru không lỗi
+        com.groupproject.game.core.GameConfig.showAimGuideline = true;
+        assertDoesNotThrow(() -> hub.render(g), "Hub render với đường ngắm aim guideline bật phải chạy mượt mà");
+
+        // 3. Khi tắt GameConfig.showAimGuideline = false -> render trơn tru không lỗi
+        com.groupproject.game.core.GameConfig.showAimGuideline = false;
+        assertDoesNotThrow(() -> hub.render(g), "Hub render khi tắt đường ngắm phải chạy mượt mà");
+
+        // Khôi phục mặc định
+        com.groupproject.game.core.GameConfig.showAimGuideline = true;
         g.dispose();
     }
 }

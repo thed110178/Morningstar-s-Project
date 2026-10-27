@@ -52,7 +52,6 @@ public abstract class HubStation {
     private static final BasicStroke STROKE_ACTIVE = new BasicStroke(2.0f);
     private static final BasicStroke STROKE_INACTIVE = new BasicStroke(1.2f);
     private static final BasicStroke STROKE_DEFAULT = new BasicStroke(1.0f);
-    private static final Font FONT_TITLE = new Font("SansSerif", Font.BOLD, 11);
     private static final Font FONT_PROMPT = new Font("SansSerif", Font.BOLD, 12);
 
     public void render(Graphics2D g, Camera camera, boolean playerNear) {
@@ -88,14 +87,7 @@ public abstract class HubStation {
         // 2. Nội dung riêng của từng trạm (vẽ súng, icon nâng cấp, v.v.)
         renderStationContent(g, screenX, screenY, halfW, halfH, playerNear);
 
-        // 3. Tiêu đề trạm bên dưới
-        g.setFont(FONT_TITLE);
-        FontMetrics fm = g.getFontMetrics();
-        int titleW = fm.stringWidth(title);
-        g.setColor(new Color(210, 220, 230));
-        g.drawString(title, screenX - titleW / 2, screenY + halfH + 14);
-
-        // 4. Nếu người chơi đang đứng gần: Vẽ Tooltip hướng dẫn phím bấm tương tác
+        // 3. Nếu người chơi đang đứng gần: Vẽ Tooltip hướng dẫn phím bấm tương tác phía trên
         if (playerNear) {
             String interactKey = com.groupproject.game.input.KeyBindings.getKeyName(
                     com.groupproject.game.input.KeyBindings.getKeyCode(com.groupproject.game.input.KeyBindings.GameAction.INTERACT));

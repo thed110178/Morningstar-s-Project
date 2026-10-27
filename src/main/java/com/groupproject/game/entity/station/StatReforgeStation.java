@@ -336,27 +336,25 @@ public class StatReforgeStation {
         }
 
         // 8. Bảng Kẹp Hồ Sơ Kỹ Thuật Quân Sự (Tactical Clipboard HUD)
-        // Chỉ hiển thị bảng nổi khi người chơi đã tiến vào phòng và ở cự ly tiếp cận (<= 140px).
-        // Ngăn chặn hoàn toàn việc bảng nổi che tầm nhìn lối vào khi người chơi còn ở ngoài cửa / hành lang.
-        double distToPlayer = Math.hypot((playerX + playerSize / 2.0) - x, (playerY + playerSize / 2.0) - y);
-        if (distToPlayer <= 140.0) {
-            renderGunsmithClipboardHUD(g2, screenX, screenY, isPlayerInRange(playerX, playerY, playerSize),
-                    activeWeapon, playerCredits);
+        // Chỉ hiển thị bảng nổi khi người chơi đã tiến vào bán kính tương tác [F] thực tế (isPlayerInRange).
+        // Loại bỏ hoàn toàn ô thông báo ở cự ly xa để tránh gây khó chịu và che tầm nhìn của người chơi.
+        if (isPlayerInRange(playerX, playerY, playerSize)) {
+            renderGunsmithClipboardHUD(g2, screenX, screenY, activeWeapon, playerCredits);
         }
 
         g2.dispose();
     }
 
     /**
-     * Vẽ bảng kẹp hồ sơ kỹ thuật quân sự dã chiến nổi phía trên bàn làm việc.
+     * Vẽ bảng kẹp hồ sơ kỹ thuật quân sự dã chiến nổi phía trên bàn làm việc khi người chơi lại gần trong tầm tương tác [F].
      */
-    private void renderGunsmithClipboardHUD(Graphics2D g, int sx, int sy, boolean inRange,
+    private void renderGunsmithClipboardHUD(Graphics2D g, int sx, int sy,
                                             Weapon weapon, int playerCredits) {
         int cost = getCurrentCost(weapon);
         boolean canAfford = playerCredits >= cost;
 
-        int boxW = inRange ? 320 : 220;
-        int boxH = inRange ? 76 : 46;
+        int boxW = 320;
+        int boxH = 76;
         int boxX = sx - boxW / 2;
         int boxY = sy - 44 - boxH;
 
@@ -393,27 +391,25 @@ public class StatReforgeStation {
             g.drawString(String.format("%s (%d CREDITS) - THIẾU!", actionLabel, cost), boxX + 12, boxY + 36);
         }
 
-        // Khi lại gần: Hiển thị thông số vũ khí trên tay (DMG, RPM, ACC, Crit) và ghi chú chi phí lũy tiến
-        if (inRange) {
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
-            g.setColor(new Color(215, 225, 215));
+        // Dòng 3 & 4: Hiển thị thông số vũ khí trên tay (DMG, RPM, ACC, Crit) và ghi chú chi phí lũy tiến
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setColor(new Color(215, 225, 215));
 
-            if (weapon != null) {
-                String weaponInfo = String.format("• Khí tài: %s (Lv.%d | Crit: %d%% x%.2f | DPS: %d/%d)",
-                        weapon.getShortDisplayName(),
-                        weapon.getLevel(),
-                        weapon.getCritChancePercent(),
-                        weapon.getCritMultiplier(),
-                        weapon.getNormalDPS(),
-                        weapon.getCritDPS());
-                g.drawString(weaponInfo, boxX + 12, boxY + 53);
-            } else {
-                g.drawString("• Chưa trang bị vũ khí trên tay", boxX + 12, boxY + 53);
-            }
-
-            g.setColor(new Color(170, 185, 170));
-            g.drawString(String.format("• Lần hiệu chỉnh thứ %d (Chi phí tăng lũy tiến)", reforgeCount + 1),
-                    boxX + 12, boxY + 68);
+        if (weapon != null) {
+            String weaponInfo = String.format("• Khí tài: %s (Lv.%d | Crit: %d%% x%.2f | DPS: %d/%d)",
+                    weapon.getShortDisplayName(),
+                    weapon.getLevel(),
+                    weapon.getCritChancePercent(),
+                    weapon.getCritMultiplier(),
+                    weapon.getNormalDPS(),
+                    weapon.getCritDPS());
+            g.drawString(weaponInfo, boxX + 12, boxY + 53);
+        } else {
+            g.drawString("• Chưa trang bị vũ khí trên tay", boxX + 12, boxY + 53);
         }
+
+        g.setColor(new Color(170, 185, 170));
+        g.drawString(String.format("• Lần hiệu chỉnh thứ %d (Chi phí tăng lũy tiến)", reforgeCount + 1),
+                boxX + 12, boxY + 68);
     }
 }

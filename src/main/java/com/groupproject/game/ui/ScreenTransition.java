@@ -1,6 +1,7 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameFontManager;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -217,7 +218,7 @@ public class ScreenTransition {
             g.setStroke(new BasicStroke(1.0f));
 
             // Tiêu đề chính
-            g.setFont(new Font("SansSerif", Font.BOLD, 26));
+            g.setFont(GameFontManager.getBoldFont(26.0f));
             FontMetrics fmMain = g.getFontMetrics();
             int titleW = fmMain.stringWidth(overlayTitle);
             int titleX = (screenW - titleW) / 2;
@@ -233,7 +234,7 @@ public class ScreenTransition {
 
             // Phụ đề (Subtitle)
             if (overlaySubtitle != null && !overlaySubtitle.isEmpty()) {
-                g.setFont(new Font("SansSerif", Font.BOLD, 14));
+                g.setFont(GameFontManager.getBoldFont(14.0f));
                 FontMetrics fmSub = g.getFontMetrics();
                 int subW = fmSub.stringWidth(overlaySubtitle);
                 int subX = (screenW - subW) / 2;

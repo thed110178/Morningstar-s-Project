@@ -80,6 +80,16 @@ public class CharacterUpgradeStation {
         this.offeredBuffs = buffManager.getRandomOfferedBuffs(cat, 3);
     }
 
+    /**
+     * Đảm bảo trạm đã rút đủ 3 buff nếu chưa có hoặc danh sách đang trống.
+     * Nếu đã có buff thì bảo lưu nguyên vẹn các lựa chọn hiện tại để người chơi không bị reroll lại khi đóng/mở UI.
+     */
+    public void ensureBuffsRolled(PlayerBuffManager buffManager) {
+        if (offeredBuffs == null || offeredBuffs.isEmpty()) {
+            rollBuffs(buffManager);
+        }
+    }
+
     public void update(double deltaTime) {
         animTimer += deltaTime * 2.5;
     }

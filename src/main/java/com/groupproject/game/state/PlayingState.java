@@ -123,6 +123,9 @@ public class PlayingState extends GameState {
     // Hệ thống Cắt cảnh Giới thiệu Boss & Chuyển màn Điện ảnh
     private final com.groupproject.game.ui.BossIntroCinematic bossIntroCinematic = new com.groupproject.game.ui.BossIntroCinematic();
     private boolean bossIntroTriggered = false;
+    // Cờ hiển thị thanh máu Boss: Boss được spawn sẵn từ đầu trong phòng, nhưng thanh máu
+    // CHỈ ĐƯỢC PHÉP HIỂN THỊ khi người chơi thực sự bước vào phòng Boss hoặc trận chiến được kích hoạt.
+    private boolean isBossHealthBarRevealed = false;
     private final com.groupproject.game.ui.ScreenTransition stageTransition = new com.groupproject.game.ui.ScreenTransition();
 
     // Menu Tạm dừng (Pause Menu UI) và Trạng thái Tạm dừng
@@ -172,6 +175,21 @@ public class PlayingState extends GameState {
         return spawnDirectlyInBossRoom;
     }
 
+    // Dữ liệu checkpoint chờ nạp khi chuyển cảnh vào PlayingState
+    private static com.groupproject.game.storage.RunProgressData pendingResumeData = null;
+
+    public static void setPendingResumeData(com.groupproject.game.storage.RunProgressData data) {
+        pendingResumeData = data;
+    }
+
+    public static com.groupproject.game.storage.RunProgressData getPendingResumeData() {
+        return pendingResumeData;
+    }
+
+    public static boolean hasPendingResumeData() {
+        return pendingResumeData != null;
+    }
+
     // Danh sách vũ khí chuyển giao từ The Range vào Dungeon
     private static java.util.List<Weapon> transferredHubWeapons = null;
 
@@ -189,6 +207,13 @@ public class PlayingState extends GameState {
             this.isStandaloneBossFight = true;
             spawnDirectlyInBossRoom = false; // Reset cờ tĩnh sau khi đã khởi tạo
             loadBossStageDirectly();
+            return;
+        }
+
+        if (pendingResumeData != null) {
+            com.groupproject.game.storage.RunProgressData resumeData = pendingResumeData;
+            pendingResumeData = null; // Đảm bảo chỉ nạp 1 lần khi chuyển state
+            resumeFromSave(resumeData);
             return;
         }
 
@@ -240,6 +265,7 @@ public class PlayingState extends GameState {
 
         // Reset cắt cảnh: run mới không được giữ lại intro Boss/transition của run trước
         bossIntroTriggered = false;
+        isBossHealthBarRevealed = false;
         bossIntroCinematic.skip();
 
         showBanner("STAGE 1", new Color(60, 220, 160), 2.0);
@@ -322,6 +348,7 @@ public class PlayingState extends GameState {
 
         // Spawn thẳng vào phòng Boss: boss đã được sinh ở trên nên phát cắt cảnh giới thiệu ngay
         bossIntroTriggered = false;
+        isBossHealthBarRevealed = true;
         tryStartBossIntro();
 
         // Center camera on operative immediately on mission start
@@ -335,6 +362,7 @@ public class PlayingState extends GameState {
     public void advanceToNextStage() {
         currentStage++;
         bossIntroTriggered = false; // Stage mới -> cho phép phát lại intro khi gặp Boss
+        isBossHealthBarRevealed = false; // Thanh máu Boss chỉ hiện khi người chơi bước vào phòng Boss
         dungeonMap.generateStage(currentStage);
 
         Room spawnRoom = dungeonMap.getSpawnRoom();
@@ -378,7 +406,7 @@ public class PlayingState extends GameState {
         camera.update(player.getCenterX(), player.getCenterY());
 
         if (!sTierUpgrades.isEmpty()) {
-            String msg = "★ KHÍ TÀI HẠNG S TỰ LÊN CẤP: " + String.join(", ", sTierUpgrades) + " ★";
+            String msg = "[S] KHÍ TÀI TỰ LÊN CẤP: " + String.join(", ", sTierUpgrades);
             showBanner(msg, new Color(255, 215, 60), 3.5);
         } else if (currentStage == BOSS_STAGE) {
             showBanner("STAGE 4: BOSS ARENA", new Color(255, 70, 70), 2.0);
@@ -439,6 +467,7 @@ public class PlayingState extends GameState {
             return;
         }
         bossIntroTriggered = true;
+        isBossHealthBarRevealed = true;
         bossIntroCinematic.start(bossDummy, player);
     }
 
@@ -956,180 +985,298 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Updates locomotion, wall/door collision sliding, camera tracking, combat, and room lockdown logic.
+     * Vòng lặp cập nhật chính của màn chơi (Main Game Loop Orchestrator).
+     * <p>
+     * THIẾT KẾ GIẢM ĐỘ PHỨC TẠP:
+     * Thay vì một hàm khổng lồ hàng trăm dòng lồng nhau, update() đóng vai trò điều phối (Orchestrator)
+     * tuần tự theo mức độ ưu tiên rõ ràng:
+     * <ol>
+     *   <li>Ưu tiên cao nhất: Cinematic, Pause Menu, Modal nâng cấp, Chuỗi tử trận, Chuỗi sơ tán, Balo.</li>
+     *   <li>Phím tắt hệ thống và bộ đếm thời gian.</li>
+     *   <li>Điều khiển người chơi (Vũ khí, Lướt né, Di chuyển).</li>
+     *   <li>Bản đồ, Radar, và Cơ chế phong tỏa phòng chiến đấu.</li>
+     *   <li>Camera bám theo, góc ngắm 360° và hành động tấn công.</li>
+     *   <li>Cập nhật các thực thể động (Đạn, Vụ nổ, Tia crit, Xác quái).</li>
+     *   <li>Giải quyết va chạm và tính toán sát thương.</li>
+     *   <li>Kiểm tra hoàn thành phòng và trao thưởng chiến thuật.</li>
+     *   <li>Tương tác chiến trường (Hòm tiếp tế, Hộp đạn, Hộp máu, Shop, Nâng cấp, Sơ tán).</li>
+     * </ol>
      */
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
-        // --- -1. Chuyển màn & Giới thiệu Boss (Cinematic) ---
-        // WHY: Khi đang fade chuyển stage hoặc đang lia camera giới thiệu Boss, toàn bộ gameplay
-        // bị đóng băng để người chơi không bị đánh/di chuyển khi chưa nhìn thấy gì.
+        // --- 1. CÁC TRẠNG THÁI ƯU TIÊN CAO (ĐÓNG BĂNG CHIẾN TRƯỜNG KHI KÍCH HOẠT) ---
+        if (handleCinematics(deltaTime, keyH, mouseH)) return;
+        if (handlePauseMenu(deltaTime, keyH, mouseH)) return;
+        if (handleModalMenus(deltaTime, keyH, mouseH)) return;
+        if (handlePlayerDeathSequence(deltaTime)) return;
+        if (handleExtractionSequence(deltaTime, keyH, mouseH)) return;
+        if (handleTacticalBackpack(deltaTime, keyH, mouseH)) return;
+
+        // --- 2. PHÍM TẮT HỆ THỐNG & CẬP NHẬT ĐỊNH THỜI ---
+        if (handleSystemShortcuts(keyH)) return;
+        updateBannerAndTimers(deltaTime);
+
+        // --- 3. ĐIỀU KHIỂN NHÂN VẬT (VŨ KHÍ, LƯỚT NÉ, DI CHUYỂN) ---
+        handlePlayerLocomotionAndSkills(deltaTime, keyH);
+
+        // --- 4. BẢN ĐỒ, RADAR & PHÁT HIỆN BƯỚC VÀO PHÒNG CHIẾN ĐẤU ---
+        updateFogOfWarAndRadar(deltaTime);
+        updateCombatRoomLockdownDetection();
+
+        // --- 5. CAMERA BÁM THEO, TÍNH GÓC NGẮM & THAO TÁC TẤN CÔNG ---
+        updateCameraAndAim(mouseH);
+        handleWeaponCombatInput(keyH, mouseH);
+
+        // --- 6. CẬP NHẬT THỰC THỂ CHIẾN TRƯỜNG (ĐẠN, VỤ NỔ, CRIT, XÁC QUÁI) ---
+        updateCombatVisualsAndProjectiles(deltaTime);
+
+        // --- 7. GIẢI QUYẾT VA CHẠM SÁT THƯƠNG & LÍNH TIẾP VIỆN BOSS ---
+        updateCombatDamageResolution(deltaTime);
+        updateBossMinionReinforcements(deltaTime);
+
+        // --- 8. KIỂM TRA QUÉT SẠCH PHÒNG CHIẾN ĐẤU & PHÂN PHỐI CHIẾN LỢI PHẨM ---
+        updateRoomClearAndRewards();
+
+        // --- 9. TƯƠNG TÁC CHIẾN TRƯỜNG (HÒM, HỘP ĐẠN, MÁU, SHOP, TRẠM DỊCH VỤ, SƠ TÁN) ---
+        boolean fieldInteracted = handleFieldInteractions(keyH, deltaTime);
+        handleExtractionZoneInteraction(keyH, fieldInteracted);
+    }
+
+    /**
+     * Xử lý các chuỗi hoạt cảnh điện ảnh (Cinematic) và chuyển màn.
+     * WHY: Khi đang mờ dần chuyển cảnh hoặc lia camera giới thiệu Boss (Cinematic Camera Pan),
+     * cần đóng băng gameplay để người chơi không bị tấn công bất ngờ.
+     *
+     * @return true nếu đang trong chuỗi Cinematic và cần tạm dừng vòng lặp game chính.
+     */
+    private boolean handleCinematics(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
         stageTransition.update(deltaTime);
         if (stageTransition.isBlockingInput()) {
-            return;
+            return true;
         }
         if (bossIntroCinematic.isActive()) {
-            bossIntroCinematic.handleInput(keyH, mouseH); // Intro Boss được phép skip
+            bossIntroCinematic.handleInput(keyH, mouseH); // Cho phép bấm để bỏ qua (Skip)
             bossIntroCinematic.update(deltaTime);
             camera.update(bossIntroCinematic.getCameraFocusX(), bossIntroCinematic.getCameraFocusY());
-            return;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Xử lý Menu Tạm Dừng (Pause Menu) khi người chơi bấm ESC hoặc phím gán PAUSE_MENU.
+     * WHY: Đóng băng toàn bộ hoạt động chiến trường để người chơi có thể điều chỉnh cài đặt,
+     * tiếp tục ván đấu, hoặc lưu tiến trình và thoát về Menu chính.
+     *
+     * @return true nếu Menu Tạm Dừng đang mở và cần đóng băng logic gameplay.
+     */
+    private boolean handlePauseMenu(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        if (!isPaused) {
+            return false;
         }
 
-        // --- 0. Pause Menu Handling & Updates ---
-        // WHY: Khi tạm dừng, toàn bộ tiến trình chiến đấu bị đóng băng. Người chơi có 3 tùy chọn:
-        // TIẾP TỤC (Resume), CÀI ĐẶT (Settings - Keybinds), THOÁT RA MENU (Exit to Menu).
-        if (isPaused) {
-            if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
-                PauseMenuUI.PauseAction escAction = pauseMenuUI.handleEsc();
-                if (escAction == PauseMenuUI.PauseAction.RESUME) {
-                    isPaused = false;
-                }
-                return;
-            }
-
-            PauseMenuUI.PauseAction action = pauseMenuUI.update(keyH, mouseH, deltaTime);
-            if (action == PauseMenuUI.PauseAction.RESUME) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            PauseMenuUI.PauseAction escAction = pauseMenuUI.handleEsc();
+            if (escAction == PauseMenuUI.PauseAction.RESUME) {
                 isPaused = false;
-            } else if (action == PauseMenuUI.PauseAction.EXIT_TO_MENU) {
-                isPaused = false;
-                if (!isStandaloneBossFight && !player.isDead() && !isExtracting) {
-                    com.groupproject.game.storage.RunSaveManager.saveRun(this);
-                }
-                gsm.setState(GameStateManager.StateType.MENU);
             }
-            return; // Đóng băng toàn bộ hoạt động chiến trường khi đang tạm dừng
+            return true;
         }
 
-        // --- 0.5. Handle Character Upgrade Modal UI & Weapon Modals ---
-        // WHY: Khi đang mở Bảng Nâng Cấp Nhân Vật hoặc Modal Nâng Cấp / Reroll Súng, đóng băng vòng lặp chiến đấu để người chơi tương tác an toàn
+        PauseMenuUI.PauseAction action = pauseMenuUI.update(keyH, mouseH, deltaTime);
+        if (action == PauseMenuUI.PauseAction.RESUME) {
+            isPaused = false;
+        } else if (action == PauseMenuUI.PauseAction.EXIT_TO_MENU) {
+            isPaused = false;
+            if (!isStandaloneBossFight && !player.isDead() && !isExtracting) {
+                com.groupproject.game.storage.RunSaveManager.saveRun(this);
+            }
+            gsm.setState(GameStateManager.StateType.MENU);
+        }
+        return true;
+    }
+
+    /**
+     * Xử lý các cửa sổ giao diện Modal tương tác (Nâng cấp nhân vật, Nâng cấp vũ khí, Tẩy luyện chỉ số).
+     * WHY: Đóng băng vòng lặp chiến đấu để người chơi có thể an tâm đọc thông số và đưa ra quyết định
+     * nâng cấp mà không bị kẻ địch tấn công từ sau lưng.
+     *
+     * @return true nếu có ít nhất một cửa sổ Modal đang hiển thị.
+     */
+    private boolean handleModalMenus(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
         if (characterUpgradeUI.isVisible()) {
             characterUpgradeUI.update(keyH, mouseH, this, deltaTime);
-            return;
+            return true;
         }
         if (weaponUpgradeModalUI.isVisible()) {
             weaponUpgradeModalUI.update(keyH, mouseH, playerCredits, deltaTime);
-            return;
+            return true;
         }
         if (statReforgeModalUI.isVisible()) {
             statReforgeModalUI.update(keyH, mouseH, playerCredits, deltaTime);
-            return;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Xử lý chuỗi hoạt cảnh khi người chơi tử trận (Game Over / Death Sequence).
+     * WHY: Cho phép đầu lâu của nhân vật trượt ma sát trên sàn và va chạm tường theo quán tính thực tế,
+     * camera mượt mà bám theo, trước khi tự động chuyển cảnh sang màn hình Căn Cứ Tiền Phương.
+     *
+     * @return true nếu người chơi đã hy sinh.
+     */
+    private boolean handlePlayerDeathSequence(double deltaTime) {
+        if (!player.isDead()) {
+            return false;
         }
 
-        // --- Handle Player Death (Game Over Sequence) ---
-        if (player.isDead()) {
-            // Cập nhật hoạt cảnh đầu lâu trượt ma sát trên sàn và va chạm tường
-            player.update(deltaTime, dungeonMap);
-
-            // Camera vẫn mượt mà bám theo đầu lâu đang trượt
-            camera.update(player.getCenterX(), player.getCenterY());
-
-            if (bannerTimer > 0) {
-                bannerTimer -= deltaTime;
-            }
-
-            // Khi hoạt cảnh trượt tử trận hoàn tất (màn hình đã đen hoàn toàn):
-            // Tự động kích hoạt transition mở sáng dần từ bóng tối vào The Range (hoặc Menu nếu là Boss Fight riêng)
-            if (player.isDeathSequenceComplete()) {
-                com.groupproject.game.storage.RunSaveManager.deleteSave();
-                if (isStandaloneBossFight) {
-                    gsm.transitionFromBlack(GameStateManager.StateType.MENU);
-                } else {
-                    gsm.transitionFromBlack(GameStateManager.StateType.THE_RANGE);
-                }
-                return;
-            }
-            return;
-        }
-
-        // Cập nhật bộ đếm bất tử của người chơi, rung camera và bộ đếm kỹ năng Buff
+        // Cập nhật hoạt cảnh đầu lâu trượt ma sát trên sàn và va chạm tường
         player.update(deltaTime, dungeonMap);
-        player.getBuffManager().update(deltaTime, player, weaponManager);
-        if (screenShakeTimer > 0) {
-            screenShakeTimer -= deltaTime;
-        }
 
-        // --- Handle Extraction Victory Transition Sequence ---
-        // WHY: Freezes all combat updates and presents the victory debriefing screen
-        if (isExtracting) {
-            extractTransitionTimer += deltaTime;
-
-            // Bấm nút bất kỳ (ENTER, SPACE, ESC, F, ...) hoặc Click chuột để tiếp tục
-            boolean userConfirmed = keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
-                    || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)
-                    || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)
-                    || KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)
-                    || (mouseH != null && mouseH.isLeftClickedOnce())
-                    || extractTransitionTimer >= 180.0;
-
-            if (userConfirmed) {
-                com.groupproject.game.storage.RunSaveManager.deleteSave();
-                if (isStandaloneBossFight) {
-                    gsm.transitionTo(GameStateManager.StateType.MENU);
-                } else {
-                    gsm.transitionTo(GameStateManager.StateType.THE_RANGE, "CĂN CỨ TIỀN PHƯƠNG", "THE RANGE");
-                }
-            }
-            return;
-        }
-
-        // --- Handle Tactical Backpack (TAB) ---
-        // WHY: Cho phép xem kho trang bị và hoán đổi vị trí vũ khí 1 và 2 trong không gian an toàn
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.BACKPACK)) {
-            isBackpackOpen = !isBackpackOpen;
-            return;
-        }
-
-        if (isBackpackOpen) {
-            if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
-                isBackpackOpen = false;
-                return;
-            }
-            boolean closeRequested = backpackUI.update(keyH, mouseH, weaponManager, player, deltaTime);
-            if (closeRequested) {
-                isBackpackOpen = false;
-            }
-            return; // Đóng băng vòng lặp chiến đấu khi đang xem Balo
-        }
-
-        // --- Handle Pause Request (PAUSE_MENU / ESC) ---
-        // WHY: Bấm phím Tạm dừng (mặc định ESC hoặc phím đã tùy chỉnh trong KeyBindings) để mở Menu Tạm Dừng
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
-            isPaused = true;
-            pauseMenuUI.open();
-            return;
-        }
-
-        // Phím tắt F2: Khởi động lại / Respawn ngay tại phòng Boss để test nhanh
-        if (keyH.isKeyPressedOnce(KeyEvent.VK_F2)) {
-            loadBossStageDirectly();
-            return;
-        }
+        // Camera vẫn mượt mà bám theo đầu lâu đang trượt
+        camera.update(player.getCenterX(), player.getCenterY());
 
         if (bannerTimer > 0) {
             bannerTimer -= deltaTime;
         }
 
-        // --- 1. Weapon Hotkey Switching & Reloading ---
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_1)) {
-            weaponManager.selectSlot(1); // Trang bị vũ khí Slot 1
+        // Khi hoạt cảnh trượt tử trận hoàn tất (màn hình đã đen hoàn toàn):
+        // Xóa file lưu và kích hoạt transition mở sáng dần từ bóng tối vào The Range (hoặc Menu nếu là Boss Fight riêng)
+        if (player.isDeathSequenceComplete()) {
+            com.groupproject.game.storage.RunSaveManager.deleteSave();
+            if (isStandaloneBossFight) {
+                gsm.transitionFromBlack(GameStateManager.StateType.MENU);
+            } else {
+                gsm.transitionFromBlack(GameStateManager.StateType.THE_RANGE);
+            }
         }
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_2)) {
-            weaponManager.selectSlot(2); // Trang bị vũ khí Slot 2
-        }
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_3)) {
-            weaponManager.selectSlot(3); // Trang bị Tactical Pistol (Súng lục)
-        }
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_4)) {
-            weaponManager.selectSlot(4); // Trang bị Combat Knife (Dao găm chiến thuật)
-        }
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.QUICK_SWAP)) {
-            weaponManager.quickSwap(); // Quick swap between last 2 weapons
-        }
-        if (KeyBindings.isActionPressedOnce(keyH, GameAction.RELOAD)) {
-            weaponManager.reload(); // Manual magazine reload
+        return true;
+    }
+
+    /**
+     * Xử lý chuỗi sự kiện khi hoàn tất màn chơi cuối cùng và bắt đầu sơ tán thành công (Victory Extraction).
+     * WHY: Đóng băng chiến trường và hiển thị màn hình chúc mừng kết thúc Demo, chờ người chơi bấm phím
+     * để quay về căn cứ The Range hoặc Menu chính.
+     *
+     * @return true nếu đang trong trạng thái sơ tán.
+     */
+    private boolean handleExtractionSequence(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        if (!isExtracting) {
+            return false;
         }
 
-        // --- 1.5. Tactical Dodge Roll / Combat Dash [SPACE / DODGE] ---
-        // Cho phép lướt nhanh né đòn và kích hoạt i-frames miễn nhiễm 100% sát thương
+        extractTransitionTimer += deltaTime;
+
+        // Bấm nút bất kỳ (ENTER, SPACE, ESC, F, ...) hoặc Click chuột để tiếp tục
+        boolean userConfirmed = keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
+                || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)
+                || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)
+                || KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)
+                || (mouseH != null && mouseH.isLeftClickedOnce())
+                || extractTransitionTimer >= 180.0;
+
+        if (userConfirmed) {
+            com.groupproject.game.storage.RunSaveManager.deleteSave();
+            if (isStandaloneBossFight) {
+                gsm.transitionTo(GameStateManager.StateType.MENU);
+            } else {
+                gsm.transitionTo(GameStateManager.StateType.THE_RANGE, "CĂN CỨ TIỀN PHƯƠNG", "THE RANGE");
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Xử lý giao diện Balo Chiến Thuật (Tactical Backpack Overlay) khi bấm phím TAB.
+     * WHY: Cho phép xem kho trang bị, chỉ số vũ khí và hoán đổi vị trí vũ khí Slot 1 - Slot 2 trong môi trường an toàn.
+     *
+     * @return true nếu Balo đang mở và cần đóng băng logic chiến đấu.
+     */
+    private boolean handleTacticalBackpack(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.BACKPACK)) {
+            isBackpackOpen = !isBackpackOpen;
+            return isBackpackOpen;
+        }
+
+        if (isBackpackOpen) {
+            if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+                isBackpackOpen = false;
+                return true;
+            }
+            boolean closeRequested = backpackUI.update(keyH, mouseH, weaponManager, player, deltaTime);
+            if (closeRequested) {
+                isBackpackOpen = false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Xử lý các phím tắt hệ thống (Mở Menu Tạm dừng, Phím tắt debug F2).
+     *
+     * @return true nếu đã xử lý phím tắt và không cần chạy tiếp các logic điều khiển bên dưới.
+     */
+    private boolean handleSystemShortcuts(KeyboardHandler keyH) {
+        // Mở Menu Tạm Dừng khi bấm PAUSE_MENU hoặc ESC
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            isPaused = true;
+            pauseMenuUI.open();
+            return true;
+        }
+
+        // Phím tắt F2: Khởi động lại / Respawn ngay tại phòng Boss để kiểm thử nhanh
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_F2)) {
+            loadBossStageDirectly();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Cập nhật bộ đếm thời gian cho banner thông báo chiến thuật, rung màn hình và các hiệu ứng định thời.
+     */
+    private void updateBannerAndTimers(double deltaTime) {
+        if (bannerTimer > 0) {
+            bannerTimer -= deltaTime;
+        }
+        if (screenShakeTimer > 0) {
+            screenShakeTimer -= deltaTime;
+        }
+    }
+
+    /**
+     * Xử lý điều khiển người chơi: chọn phím tắt vũ khí, lướt né đòn (Tactical Dodge), và di chuyển WASD.
+     * WHY: Tách riêng phần nhận diện input điều khiển nhân vật khỏi logic chiến đấu và va chạm đạn.
+     */
+    private void handlePlayerLocomotionAndSkills(double deltaTime, KeyboardHandler keyH) {
+        // Cập nhật hồi chiêu, trạng thái lướt né và bộ đếm Buff
+        player.update(deltaTime, dungeonMap);
+        player.getBuffManager().update(deltaTime, player, weaponManager);
+
+        // 1. Phím tắt trang bị và nạp đạn vũ khí
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_1)) {
+            weaponManager.selectSlot(1);
+        }
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_2)) {
+            weaponManager.selectSlot(2);
+        }
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_3)) {
+            weaponManager.selectSlot(3);
+        }
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.SLOT_4)) {
+            weaponManager.selectSlot(4);
+        }
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.QUICK_SWAP)) {
+            weaponManager.quickSwap();
+        }
+        if (KeyBindings.isActionPressedOnce(keyH, GameAction.RELOAD)) {
+            weaponManager.reload();
+        }
+
+        // 2. Kỹ năng lướt né đòn chiến thuật [DODGE / SPACE]
         if (KeyBindings.isActionPressedOnce(keyH, GameAction.DODGE)) {
             player.triggerDodge(
                     KeyBindings.isActionDown(keyH, GameAction.MOVE_UP),
@@ -1139,7 +1286,7 @@ public class PlayingState extends GameState {
             );
         }
 
-        // --- 2. Locomotion & Decoupled Axis Wall Collision ---
+        // 3. Di chuyển có trượt va chạm tách trục (Decoupled Axis Collision Sliding)
         player.handleMovement(
                 KeyBindings.isActionDown(keyH, GameAction.MOVE_UP),
                 KeyBindings.isActionDown(keyH, GameAction.MOVE_DOWN),
@@ -1148,43 +1295,63 @@ public class PlayingState extends GameState {
                 deltaTime,
                 dungeonMap
         );
+    }
 
-        // --- 3. Cập nhật Sương Mù Khám Phá (Fog of War) và Minimap Radar ---
+    /**
+     * Cập nhật cơ chế sương mù khám phá (Fog of War) và radar bản đồ nhỏ (Minimap HUD).
+     */
+    private void updateFogOfWarAndRadar(double deltaTime) {
         dungeonMap.updateDiscovery(player.getCenterX(), player.getCenterY());
         minimapHUD.update(deltaTime);
+    }
 
-        // --- 4. Multi-Chamber Combat Lockdown & Detection ---
-        if (activeCombatRoom == null) {
-            for (Room cr : dungeonMap.getCombatRooms()) {
-                if (cr.getStatus() == Room.RoomStatus.UNVISITED
-                        && cr.hasEntityEntered(player.getX(), player.getY(), player.getSize(), player.getSize())) {
-
-                    activeCombatRoom = cr;
-
-                    double minInteriorX = (cr.getGridX() + 1.0) * GameConfig.TILE_SIZE;
-                    double maxInteriorX = (cr.getGridX() + cr.getWidthInTiles() - 1.0) * GameConfig.TILE_SIZE;
-                    double minInteriorY = (cr.getGridY() + 1.0) * GameConfig.TILE_SIZE;
-                    double maxInteriorY = (cr.getGridY() + cr.getHeightInTiles() - 1.0) * GameConfig.TILE_SIZE;
-
-                    if (player.getX() < minInteriorX) player.setX(minInteriorX);
-                    if (player.getX() + player.getSize() > maxInteriorX) player.setX(maxInteriorX - player.getSize());
-                    if (player.getY() < minInteriorY) player.setY(minInteriorY);
-                    if (player.getY() + player.getSize() > maxInteriorY) player.setY(maxInteriorY - player.getSize());
-
-                    cr.setCurrentPhase(1);
-                    cr.lockdown();
-                    spawnTargetsForRoomPhase(cr, 1);
-                    tryStartBossIntro(); // Chỉ có tác dụng ở Stage Boss
-
-                    if (currentStage != BOSS_STAGE) {
-                        showBanner("FIGHT!", new Color(255, 65, 65), 1.5);
-                    }
-                    break;
-                }
-            }
+    /**
+     * Phát hiện khi người chơi bước chân vào phòng chiến đấu mới chưa viếng thăm.
+     * WHY: Khi bước vào phòng, tự động đẩy nhẹ người chơi vào trong lòng phòng để tránh kẹt cửa,
+     * đóng kín các cửa phòng (Lockdown), kích hoạt Phase 1 và sinh các mục tiêu thù địch.
+     */
+    private void updateCombatRoomLockdownDetection() {
+        if (activeCombatRoom != null) {
+            return;
         }
 
-        // --- 5. Smooth Camera Tracking with Screen Shake ---
+        for (Room cr : dungeonMap.getCombatRooms()) {
+            if (cr.getStatus() == Room.RoomStatus.UNVISITED
+                    && cr.hasEntityEntered(player.getX(), player.getY(), player.getSize(), player.getSize())) {
+
+                activeCombatRoom = cr;
+
+                // Giới hạn tọa độ bên trong phòng để người chơi không bị kẹt khi cửa sập xuống
+                double minInteriorX = (cr.getGridX() + 1.0) * GameConfig.TILE_SIZE;
+                double maxInteriorX = (cr.getGridX() + cr.getWidthInTiles() - 1.0) * GameConfig.TILE_SIZE;
+                double minInteriorY = (cr.getGridY() + 1.0) * GameConfig.TILE_SIZE;
+                double maxInteriorY = (cr.getGridY() + cr.getHeightInTiles() - 1.0) * GameConfig.TILE_SIZE;
+
+                if (player.getX() < minInteriorX) player.setX(minInteriorX);
+                if (player.getX() + player.getSize() > maxInteriorX) player.setX(maxInteriorX - player.getSize());
+                if (player.getY() < minInteriorY) player.setY(minInteriorY);
+                if (player.getY() + player.getSize() > maxInteriorY) player.setY(maxInteriorY - player.getSize());
+
+                cr.setCurrentPhase(1);
+                cr.lockdown();
+                spawnTargetsForRoomPhase(cr, 1);
+                if (currentStage == BOSS_STAGE) {
+                    isBossHealthBarRevealed = true;
+                }
+                tryStartBossIntro(); // Kích hoạt Intro cinematic nếu là màn Boss
+
+                if (currentStage != BOSS_STAGE) {
+                    showBanner("FIGHT!", new Color(255, 65, 65), 1.5);
+                }
+                break;
+            }
+        }
+    }
+
+    /**
+     * Cập nhật vị trí Camera bám theo người chơi (kèm hiệu ứng rung lắc) và tính góc ngắm 360 độ từ con trỏ chuột.
+     */
+    private void updateCameraAndAim(MouseHandler mouseH) {
         double camCX = player.getCenterX();
         double camCY = player.getCenterY();
         if (screenShakeTimer > 0) {
@@ -1193,22 +1360,23 @@ public class PlayingState extends GameState {
         }
         camera.update(camCX, camCY);
 
-        // --- 6. 360-Degree Aim Angle Calculation ---
         this.cachedMouseHandler = mouseH;
         double mouseWorldX = camera.screenToWorldX(mouseH.getScreenX());
         double mouseWorldY = camera.screenToWorldY(mouseH.getScreenY());
         aimAngle = Math.atan2(mouseWorldY - player.getCenterY(), mouseWorldX - player.getCenterX());
         player.setAimAngle(aimAngle);
+    }
 
-        // --- 7. Weapon Attack Execution ---
-        // Nút bắn (FIRE): Mặc định Chuột Trái (hoặc phím tùy chỉnh trong KeyBindings).
-        // Súng tự động (AR/SMG) cho phép giữ nút liên thanh (isActionDown).
-        // Súng bán tự động (Pistol/Shotgun/Dao) yêu cầu bấm từng phát một (isActionPressedOnce).
-        // ĐẶC BIỆT: Khi đang kích hoạt Quick-Melee (cận chiến nhanh), người chơi tập trung vung dao
-        // nên bắt buộc ngừng xả đạn súng (kể cả súng tự động đang giữ nút bắn).
+    /**
+     * Xử lý thao tác bắn vũ khí chính và đòn cận chiến nhanh (Quick-Melee).
+     * WHY: Súng tự động (AR/SMG) cho phép đè giữ nút bắn; súng bán tự động (Pistol/Shotgun) cần nhấp nhả từng phát.
+     * Khi vung dao cận chiến nhanh, tạm dừng bắn súng để tập trung đòn cận chiến.
+     */
+    private void handleWeaponCombatInput(KeyboardHandler keyH, MouseHandler mouseH) {
         boolean isQuickMeleeActive = KeyBindings.isActionDown(keyH, mouseH, GameAction.QUICK_MELEE);
         Weapon currentWeapon = weaponManager.getActiveWeapon();
         boolean shouldTriggerAttack = false;
+
         if (currentWeapon != null && !isQuickMeleeActive) {
             if (currentWeapon.isAutomatic()) {
                 shouldTriggerAttack = KeyBindings.isActionDown(keyH, mouseH, GameAction.FIRE);
@@ -1216,6 +1384,7 @@ public class PlayingState extends GameState {
                 shouldTriggerAttack = KeyBindings.isActionPressedOnce(keyH, mouseH, GameAction.FIRE);
             }
         }
+
         if (shouldTriggerAttack) {
             boolean fired = weaponManager.attack(player.getCenterX(), player.getCenterY(), aimAngle, projectileManager);
             if (fired && currentWeapon instanceof com.groupproject.game.entity.weapon.SemiCarbineRifle scr && scr.getContinuousShots() >= 2) {
@@ -1223,133 +1392,130 @@ public class PlayingState extends GameState {
             }
         }
 
-        // --- 7.1. Quick-Melee Strike ---
-        // Cho phép người chơi chém dao cận chiến tức thì khi bấm nút cận chiến nhanh (mặc định Chuột Phải)
-        // bất kể đang trang bị vũ khí nào (Slot 1, Slot 2, Pistol...).
-        // Tăng độ cơ động phản xạ nhanh khi bị quái cận chiến áp sát
+        // Đòn chém dao cận chiến tức thì khi bấm phím Quick-Melee (mặc định Chuột Phải)
         if (isQuickMeleeActive) {
             weaponManager.quickMelee(player.getCenterX(), player.getCenterY(), aimAngle, projectileManager);
         }
+    }
 
-        // --- 8. Advance Weapons & Projectiles ---
+    /**
+     * Cập nhật đạn bay, hoạt cảnh vụ nổ, tia bộc phá bạo kích và xác quái trượt trên sàn.
+     */
+    private void updateCombatVisualsAndProjectiles(double deltaTime) {
         weaponManager.update(deltaTime);
         projectileManager.update(deltaTime, dungeonMap, this);
 
-        // --- 8.1. Advance Active Explosions ---
+        // Cập nhật và dọn dẹp các vụ nổ đã hoàn tất
         for (ExplosionVisual ev : activeExplosions) {
             ev.update(deltaTime);
         }
         activeExplosions.removeIf(ExplosionVisual::isFinished);
 
-        // --- 8.2. Advance Active Critical Hit Visuals ---
+        // Cập nhật và dọn dẹp các hiệu ứng bạo kích (Critical Hits)
         for (CriticalHitVisual cv : activeCritVisuals) {
             cv.update(deltaTime);
         }
         activeCritVisuals.removeIf(CriticalHitVisual::isFinished);
 
-        // --- 8.3. Advance Active Enemy Corpses (Knockback sliding & fade out) ---
+        // Cập nhật xác quái trượt quán tính trên sàn và mờ dần
         for (EnemyCorpse corpse : activeCorpses) {
             corpse.update(deltaTime, dungeonMap);
         }
         activeCorpses.removeIf(EnemyCorpse::isFinished);
+    }
 
-        // --- 9. Check Projectile and Melee Hits on Hostile Targets ---
-        updateCombatDamageResolution(deltaTime);
-
-        // --- 9.1. Boss Arena Minion Reinforcements (Spawn 5-6 enemies 15s after minions are cleared) ---
-        updateBossMinionReinforcements(deltaTime);
-
-        // --- 10. Check Room Clear Condition and Unlock Doors ---
-        if (activeCombatRoom != null && activeCombatRoom.isLocked() && combatTargets.isEmpty()) {
-            if (activeCombatRoom.hasNextPhase()) {
-                // Đợt quái tiếp viện (Phase 2): Cửa vẫn phong tỏa, spawn thêm quái và rung màn hình cảnh báo
-                activeCombatRoom.advancePhase();
-                int nextPhase = activeCombatRoom.getCurrentPhase();
-                spawnTargetsForRoomPhase(activeCombatRoom, nextPhase);
-
-                screenShakeTimer = 0.20;
-            } else {
-                activeCombatRoom.unlock();
-                int clearReward = switch (currentStage) {
-                    case 1 -> 10; // Giảm nhẹ ở màn 1 (10 Credits thay vì 15)
-                    case 2 -> 16; // Tăng dần ở màn 2 (16 Credits)
-                    case 3 -> 22; // Tăng dần ở màn 3 (22 Credits)
-                    default -> 30; // Boss Stage / Thử thách cao cấp (30 Credits)
-                };
-                addCredits(clearReward);
-
-                long clearedCount = dungeonMap.getCombatRooms().stream().filter(Room::isCleared).count();
-                int totalCount = dungeonMap.getCombatRooms().size();
-
-                // Rơi ra hòm tiếp tế chiến lợi phẩm tại phòng chiến đấu vừa dọn sạch:
-                // QUY TẮC PHẦN THƯỞNG:
-                // 1. Ở Stage 1: Đảm bảo phòng combat đầu tiên dọn sạch luôn cho 1 cây súng chính Level 1 free.
-                // 2. Sau khi đã nhận cây súng free (và ở các stage khác): Hòm trao thưởng theo tỉ lệ (Tiền ra nhiều hơn súng ~75%).
-                boolean giveGuaranteedWeapon = (currentStage == 1 && !stage1FreeWeaponGranted);
-                if (giveGuaranteedWeapon) {
-                    stage1FreeWeaponGranted = true;
-                }
-
-                double chestCenterX = activeCombatRoom.getCenterWorldX();
-                double chestCenterY = (currentStage == BOSS_STAGE)
-                        ? activeCombatRoom.getCenterWorldY() - 161
-                        : activeCombatRoom.getCenterWorldY();
-
-                double chestX = chestCenterX - 19;
-                double chestY = chestCenterY - 19;
-                weaponChests.add(new WeaponChest(chestX, chestY, giveGuaranteedWeapon, currentStage));
-
-                // Rơi 2 đơn vị stack của 2 loại đạn ngẫu nhiên đối xứng 2 bên (hòm thưởng ở chính giữa)
-                spawnClearRoomAmmoStacks(chestCenterX, chestCenterY);
-
-                // Tỉ lệ rất nhỏ (~15%) mở ra thêm vật phẩm hồi phục khi clear phòng
-                if (ThreadLocalRandom.current().nextInt(100) < 15) {
-                    healthPickups.add(new HealthPickup(chestCenterX, chestCenterY + 58.0, HealthPickup.HealthSize.SMALL));
-                }
-
-                if (currentStage == BOSS_STAGE) {
-                    // Stage Boss (Stage 4) Grand Boss Arena: Kích hoạt bệ sơ tán ngay tại tâm phòng combat!
-                    dungeonMap.spawnExtractZoneInRoom(activeCombatRoom);
-                }
-                showBanner("CLEAR", new Color(60, 235, 130), 2.0);
-
-                activeCombatRoom = null;
-            }
+    /**
+     * Kiểm tra điều kiện quét sạch quái trong phòng chiến đấu để mở khóa cửa phong tỏa
+     * hoặc kích hoạt đợt quái tiếp viện (Phase 2), đồng thời phân phối phần thưởng chiến thuật.
+     */
+    private void updateRoomClearAndRewards() {
+        if (activeCombatRoom == null || !activeCombatRoom.isLocked() || !combatTargets.isEmpty()) {
+            return;
         }
 
-        // --- 11. Handle Weapon Chests Auto-Open & Pickup Interaction [F] ---
-        boolean chestInteracted = false;
-        for (WeaponChest chest : weaponChests) {
-            // Hòm tự động mở khi người chơi đi lại gần (bán kính ~58px) và lộ diện chiến lợi phẩm (Tiền hoặc Súng)
-            chest.update(deltaTime, player.getX(), player.getY(), player.getSize());
+        if (activeCombatRoom.hasNextPhase()) {
+            // Đợt quái tiếp viện (Phase 2): Cửa vẫn phong tỏa, sinh thêm quái và rung màn hình cảnh báo
+            activeCombatRoom.advancePhase();
+            int nextPhase = activeCombatRoom.getCurrentPhase();
+            spawnTargetsForRoomPhase(activeCombatRoom, nextPhase);
+            screenShakeTimer = 0.20;
+        } else {
+            // Quét sạch toàn bộ các đợt: Mở khóa cửa và trao thưởng
+            activeCombatRoom.unlock();
+            int clearReward = switch (currentStage) {
+                case 1 -> 10; // Giảm nhẹ ở màn 1 (10 Credits)
+                case 2 -> 16; // Tăng dần ở màn 2 (16 Credits)
+                case 3 -> 22; // Tăng dần ở màn 3 (22 Credits)
+                default -> 30; // Boss Stage / Thử thách cao cấp (30 Credits)
+            };
+            addCredits(clearReward);
 
-            // Khi hòm đã mở và chưa thu thập, bấm phím tương tác chính [F] để nhận thưởng
+            // Rơi ra hòm tiếp tế vũ khí tại phòng chiến đấu vừa dọn sạch
+            boolean giveGuaranteedWeapon = (currentStage == 1 && !stage1FreeWeaponGranted);
+            if (giveGuaranteedWeapon) {
+                stage1FreeWeaponGranted = true;
+            }
+
+            double chestCenterX = activeCombatRoom.getCenterWorldX();
+            double chestCenterY = (currentStage == BOSS_STAGE)
+                    ? activeCombatRoom.getCenterWorldY() - 161
+                    : activeCombatRoom.getCenterWorldY();
+
+            double chestX = chestCenterX - 19;
+            double chestY = chestCenterY - 19;
+            weaponChests.add(new WeaponChest(chestX, chestY, giveGuaranteedWeapon, currentStage));
+
+            // Rơi 2 stack đạn ngẫu nhiên đối xứng 2 bên hòm thưởng
+            spawnClearRoomAmmoStacks(chestCenterX, chestCenterY);
+
+            // Tỉ lệ nhỏ (~15%) rơi thêm hộp máu cứu thương
+            if (ThreadLocalRandom.current().nextInt(100) < 15) {
+                healthPickups.add(new HealthPickup(chestCenterX, chestCenterY + 58.0, HealthPickup.HealthSize.SMALL));
+            }
+
+            if (currentStage == BOSS_STAGE) {
+                // Tại Boss Arena: Kích hoạt bệ sơ tán ngay tại tâm phòng khi hạ gục Boss
+                dungeonMap.spawnExtractZoneInRoom(activeCombatRoom);
+            }
+            showBanner("CLEAR", new Color(60, 235, 130), 2.0);
+
+            activeCombatRoom = null;
+        }
+    }
+
+    /**
+     * Xử lý tương tác chiến trường với các vật phẩm và trạm dịch vụ (Hòm vũ khí, Hộp đạn, Hộp máu, Shop, Nâng cấp).
+     *
+     * @return true nếu người chơi vừa tương tác thành công với một trạm hoặc vật phẩm.
+     */
+    private boolean handleFieldInteractions(KeyboardHandler keyH, double deltaTime) {
+        boolean interacted = false;
+
+        // 1. Hòm tiếp tế vũ khí (Weapon Chests)
+        for (WeaponChest chest : weaponChests) {
+            chest.update(deltaTime, player.getX(), player.getY(), player.getSize());
             if (chest.isPlayerInRange(player.getX(), player.getY(), player.getSize()) && chest.isOpened() && !chest.isCollected()) {
                 if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
-                    boolean collected = chest.collectReward(this);
-                    if (collected) {
-                        chestInteracted = true;
+                    if (chest.collectReward(this)) {
+                        interacted = true;
                     }
                 }
             }
         }
 
-        // --- 11.2. Handle Ammo Pickups Proximity Auto-Collection ---
+        // 2. Hộp đạn tự động hút khi lại gần (Ammo Pickups Proximity Auto-Collection)
         for (AmmoPickup pickup : ammoPickups) {
             pickup.update(deltaTime, player.getX(), player.getY(), player.getSize(), weaponManager.getAmmoInventory(), this);
         }
         ammoPickups.removeIf(AmmoPickup::isCollected);
 
-        // --- 11.3. Handle Health Pickups Manual Interaction [F] ---
-        // QUY TẮC: Người chơi phải bấm phím [F] để sử dụng, tuyệt đối không tự động nhặt
-        boolean healthInteracted = false;
+        // 3. Hộp cứu thương nhặt bằng phím tương tác [F] (Health Pickups Manual Interaction)
         for (HealthPickup hp : healthPickups) {
             hp.update(deltaTime);
-            if (!healthInteracted && hp.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
+            if (!interacted && hp.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
                 if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
-                    boolean used = hp.interact(this);
-                    if (used) {
-                        healthInteracted = true;
+                    if (hp.interact(this)) {
+                        interacted = true;
                         break;
                     }
                 }
@@ -1357,60 +1523,62 @@ public class PlayingState extends GameState {
         }
         healthPickups.removeIf(HealthPickup::isUsed);
 
-        // --- 11.5. Handle Shop Items & Purchase Interaction [F] ---
-        boolean shopInteracted = false;
+        // 4. Quầy hàng dã chiến (Field Shop Items)
         for (ShopItem item : shopItems) {
             item.update(deltaTime);
             if (item.isPlayerInRange(player.getX(), player.getY(), player.getSize()) && !item.isPurchased()) {
                 if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
-                    boolean bought = item.purchase(this);
-                    if (bought) {
-                        shopInteracted = true;
+                    if (item.purchase(this)) {
+                        interacted = true;
                         break;
                     }
                 }
             }
         }
 
-        // --- 11.6. Handle Stat Reforge Station Interaction [F] ---
-        boolean reforgeInteracted = false;
+        // 5. Trạm Tẩy Luyện Chỉ Số (Stat Reforge Station)
         if (statReforgeStation != null) {
             statReforgeStation.update(deltaTime);
             if (statReforgeStation.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
                 if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
-                    boolean reforged = statReforgeStation.interact(this);
-                    if (reforged) {
-                        reforgeInteracted = true;
+                    if (statReforgeStation.interact(this)) {
+                        interacted = true;
                     }
                 }
             }
         }
 
-        // --- 11.7. Handle Character Upgrade Stations Interaction [F] ---
-        boolean upgradeInteracted = false;
+        // 6. Trạm Nâng Cấp Nhân Vật (Character Upgrade Stations)
         if (basicUpgradeStation != null) {
             basicUpgradeStation.update(deltaTime);
             if (basicUpgradeStation.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
                 if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                     characterUpgradeUI.open(basicUpgradeStation, player.getBuffManager());
-                    upgradeInteracted = true;
+                    interacted = true;
                 }
             }
         }
-        if (!upgradeInteracted && specialUpgradeStation != null) {
+        if (!interacted && specialUpgradeStation != null) {
             specialUpgradeStation.update(deltaTime);
             if (specialUpgradeStation.isPlayerInRange(player.getX(), player.getY(), player.getSize())) {
                 if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
                     characterUpgradeUI.open(specialUpgradeStation, player.getBuffManager());
-                    upgradeInteracted = true;
+                    interacted = true;
                 }
             }
         }
 
-        // --- 12. Check Extraction Zone Interaction [F] ---
-        // WHY: Intersecting the 4x4 extract pad prompts the operative to press [F] to extract or advance stage
+        return interacted;
+    }
+
+    /**
+     * Xử lý tương tác đứng trên bục sơ tán (Extraction Pad) để chuyển sang màn tiếp theo hoặc hoàn tất chiến dịch.
+     * WHY: Kiểm tra va chạm với bục sơ tán 4x4 ô. Nếu người chơi bấm [F] (và không trùng với thao tác nhặt đồ khác),
+     * sẽ kích hoạt chuyển màn hoặc màn hình kết thúc ván chơi.
+     */
+    private void handleExtractionZoneInteraction(KeyboardHandler keyH, boolean hasOtherInteraction) {
         isStandingOnExtract = dungeonMap.isIntersectsExtractZone(player.getX(), player.getY(), player.getSize(), player.getSize());
-        if (!chestInteracted && !shopInteracted && !healthInteracted && !reforgeInteracted && !upgradeInteracted && isStandingOnExtract && KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
+        if (!hasOtherInteraction && isStandingOnExtract && KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT)) {
             if (currentStage < MAX_STAGES) {
                 requestAdvanceToNextStage();
             } else {
@@ -1437,7 +1605,7 @@ public class PlayingState extends GameState {
 
     /**
      * Tỉ lệ nhỏ (~35%) rơi một lượng đạn nhỏ khi tiêu diệt một mục tiêu (quái).
-     * Ngẫu nhiên 1 trong 3 loại đạn: AR (6-10 viên), SMG (8-14 viên), Shotgun (2-4 viên).
+     * Ngẫu nhiên 1 trong 4 loại đạn: AR (6-10), SMG (8-14), Shotgun (2-4), Sniper (2-4).
      */
     private void tryDropEnemyAmmo(double x, double y) {
         if (ThreadLocalRandom.current().nextInt(100) < 35) {
@@ -1456,7 +1624,7 @@ public class PlayingState extends GameState {
     /**
      * Rơi 2 đơn vị stack của 2 loại đạn ngẫu nhiên (có thể trùng lặp) khi clear phòng chiến đấu.
      * Hòm thưởng nằm ở chính giữa, 2 stack đạn được bố trí đối xứng hoàn hảo 2 bên (Trái & Phải).
-     * Định mức mỗi stack chuẩn: AR = 30 viên; SMG = 35 viên; Shotgun = 10 viên.
+     * Định mức mỗi stack chuẩn: AR = 30 viên; SMG = 35 viên; Shotgun = 10 viên; SR = 5 viên.
      */
     public void spawnClearRoomAmmoStacks(double centerX, double centerY) {
         AmmoType[] types = AmmoType.values();
@@ -1475,55 +1643,92 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Resolves collision detection between active bullets / knife slashes, hostile targets, and operative.
+     * Giải quyết va chạm và tính toán sát thương giữa đạn bay, nhát chém dao, người chơi và kẻ địch.
+     * WHY: Tách thành 3 khối chuyên biệt để giảm độ sâu lồng lặp (Cyclomatic Complexity):
+     * 1. Va chạm đạn (Đạn ta trúng địch & Đạn địch trúng ta).
+     * 2. Va chạm đòn chém cận chiến của dao găm.
+     * 3. Cập nhật AI hành vi của kẻ địch.
      */
     private void updateCombatDamageResolution(double deltaTime) {
-        // 1. Projectile hits
+        resolveProjectileCollisions();
+        resolveMeleeSlashCollisions();
+        updateTargetsAI(deltaTime);
+    }
+
+    /**
+     * Xử lý va chạm đạn bay với mục tiêu (kẻ địch hoặc người chơi).
+     */
+    private void resolveProjectileCollisions() {
         for (Projectile p : projectileManager.getActiveProjectiles()) {
             if (!p.isActive()) continue;
 
             if (p.isPlayerBullet()) {
-                // Đạn của Operative trúng mục tiêu thù địch (bỏ qua kẻ địch đang chuẩn bị spawn trong portal)
-                for (TargetDummy dummy : combatTargets) {
-                    if (dummy.isAlive() && !dummy.isSpawning() && p.canHit(dummy) && p.getBounds().intersects(dummy.getBounds())) {
-                        double impulse = p.isCritical() ? 190.0 : 130.0;
-                        int damageDealt = p.getDamage();
-                        dummy.takeDamage(damageDealt, p.getAngle(), impulse, p.isCritical());
-                        if (p.isCritical()) {
-                            activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), damageDealt));
-                            screenShakeTimer = Math.max(screenShakeTimer, 0.08);
-                        }
-                        // Ghi nhận va chạm mục tiêu: tiêu hao 1 lượt xuyên và giảm sát thương cho kẻ địch kế tiếp
-                        p.onHitTarget(dummy);
-                        if (!dummy.isAlive()) {
-                            double fatalAngle = p.getAngle();
-                            double fatalForce = p.isCritical() ? 480.0 : 360.0;
-                            onEnemyEliminated(dummy, fatalAngle, fatalForce);
-                        }
-                        // Nếu đạn đã hết lượt xuyên và bị tiêu biến thì dừng xét các mục tiêu phía sau
-                        if (!p.isActive()) {
-                            break;
-                        }
-                    }
-                }
+                handlePlayerBulletHit(p);
             } else {
-                // Đạn của Kẻ Địch trúng Operative
-                Rectangle playerBox = new Rectangle(
-                        (int) player.getX(), (int) player.getY(), (int) player.getSize(), (int) player.getSize());
-                if (p.getBounds().intersects(playerBox)) {
-                    if (p instanceof com.groupproject.game.entity.projectile.EnemyGrenade) {
-                        // Lựu đạn hẹn giờ không phát nổ ngay khi chạm người chơi; nó đếm ngược 2s để nổ ép góc!
-                    } else if (p instanceof BossCannonShell) {
-                        ((BossCannonShell) p).explode(this, dungeonMap);
-                    } else {
-                        damagePlayer(p.getDamage());
-                        p.deactivate();
-                    }
+                handleEnemyBulletHit(p);
+            }
+        }
+    }
+
+    /**
+     * Xử lý đạn của người chơi va chạm với kẻ địch.
+     */
+    private void handlePlayerBulletHit(Projectile p) {
+        for (TargetDummy dummy : combatTargets) {
+            if (dummy.isAlive() && !dummy.isSpawning() && p.canHit(dummy) && p.getBounds().intersects(dummy.getBounds())) {
+                double impulse = p.isCritical() ? 190.0 : 130.0;
+                int damageDealt = p.getDamage();
+                dummy.takeDamage(damageDealt, p.getAngle(), impulse, p.isCritical());
+
+                // Nếu bắn trúng Boss, ngay lập tức hiển thị thanh máu Boss
+                if (dummy == bossDummy) {
+                    isBossHealthBarRevealed = true;
+                }
+
+                if (p.isCritical()) {
+                    activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), damageDealt));
+                    screenShakeTimer = Math.max(screenShakeTimer, 0.08);
+                }
+
+                // Ghi nhận va chạm: tiêu hao 1 lượt xuyên và giảm sát thương cho kẻ địch kế tiếp
+                p.onHitTarget(dummy);
+
+                if (!dummy.isAlive()) {
+                    double fatalAngle = p.getAngle();
+                    double fatalForce = p.isCritical() ? 480.0 : 360.0;
+                    onEnemyEliminated(dummy, fatalAngle, fatalForce);
+                }
+
+                // Nếu đạn đã hết lượt xuyên và bị tiêu biến thì dừng xét các mục tiêu phía sau
+                if (!p.isActive()) {
+                    break;
                 }
             }
         }
+    }
 
-        // 2. Melee knife slash hits (Chỉ tác động sát thương 1 lần duy nhất cho mỗi mục tiêu trong 1 nhát chém)
+    /**
+     * Xử lý đạn của kẻ địch va chạm với người chơi.
+     */
+    private void handleEnemyBulletHit(Projectile p) {
+        Rectangle playerBox = new Rectangle(
+                (int) player.getX(), (int) player.getY(), (int) player.getSize(), (int) player.getSize());
+        if (p.getBounds().intersects(playerBox)) {
+            if (p instanceof com.groupproject.game.entity.projectile.EnemyGrenade) {
+                // Lựu đạn hẹn giờ không phát nổ ngay khi chạm người chơi; nó đếm ngược 2s để nổ ép góc!
+            } else if (p instanceof BossCannonShell bcs) {
+                bcs.explode(this, dungeonMap);
+            } else {
+                damagePlayer(p.getDamage());
+                p.deactivate();
+            }
+        }
+    }
+
+    /**
+     * Xử lý va chạm nhát chém dao cận chiến (Melee Slash) với kẻ địch và vật cản cover.
+     */
+    private void resolveMeleeSlashCollisions() {
         for (MeleeSlash slash : weaponManager.getActiveSlashes()) {
             if (!slash.isActive()) continue;
 
@@ -1557,9 +1762,12 @@ public class PlayingState extends GameState {
                         slash.getDamage());
             }
         }
+    }
 
-        // 3. Update targets AI (locomotion, kiting, melee attacks, pistol bursts)
-        // Chỉ cập nhật AI di chuyển và tấn công của kẻ địch khi phòng combat đang kích hoạt
+    /**
+     * Cập nhật trí tuệ nhân tạo (AI) di chuyển và tấn công của kẻ địch trong phòng đang kích hoạt.
+     */
+    private void updateTargetsAI(double deltaTime) {
         if (activeCombatRoom != null) {
             double playerCenterX = player.getCenterX();
             double playerCenterY = player.getCenterY();
@@ -1609,153 +1817,194 @@ public class PlayingState extends GameState {
     }
 
     /**
-     * Renders dungeon terrain, doors, flying bullets, melee slashes, operative, targets, and tactical HUDs.
+     * Vẽ toàn bộ màn chơi theo kiến trúc phân tầng Rendering Layers chuẩn mực:
+     * <ol>
+     *   <li>Layer 1: Bản đồ địa hình thế giới và các thực thể chiến trường.</li>
+     *   <li>Layer 2: Các trạm tương tác, hòm tiếp tế và vật phẩm rơi trên sàn.</li>
+     *   <li>Layer 3: Nhân vật Operative, vũ khí và hiệu ứng chiến đấu đặc biệt.</li>
+     *   <li>Layer 4: Giao diện hiển thị trạng thái chiến thuật (HUD Layer).</li>
+     *   <li>Layer 5: Các màn hình giao diện toàn màn hình, cửa sổ Modal và hiệu ứng chuyển cảnh.</li>
+     * </ol>
      */
     @Override
     public void render(Graphics2D g) {
-        // 1. Render Visible Dungeon Map (with Viewport Culling & Door tiles)
+        renderWorldAndEntities(g);
+        renderInteractiveStationsAndPickups(g);
+        renderOperativeAndCombatEffects(g);
+        renderHUDLayer(g);
+        renderFullscreenOverlaysAndModals(g);
+    }
+
+    /**
+     * Layer 1: Vẽ địa hình hầm ngục, cửa ngăn, xác quái, aura hồi phục, kẻ địch và đạn bay.
+     */
+    private void renderWorldAndEntities(Graphics2D g) {
+        // 1. Bản đồ hầm ngục (kèm culling tối ưu hiệu năng)
         dungeonMap.render(g, camera);
 
-        // 1.5. Render Enemy Corpses on dungeon floor (Xác đầu lâu nâu mờ trượt trên sàn)
+        // 2. Xác quái vật trượt quán tính trên mặt sàn
         for (EnemyCorpse corpse : activeCorpses) {
             corpse.render(g, camera);
         }
 
-        // 1.8. Render Hostile Ground Auras UNDER entities (Vùng hồi phục nano đỏ của Medic trải trên mặt sàn)
+        // 3. Vùng hiệu ứng nano hồi máu của Medic trên mặt sàn
         for (TargetDummy dummy : combatTargets) {
-            if (dummy instanceof com.groupproject.game.entity.enemy.MedicEnemy) {
-                ((com.groupproject.game.entity.enemy.MedicEnemy) dummy).renderAura(g, camera);
+            if (dummy instanceof com.groupproject.game.entity.enemy.MedicEnemy medic) {
+                medic.renderAura(g, camera);
             }
         }
 
-        // 2. Render Hostile Combat Targets
+        // 4. Kẻ địch và mục tiêu thù địch
         for (TargetDummy dummy : combatTargets) {
             dummy.render(g, camera);
         }
 
-        // 3. Render Active Flying Projectiles
+        // 5. Đạn bay trên chiến trường
         projectileManager.render(g, camera);
 
-        // 3.1 Render Heavy AoE Explosions (Shockwaves & fireballs from Boss Cannon)
+        // 6. Hiệu ứng bộc phá diện rộng (Explosions)
         for (ExplosionVisual ev : activeExplosions) {
             ev.render(g, camera);
         }
+    }
 
-        // 3.3 Render Danh sách Hộp Cứu Thương rơi trên sàn (Health Pickups)
+    /**
+     * Layer 2: Vẽ các vật phẩm rơi (Hộp máu, Hộp đạn, Hòm tiếp tế) và các trạm dịch vụ dã chiến.
+     */
+    private void renderInteractiveStationsAndPickups(Graphics2D g) {
+        // Hộp máu
         for (HealthPickup hp : healthPickups) {
             boolean inRange = hp.isPlayerInRange(player.getX(), player.getY(), player.getSize());
             hp.render(g, camera, inRange);
         }
 
-        // 3.4 Render Danh sách Hộp đạn chiến thuật rơi trên sàn (Ammo Pickups)
+        // Hộp đạn
         for (AmmoPickup pickup : ammoPickups) {
             pickup.render(g, camera);
         }
 
-        // 3.5 Render Danh sách Hòm tiếp tế vũ khí (Weapon Chests)
+        // Hòm tiếp tế vũ khí
         for (WeaponChest chest : weaponChests) {
             boolean inRange = chest.isPlayerInRange(player.getX(), player.getY(), player.getSize());
             chest.render(g, camera, inRange);
         }
 
-        // 3.6 Render Danh sách Quầy hàng Shop (Tactical Field Shop)
+        // Quầy hàng dã chiến
         for (ShopItem item : shopItems) {
             boolean inRange = item.isPlayerInRange(player.getX(), player.getY(), player.getSize());
             item.render(g, camera, inRange);
         }
 
-        // 3.7 Render Trạm Tẩy Luyện Chỉ Số (Stat Reforge Station)
+        // Trạm Tẩy Luyện Chỉ Số
         if (statReforgeStation != null) {
             statReforgeStation.render(g, camera, player.getX(), player.getY(), player.getSize(),
                     weaponManager.getActiveWeapon(), playerCredits);
         }
 
-        // 3.8 Render 2 Trạm Nâng Cấp Nhân Vật (Basic Stats & Special Perks)
+        // Trạm Nâng Cấp Nhân Vật
         if (basicUpgradeStation != null) {
             basicUpgradeStation.render(g, camera, player.getX(), player.getY(), player.getSize());
         }
         if (specialUpgradeStation != null) {
             specialUpgradeStation.render(g, camera, player.getX(), player.getY(), player.getSize());
         }
+    }
 
-        // 4. Render Equipped Weapon (Layer súng ở DƯỚI layer ảnh nhân vật theo yêu cầu thiết kế)
+    /**
+     * Layer 3: Vẽ súng, nhân vật Operative, vệt chém dao, hiệu ứng bạo kích và đường ngắm chuột.
+     */
+    private void renderOperativeAndCombatEffects(Graphics2D g) {
+        // Súng nằm ở layer dưới nhân vật theo thiết kế
         weaponManager.renderWeapon(g, camera, player.getCenterX(), player.getCenterY(), aimAngle);
 
-        // 5. Render Player Operative (Screen Space)
+        // Nhân vật chính và các chỉ báo nạp đạn / hết đạn
         player.render(g, camera, weaponManager.getActiveWeapon());
         player.renderReloadIndicator(g, camera, weaponManager.getActiveWeapon());
         player.renderOutOfAmmoWarning(g, camera, weaponManager.isCurrentWeaponOutOfAmmo());
 
-        // 5.1. Render Melee Slash VFX (Vệt chém dao ở layer trên nhân vật)
+        // Vệt chém dao cận chiến (layer trên nhân vật)
         weaponManager.renderSlashes(g, camera);
 
-        // 5.1. Render Critical Hit Visual Effects (Expanding golden rings, starbursts, sparks, and floating CRIT! numbers)
+        // Hiệu ứng tia sáng bạo kích (Critical Hit Visuals)
         for (CriticalHitVisual cv : activeCritVisuals) {
             cv.render(g, camera);
         }
 
-        // 5.5. Render Faint Dashed Aim Guideline (Đường ngắm nét đứt mờ nối từ người chơi đến con trỏ chuột)
+        // Đường ngắm nét đứt mờ nối từ tâm nhân vật đến con trỏ chuột
         renderAimGuideline(g);
+    }
 
-        // 6. Render Top Sector Information HUD, Player Health Bar HUD, Credits HUD, and Boss Health Bar
+    /**
+     * Layer 4: Vẽ các phần tử hiển thị thông số chiến thuật (Heads-Up Display).
+     */
+    private void renderHUDLayer(Graphics2D g) {
         playingHUD.renderSectorHUD(g, currentStage, activeCombatRoom);
         playingHUD.renderPlayerHealthHUD(g, player);
         playingHUD.renderDodgeHUD(g, player);
         playingHUD.renderCreditsHUD(g, playerCredits);
         playingHUD.renderBuffsHUD(g, player);
-        long activeMinions = combatTargets.stream().filter(d -> d.isAlive() && !d.isBoss()).count();
-        playingHUD.renderBossHealthBar(g, bossDummy, activeMinions, bossMinionRespawnTimer);
 
-        // 6.5 Render Minimap Radar HUD (Fog of War & Real-Time Exploration)
+        // Thanh máu Boss trên đỉnh màn hình (chỉ hiển thị khi đã bước vào phòng đấu Boss)
+        if (isBossHealthBarRevealed && bossDummy != null && bossDummy.isAlive()) {
+            long activeMinions = combatTargets.stream().filter(d -> d.isAlive() && !d.isBoss()).count();
+            playingHUD.renderBossHealthBar(g, bossDummy, activeMinions, bossMinionRespawnTimer);
+        }
+
+        // Radar bản đồ thu nhỏ (Minimap Radar HUD)
         minimapHUD.render(g, dungeonMap, player, currentStage);
 
-        // 7. Render Bottom Weapon & Ammunition HUD
+        // Bảng điều khiển vũ khí và băng đạn ở đáy màn hình
         weaponManager.renderHUD(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
+    }
 
-        // 8. Render Tactical Announcement Banner if active
+    /**
+     * Layer 5: Vẽ các giao diện phủ toàn màn hình, cửa sổ Modal, màn hình tạm dừng và chuyển cảnh.
+     */
+    private void renderFullscreenOverlaysAndModals(Graphics2D g) {
+        // Banner thông báo chiến thuật
         if (bannerTimer > 0 && !bannerMessage.isEmpty()) {
-            boolean hasBoss = (bossDummy != null && bossDummy.isAlive());
+            boolean hasBoss = (isBossHealthBarRevealed && bossDummy != null && bossDummy.isAlive());
             playingHUD.renderBanner(g, bannerMessage, bannerColor, hasBoss);
         }
 
-        // 9. Floating Extract Interaction Prompt if standing on extract pad
+        // Hướng dẫn phím tương tác sơ tán khi đứng trên bục
         if (isStandingOnExtract && !isExtracting) {
             int screenPX = camera.worldToScreenX(player.getCenterX());
             int screenPY = camera.worldToScreenY(player.getCenterY());
             playingHUD.renderExtractPrompt(g, screenPX, screenPY, currentStage);
         }
 
-        // 10. Extraction Victory Black Screen Overlay
+        // Màn hình kết thúc chiến dịch (Victory Extraction Debriefing)
         if (isExtracting) {
             playingHUD.renderExtractionVictoryScreen(g, isStandaloneBossFight);
         }
 
-        // 10.4 Cảnh báo viền đỏ nguy hiểm khi máu thấp (<= 30%)
+        // Cảnh báo viền đỏ nguy hiểm khi lượng máu thấp (<= 30%)
         if (player.getCurrentHealth() <= 30 && !player.isDead()) {
             playingHUD.renderLowHealthVignette(g);
         }
 
-        // 10.6 Màn hình khi tử trận (Tự động hiển thị hiệu ứng chuyển tiếp về The Range)
+        // Hiệu ứng mờ dần về bóng tối khi tử trận
         if (player.isDead()) {
             playingHUD.renderDeathVignetteTransition(g, player.getDeathSequenceProgress());
         }
 
-        // 11. Giao diện Balo chiến thuật (TAB Overlay)
+        // Giao diện Balo chiến thuật (TAB Overlay)
         if (isBackpackOpen) {
             backpackUI.render(g, weaponManager, player, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         }
 
-        // 12. Giao diện Menu Tạm dừng (Pause Menu UI Overlay)
+        // Giao diện Menu Tạm dừng (Pause Menu UI Overlay)
         if (isPaused) {
             pauseMenuUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         }
 
-        // 13. Giao diện Bảng Nâng Cấp Nhân Vật (Character Upgrade Modal UI Overlay)
+        // Giao diện Nâng Cấp Nhân Vật (Character Upgrade Modal UI Overlay)
         if (characterUpgradeUI.isVisible()) {
             characterUpgradeUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, this);
         }
 
-        // 13.5. Giao diện Nâng Cấp Vũ Khí & Reroll Súng (Weapon Upgrade & Reforge Modal UI Overlays)
+        // Giao diện Nâng Cấp Vũ Khí & Tẩy Luyện Chỉ Số (Modals)
         if (weaponUpgradeModalUI.isVisible()) {
             weaponUpgradeModalUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, playerCredits);
         }
@@ -1763,8 +2012,10 @@ public class PlayingState extends GameState {
             statReforgeModalUI.render(g, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT, playerCredits);
         }
 
-        // 14. Cắt cảnh giới thiệu Boss (Letterbox + banner) và hiệu ứng Fade chuyển stage — luôn vẽ trên cùng
+        // Hoạt cảnh cắt cảnh giới thiệu Boss (Letterbox cinematic bars + banner)
         bossIntroCinematic.render(g);
+
+        // Hiệu ứng Fade chuyển cảnh stage — luôn vẽ trên cùng
         stageTransition.render(g);
     }
 
@@ -1975,6 +2226,14 @@ public class PlayingState extends GameState {
         return bossDummy;
     }
 
+    public boolean isBossHealthBarRevealed() {
+        return isBossHealthBarRevealed;
+    }
+
+    public void setBossHealthBarRevealed(boolean revealed) {
+        this.isBossHealthBarRevealed = revealed;
+    }
+
     /**
      * Helper hỗ trợ unit test khởi tạo Boss Dummy trong môi trường test mà không cần duyệt lockdown phòng.
      */
@@ -1994,7 +2253,7 @@ public class PlayingState extends GameState {
         if (player.takeDamage(damage)) {
             screenShakeTimer = 0.2; // 0.2 giây rung màn hình phản hồi va chạm
             if (player.isDead()) {
-                showBanner("☠ CHIẾN BINH ĐÃ TỬ TRẬN (OPERATIVE KIA) ☠", new Color(255, 50, 50), 5.0);
+                showBanner("[!] CHIẾN BINH ĐÃ TỬ TRẬN (OPERATIVE KIA) [!]", new Color(255, 50, 50), 5.0);
             }
         }
     }
@@ -2259,6 +2518,7 @@ public class PlayingState extends GameState {
 
         // 4. Khởi tạo bản đồ Stage tương ứng
         bossIntroTriggered = false;
+        isBossHealthBarRevealed = false;
         dungeonMap.generateStage(currentStage);
 
         Room spawnRoom = dungeonMap.getSpawnRoom();

@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 19/10/2026
+Cập nhật mới nhất vào ngày: 27/10/2026
 
 # Chiến Xa Bọc Thép Titan (BossTank - Titan Battle Tank)
 
@@ -141,4 +141,8 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
         - Tăng thời gian lấy đà đòn đâm húc `RAM_WINDUP`: Phase 1 ($\text{HP} \ge 50\%$) tăng từ $0.25\text{s}$ lên **$0.55\text{s}$**; Phase 2 ($\text{HP} < 50\%$) tăng từ $0.22\text{s}$ lên **$0.45\text{s}$**, giúp người chơi có cửa sổ quan sát và lướt né đòn đâm hiệu quả.
         - Khôi phục bán kính nổ đại pháo: Bán kính nổ bộc phá `BossCannonShell` được phục hồi về **$165.0\text{px}$** (đường kính quét $330\text{px}$, quét rộng hơn 5 ô gạch) theo phản hồi trải nghiệm thực chiến của người dùng, đảm bảo uy lực chấn động của cỗ chiến xa hạng nặng.
         - Giảm sát thương vụ nổ pháo: Từ $60\text{ HP}$ xuống **$40\text{ HP}$**, giảm nguy cơ người chơi bị sốc sát thương tức thì trong buồng giao tranh.
-  - Hoàn thiện toàn bộ 124 test tự động trong test suite đạt 100% Passed.
+    12. **Tiền Sản Sinh Xe Tăng (Pre-spawn) & Ẩn Thanh Máu Boss Khi Chưa Vào Phòng (27/10/2026)**:
+        - **Hiện diện thực tế**: Cỗ xe tăng `BossTank` được tiền sản sinh sẵn tại tâm phòng đấu Stage 4, loại bỏ cổng xoáy portal để cỗ xe tăng hiện diện sẵn sàng ngay từ đầu.
+        - **Kiểm soát thanh máu**: Mặc dù xe tăng đã sinh ra trước, thanh máu Boss ở đỉnh màn hình (`renderBossHealthBar`) **hoàn toàn được giấu đi** khi người chơi còn ở Spawn Room hoặc ngoài hành lang (`isBossHealthBarRevealed == false`).
+        - **Thời điểm hiển thị**: Thanh máu Boss chỉ xuất hiện khi người chơi thực sự bước qua cửa phòng Boss làm kích hoạt lockdown phòng, phát cắt cảnh giới thiệu Boss (`BossIntroCinematic`), hoặc khi Boss bị trúng đạn.
+  - Toàn bộ test tự động trong test suite đạt 100% Passed (243 bài test).

@@ -1,5 +1,6 @@
 package com.groupproject.game.ui;
 
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.buff.CharacterBuff;
 import com.groupproject.game.entity.buff.PlayerBuffManager;
 import com.groupproject.game.entity.player.Player;
@@ -214,15 +215,15 @@ public class BackpackUI {
         g.drawRoundRect(panelX + 3, panelY + 3, panelW - 6, panelH - 6, 14, 14);
 
         // 3. Header Tiêu đề Sổ tay Tác chiến
-        g.setFont(new Font("SansSerif", Font.BOLD, 17));
+        g.setFont(GameFontManager.getBoldFont(15.0f));
         g.setColor(new Color(245, 215, 80));
-        g.drawString("📋 SỔ TAY TÁC CHIẾN DÃ CHIẾN // TACTICAL FIELD PDA", panelX + 25, panelY + 32);
+        g.drawString("[ SỔ TAY TÁC CHIẾN DÃ CHIẾN // TACTICAL FIELD PDA ]", panelX + 25, panelY + 32);
 
         // Nút đóng [X]
         g.setColor(isCloseHovered ? new Color(255, 60, 60) : new Color(50, 65, 85));
         g.fillRoundRect(closeBtnBounds.x, closeBtnBounds.y, closeBtnBounds.width, closeBtnBounds.height, 8, 8);
         g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 16));
+        g.setFont(GameFontManager.getBoldFont(14.0f));
         g.drawString("X", closeBtnBounds.x + 9, closeBtnBounds.y + 21);
 
         // 3.5. THANH 2 TAB ĐIỀU HƯỚNG [Q / E]
@@ -242,9 +243,9 @@ public class BackpackUI {
         g.setColor(tab1Border);
         g.setStroke(new BasicStroke(isTab1Active ? 2.0f : 1.0f));
         g.drawRoundRect(tabWeaponsBounds.x, tabWeaponsBounds.y, tabWeaponsBounds.width, tabWeaponsBounds.height, 6, 6);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(isTab1Active ? new Color(255, 225, 80) : new Color(155, 175, 200));
-        drawCenteredString(g, "[Q] ⚔ KHO KHÍ TÀI & ĐẠN", tabWeaponsBounds.x + tabWeaponsBounds.width / 2, tabWeaponsBounds.y + 19);
+        drawCenteredString(g, "[Q] KHO KHÍ TÀI & ĐẠN", tabWeaponsBounds.x + tabWeaponsBounds.width / 2, tabWeaponsBounds.y + 19);
 
         // Tab 2: HỒ SƠ CHIẾN BINH & PERKS
         boolean isTab2Active = (activeTab == BackpackTab.CHARACTER_PERKS);
@@ -255,9 +256,9 @@ public class BackpackUI {
         g.setColor(tab2Border);
         g.setStroke(new BasicStroke(isTab2Active ? 2.0f : 1.0f));
         g.drawRoundRect(tabPerksBounds.x, tabPerksBounds.y, tabPerksBounds.width, tabPerksBounds.height, 6, 6);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(isTab2Active ? new Color(255, 225, 80) : new Color(155, 175, 200));
-        drawCenteredString(g, "[E] 🧬 HỒ SƠ & PERKS", tabPerksBounds.x + tabPerksBounds.width / 2, tabPerksBounds.y + 19);
+        drawCenteredString(g, "[E] HỒ SƠ & PERKS", tabPerksBounds.x + tabPerksBounds.width / 2, tabPerksBounds.y + 19);
 
         // Đường gạch ngang phân cách header
         g.setColor(new Color(40, 60, 85));
@@ -274,13 +275,13 @@ public class BackpackUI {
         g.setColor(new Color(40, 60, 85));
         g.drawLine(panelX + 25, panelY + 440, panelX + panelW - 25, panelY + 440);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.setFont(GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(160, 185, 215));
         if (activeTab == BackpackTab.WEAPONS) {
-            drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [Q / E] Đổi Tab  |  [SPACE / Click ⇄] Đổi vị trí Slot 1 & 2  |  [1, 2, 3, 4] Cầm vũ khí",
+            drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [Q / E] Đổi Tab  |  [SPACE / Click Đổi] Đổi vị trí Slot 1 & 2  |  [1, 2, 3, 4] Cầm vũ khí",
                     panelX + panelW / 2, panelY + 465);
         } else {
-            drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [Q / E] Đổi Tab  |  Ghé Phòng Nâng Cấp (Upgrade Room) để mở khóa thêm Buff & Perk",
+            drawCenteredString(g, "[TAB / ESC] Đóng Sổ Tay  |  [Q / E] Đổi Tab  |  Ghé Phòng Nâng Cấp để mở khóa thêm Buff & Perk",
                     panelX + panelW / 2, panelY + 465);
         }
 
@@ -329,10 +330,10 @@ public class BackpackUI {
         g.setStroke(new BasicStroke(isSwapHovered ? 2.5f : 1.5f));
         g.drawRoundRect(swapX, swapY, swapW, swapH, 10, 10);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(isSwapHovered ? new Color(255, 225, 80) : Color.WHITE);
-        drawCenteredString(g, "⇄ ĐỔI VỊ TRÍ", swapX + swapW / 2, swapY + 28);
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        drawCenteredString(g, "<-> ĐỔI VỊ TRÍ", swapX + swapW / 2, swapY + 28);
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(isSwapHovered ? Color.WHITE : new Color(180, 200, 220));
         drawCenteredString(g, "[SPACE / S]", swapX + swapW / 2, swapY + 48);
 
@@ -366,8 +367,8 @@ public class BackpackUI {
         g.fillRoundRect(arX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(60, 220, 120));
         g.drawRoundRect(arX, ammoBarY, barW, barH, 6, 6);
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
-        g.drawString("• SÚNG TRƯỜNG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) + " / 150", arX + 8, ammoBarY + 15);
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
+        g.drawString("- SÚNG TRƯỜNG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.AR) + " / 150", arX + 8, ammoBarY + 15);
 
         // 2. SMG Ammo Badge
         int smgX = arX + barW + badgeGap;
@@ -375,7 +376,7 @@ public class BackpackUI {
         g.fillRoundRect(smgX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(0, 210, 255));
         g.drawRoundRect(smgX, ammoBarY, barW, barH, 6, 6);
-        g.drawString("• ĐẠN SMG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SMG) + " / 180", smgX + 12, ammoBarY + 15);
+        g.drawString("- ĐẠN SMG: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SMG) + " / 180", smgX + 12, ammoBarY + 15);
 
         // 3. Shotgun Ammo Badge
         int sgX = smgX + barW + badgeGap;
@@ -383,7 +384,7 @@ public class BackpackUI {
         g.fillRoundRect(sgX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(255, 90, 70));
         g.drawRoundRect(sgX, ammoBarY, barW, barH, 6, 6);
-        g.drawString("• ĐẠN SHOTGUN: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) + " / 50", sgX + 10, ammoBarY + 15);
+        g.drawString("- ĐẠN SHOTGUN: " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN) + " / 50", sgX + 10, ammoBarY + 15);
 
         // 4. SR Sniper Ammo Badge
         int srX = sgX + barW + badgeGap;
@@ -391,11 +392,11 @@ public class BackpackUI {
         g.fillRoundRect(srX, ammoBarY, barW, barH, 6, 6);
         g.setColor(new Color(185, 80, 255));
         g.drawRoundRect(srX, ammoBarY, barW, barH, 6, 6);
-        g.drawString("• BẮN TỈA (SR): " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SR) + " / 30", srX + 10, ammoBarY + 15);
+        g.drawString("- BẮN TỈA (SR): " + ammoInv.getAmmo(com.groupproject.game.entity.item.AmmoType.SR) + " / 30", srX + 10, ammoBarY + 15);
 
         // Thông báo phản hồi thao tác hoán đổi
         if (!feedbackMessage.isEmpty() && feedbackTimer > 0) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
+            g.setFont(GameFontManager.getBoldFont(12.5f));
             g.setColor(new Color(255, 220, 80));
             drawCenteredString(g, feedbackMessage, panelX + panelW / 2, panelY + 395);
         }
@@ -406,7 +407,7 @@ public class BackpackUI {
      */
     private void renderCharacterPerksTab(Graphics2D g, Player player, int panelX, int panelY) {
         if (player == null) {
-            g.setFont(new Font("SansSerif", Font.ITALIC, 14));
+            g.setFont(GameFontManager.getSmallFont(12.0f));
             g.setColor(new Color(150, 175, 200));
             drawCenteredString(g, "[ Không có dữ liệu hồ sơ chiến binh ]", panelX + panelW / 2, panelY + 240);
             return;
@@ -424,11 +425,11 @@ public class BackpackUI {
 
         // Máu hiện tại / Máu tối đa kèm Mini Health Bar
         int hpX = panelX + 35;
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(new Color(255, 95, 95));
-        g.drawString("❤ MÁU:", hpX, vitalsY + 20);
+        g.drawString("[HP] MÁU:", hpX, vitalsY + 20);
 
-        int hpBarX = hpX + 50;
+        int hpBarX = hpX + 56;
         int hpBarW = 60;
         int hpBarH = 10;
         g.setColor(new Color(50, 20, 20));
@@ -439,30 +440,32 @@ public class BackpackUI {
         g.setColor(new Color(160, 190, 180));
         g.drawRect(hpBarX, vitalsY + 11, hpBarW, hpBarH);
         g.setColor(Color.WHITE);
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         g.drawString(player.getCurrentHealth() + "/" + player.getMaxHealth(), hpBarX + hpBarW + 6, vitalsY + 20);
 
         // Các chỉ số chiến thuật tính toán từ Buff
         int statX = hpBarX + hpBarW + 68;
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(255, 215, 60));
-        g.drawString("⚔ CÔNG: +" + Math.round((bm.getAttackMultiplier() - 1.0) * 100) + "%", statX, vitalsY + 20);
-        statX += 95;
+        g.drawString("[ATK] +" + Math.round((bm.getAttackMultiplier() - 1.0) * 100) + "%", statX, vitalsY + 20);
+        statX += 85;
         g.setColor(new Color(0, 225, 255));
-        g.drawString("👟 TỐC: +" + Math.round((bm.getSpeedMultiplier() - 1.0) * 100) + "%", statX, vitalsY + 20);
-        statX += 88;
+        g.drawString("[SPD] +" + Math.round((bm.getSpeedMultiplier() - 1.0) * 100) + "%", statX, vitalsY + 20);
+        statX += 85;
         g.setColor(new Color(140, 200, 255));
-        g.drawString("🛡 THỦ: -" + Math.round(bm.getDamageReduction() * 100) + "%", statX, vitalsY + 20);
-        statX += 88;
+        g.drawString("[DEF] -" + Math.round(bm.getDamageReduction() * 100) + "%", statX, vitalsY + 20);
+        statX += 85;
         g.setColor(new Color(255, 140, 90));
-        g.drawString("⚡ HỒI NÉ: +" + Math.round((bm.getDodgeCooldownFactor() - 1.0) * 100) + "%", statX, vitalsY + 20);
-        statX += 105;
+        g.drawString("[DODGE] +" + Math.round((bm.getDodgeCooldownFactor() - 1.0) * 100) + "%", statX, vitalsY + 20);
+        statX += 100;
         g.setColor(new Color(255, 220, 75));
-        g.drawString("🎲 MAY: +" + Math.round(bm.getLootLuckRatio() * 100) + "%", statX, vitalsY + 20);
+        g.drawString("[LUCK] +" + Math.round(bm.getLootLuckRatio() * 100) + "%", statX, vitalsY + 20);
 
         // 2. KHỐI 6 CHỈ SỐ CƠ BẢN (BASIC ATTRIBUTES)
         int basicY = panelY + 122;
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(new Color(255, 215, 60));
-        g.drawString("⚡ CƯỜNG HÓA CHỈ SỐ CƠ BẢN (BASIC ATTRIBUTES)", panelX + 28, basicY + 11);
+        g.drawString("CƯỜNG HÓA CHỈ SỐ CƠ BẢN (BASIC ATTRIBUTES)", panelX + 28, basicY + 11);
 
         g.setColor(new Color(16, 24, 30, 220));
         g.fillRoundRect(panelX + 25, basicY + 16, panelW - 50, 102, 8, 8);
@@ -474,37 +477,37 @@ public class BackpackUI {
         int col1X = panelX + 38;
         int rowH = 30;
         int r1Y = basicY + 34;
-        renderBasicStatRow(g, col1X, r1Y, CharacterBuff.MAX_HEALTH, "• MÁU TỐI ĐA (MAX HP)",
+        renderBasicStatRow(g, col1X, r1Y, CharacterBuff.MAX_HEALTH, "- MÁU TỐI ĐA (MAX HP)",
                 bm.getLevel(CharacterBuff.MAX_HEALTH), CharacterBuff.MAX_HEALTH.getMaxLevel(),
                 "+20% Máu/cấp (Hiện tại: +" + Math.round((bm.getMaxHealthMultiplier() - 1.0) * 100) + "% HP)");
 
-        renderBasicStatRow(g, col1X, r1Y + rowH, CharacterBuff.ATTACK_DAMAGE, "• TẤN CÔNG (ATTACK)",
+        renderBasicStatRow(g, col1X, r1Y + rowH, CharacterBuff.ATTACK_DAMAGE, "- TẤN CÔNG (ATTACK)",
                 bm.getLevel(CharacterBuff.ATTACK_DAMAGE), CharacterBuff.ATTACK_DAMAGE.getMaxLevel(),
                 "+10% Sát thương/cấp (Hiện tại: +" + Math.round((bm.getAttackMultiplier() - 1.0) * 100) + "% DMG)");
 
-        renderBasicStatRow(g, col1X, r1Y + rowH * 2, CharacterBuff.MOVE_SPEED, "• TỐC ĐỘ CHẠY (SPEED)",
+        renderBasicStatRow(g, col1X, r1Y + rowH * 2, CharacterBuff.MOVE_SPEED, "- TỐC ĐỘ CHẠY (SPEED)",
                 bm.getLevel(CharacterBuff.MOVE_SPEED), CharacterBuff.MOVE_SPEED.getMaxLevel(),
                 "+5% Tốc độ/cấp (Hiện tại: +" + Math.round((bm.getSpeedMultiplier() - 1.0) * 100) + "% SPD)");
 
         // Cột Phải (3 chỉ số: Phòng thủ, Hồi chiêu né, May mắn)
         int col2X = panelX + 380;
-        renderBasicStatRow(g, col2X, r1Y, CharacterBuff.DEFENSE, "• PHÒNG THỦ (DEFENSE)",
+        renderBasicStatRow(g, col2X, r1Y, CharacterBuff.DEFENSE, "- PHÒNG THỦ (DEFENSE)",
                 bm.getLevel(CharacterBuff.DEFENSE), CharacterBuff.DEFENSE.getMaxLevel(),
                 "Giảm 10% sát thương/cấp (Hiện tại: -" + Math.round(bm.getDamageReduction() * 100) + "% DMG)");
 
-        renderBasicStatRow(g, col2X, r1Y + rowH, CharacterBuff.DODGE_COOLDOWN, "• HỒI CHIÊU NÉ (DODGE)",
+        renderBasicStatRow(g, col2X, r1Y + rowH, CharacterBuff.DODGE_COOLDOWN, "- HỒI CHIÊU NÉ (DODGE)",
                 bm.getLevel(CharacterBuff.DODGE_COOLDOWN), CharacterBuff.DODGE_COOLDOWN.getMaxLevel(),
                 "Nhanh hơn 1.5 lần (Hiện tại: +" + Math.round((bm.getDodgeCooldownFactor() - 1.0) * 100) + "% CD)");
 
-        renderBasicStatRow(g, col2X, r1Y + rowH * 2, CharacterBuff.LOOT_LUCK, "• MAY MẮN NHẶT ĐỒ",
+        renderBasicStatRow(g, col2X, r1Y + rowH * 2, CharacterBuff.LOOT_LUCK, "- MAY MẮN NHẶT ĐỒ",
                 bm.getLevel(CharacterBuff.LOOT_LUCK), CharacterBuff.LOOT_LUCK.getMaxLevel(),
-                "+25% Tỉ lệ súng 4-5★ & Súng Đỏ (Hiện tại: +" + Math.round(bm.getLootLuckRatio() * 100) + "%)");
+                "+25% Tỉ lệ súng 4-5 Sao & Súng Đỏ (Hiện tại: +" + Math.round(bm.getLootLuckRatio() * 100) + "%)");
 
         // 3. KHỐI 7 KỸ NĂNG ĐẶC BIỆT & PERKS (SPECIAL PERKS)
         int perkY = panelY + 246;
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(new Color(60, 220, 160));
-        g.drawString("💎 KỸ NĂNG ĐẶC BIỆT & PERKS CHIẾN THUẬT (SPECIAL PERKS)", panelX + 28, perkY + 11);
+        g.drawString("KỸ NĂNG ĐẶC BIỆT & PERKS CHIẾN THUẬT (SPECIAL PERKS)", panelX + 28, perkY + 11);
 
         g.setColor(new Color(16, 24, 30, 220));
         g.fillRoundRect(panelX + 25, perkY + 16, panelW - 50, 168, 8, 8);
@@ -559,13 +562,13 @@ public class BackpackUI {
     private void renderBasicStatRow(Graphics2D g, int x, int y, CharacterBuff buff, String title,
                                     int level, int maxLevel, String desc) {
         // Tên chỉ số
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(level > 0 ? new Color(255, 230, 90) : new Color(200, 215, 230));
         g.drawString(title, x, y);
 
         // Badge cấp độ: Lv.X/Y
         int badgeX = x + 160;
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(level >= maxLevel ? new Color(255, 215, 60) : (level > 0 ? new Color(60, 220, 160) : new Color(130, 145, 160)));
         g.drawString("Lv." + level + "/" + maxLevel, badgeX, y);
 
@@ -591,7 +594,7 @@ public class BackpackUI {
         }
 
         // Mô tả chi tiết
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         g.setColor(level > 0 ? new Color(175, 210, 230) : new Color(130, 145, 165));
         g.drawString(desc, x + 8, y + 14);
     }
@@ -609,19 +612,19 @@ public class BackpackUI {
             g.drawRoundRect(x, y, w, h, 6, 6);
 
             // Tên Perk vàng kim nổi bật
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             g.setColor(new Color(255, 225, 75));
-            g.drawString("★ " + name, x + 8, y + 13);
+            g.drawString("[+] " + name, x + 8, y + 13);
 
             // Badge ĐÃ KÍCH HOẠT
-            g.setFont(new Font("SansSerif", Font.BOLD, 9));
+            g.setFont(GameFontManager.getSmallBoldFont(9.0f));
             g.setColor(new Color(60, 240, 140));
             FontMetrics fm = g.getFontMetrics();
             String badge = "[ĐÃ KÍCH HOẠT]";
             g.drawString(badge, x + w - fm.stringWidth(badge) - 8, y + 13);
 
             // Mô tả hiệu ứng
-            g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            g.setFont(GameFontManager.getSmallFont(9.0f));
             g.setColor(new Color(190, 230, 215));
             if (h > 40) {
                 // Tách 2 dòng nếu mô tả dài
@@ -639,19 +642,19 @@ public class BackpackUI {
             g.drawRoundRect(x, y, w, h, 6, 6);
 
             // Tên Perk màu xám bạc
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             g.setColor(new Color(140, 155, 170));
-            g.drawString("☆ " + name, x + 8, y + 13);
+            g.drawString("[-] " + name, x + 8, y + 13);
 
             // Badge CHƯA CÓ
-            g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            g.setFont(GameFontManager.getSmallFont(9.0f));
             g.setColor(new Color(110, 125, 140));
             FontMetrics fm = g.getFontMetrics();
             String badge = "[CHƯA CÓ]";
             g.drawString(badge, x + w - fm.stringWidth(badge) - 8, y + 13);
 
             // Mô tả hiệu ứng mờ
-            g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            g.setFont(GameFontManager.getSmallFont(9.0f));
             g.setColor(new Color(105, 120, 135));
             if (h > 40) {
                 drawWrappedDescription(g, desc, x + 8, y + 26, w - 16);
@@ -700,13 +703,13 @@ public class BackpackUI {
         g.drawRoundRect(x, y, w, h, 12, 12);
 
         // Tiêu đề Slot
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(new Color(255, 200, 60));
         g.drawString(String.format("[%d] %s", slot, slotTitle), x + 15, y + 25);
 
         if (weapon != null) {
             // Tên vũ khí và cấp độ hiển thị (VD: AR I [0/3], SHOTGUN II [1/3])
-            g.setFont(new Font("SansSerif", Font.BOLD, 14));
+            g.setFont(GameFontManager.getBoldFont(13.0f));
             g.setColor(new Color(255, 220, 75));
             String titleText = weapon.getShortDisplayName().toUpperCase();
             if (!weapon.isMelee()) {
@@ -733,31 +736,39 @@ public class BackpackUI {
 
             // Thông số chi tiết đo lường bằng sao, chí mạng và DPS
             boolean isSniper = (weapon instanceof com.groupproject.game.entity.weapon.SniperRifle);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            g.setFont(GameFontManager.getSmallFont(10.0f));
             g.setColor(new Color(185, 205, 230));
-            g.drawString("• Sát thương:", x + 15, y + 66);
-            g.drawString("• Tốc ra đạn:", x + 15, y + 80);
-            g.drawString(isSniper ? "• Độ xuyên:" : "• Chính xác:", x + 15, y + 94);
-            g.drawString("• Chí mạng:", x + 15, y + 108);
-            g.drawString("• Chỉ số DPS:", x + 15, y + 122);
-            String ammoText = "• Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize();
+            g.drawString("- Sát thương:", x + 15, y + 66);
+            g.drawString("- Tốc ra đạn:", x + 15, y + 80);
+            g.drawString(isSniper ? "- Độ xuyên:" : "- Chính xác:", x + 15, y + 94);
+            g.drawString("- Chí mạng:", x + 15, y + 108);
+            g.drawString("- Chỉ số DPS:", x + 15, y + 122);
+            String ammoText = "- Băng đạn: " + weapon.getCurrentAmmo() + " / " + weapon.getMagazineSize();
             if (weapon.getAmmoType() != null) {
                 ammoText += " [Kho: " + weapon.getReserveAmmo() + "/" + weapon.getAmmoType().getMaxCapacity() + "]";
             }
             g.drawString(ammoText, x + 15, y + 137);
 
-            // Các cột sao hiển thị màu vàng kim và thông số thực tế
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            // Các cột sao hiển thị đồ họa màu vàng kim và thông số thực tế
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             g.setColor(new Color(255, 225, 75));
-            g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", x + 88, y + 66);
-            g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", x + 88, y + 80);
+
+            int nextX1 = Weapon.renderStarIcons(g, x + 88, y + 66 - 4, weapon.getDamageStars());
+            g.drawString("(" + weapon.getDamage() + " DMG)", nextX1, y + 66);
+
+            int nextX2 = Weapon.renderStarIcons(g, x + 88, y + 80 - 4, weapon.getFireRateStars());
+            g.drawString("(" + weapon.getFormattedRPM() + ")", nextX2, y + 80);
+
             if (isSniper) {
                 com.groupproject.game.entity.weapon.SniperRifle sr = (com.groupproject.game.entity.weapon.SniperRifle) weapon;
-                g.drawString(Weapon.formatStars(sr.getPierceStars()) + " (" + sr.getMaxPierces() + " mục tiêu | -" + sr.getPierceFalloffPercent() + "%)", x + 88, y + 94);
+                int nextX3 = Weapon.renderStarIcons(g, x + 88, y + 94 - 4, sr.getPierceStars());
+                g.drawString("(" + sr.getMaxPierces() + " mục tiêu | -" + sr.getPierceFalloffPercent() + "%)", nextX3, y + 94);
             } else if (weapon instanceof com.groupproject.game.entity.weapon.SemiCarbineRifle scr) {
-                g.drawString(Weapon.formatStars(scr.getAccuracyStars()) + " (Đầu " + scr.getFormattedInitialSpread() + " | Max " + scr.getFormattedSpread() + ")", x + 88, y + 94);
+                int nextX3 = Weapon.renderStarIcons(g, x + 88, y + 94 - 4, scr.getAccuracyStars());
+                g.drawString("(Đầu " + scr.getFormattedInitialSpread() + " | Max " + scr.getFormattedSpread() + ")", nextX3, y + 94);
             } else {
-                g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", x + 88, y + 94);
+                int nextX3 = Weapon.renderStarIcons(g, x + 88, y + 94 - 4, weapon.getAccuracyStars());
+                g.drawString("(" + weapon.getFormattedSpread() + ")", nextX3, y + 94);
             }
             g.setColor(new Color(255, 130, 90));
             g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.2f", weapon.getCritMultiplier()) + " DMG)", x + 88, y + 108);
@@ -770,23 +781,23 @@ public class BackpackUI {
                 g.fillRoundRect(x + 15, y + 158, w - 30, 26, 6, 6);
                 g.setColor(new Color(60, 220, 160));
                 g.drawRoundRect(x + 15, y + 158, w - 30, 26, 6, 6);
-                g.setFont(new Font("SansSerif", Font.BOLD, 12));
-                drawCenteredString(g, "★ ĐANG CẦM TRÊN TAY ★", x + w / 2, y + 175);
+                g.setFont(GameFontManager.getSmallBoldFont(11.0f));
+                drawCenteredString(g, "[ ĐANG CẦM TRÊN TAY ]", x + w / 2, y + 175);
             } else {
                 g.setColor(new Color(35, 50, 70));
                 g.fillRoundRect(x + 15, y + 158, w - 30, 26, 6, 6);
                 g.setColor(new Color(70, 105, 145));
                 g.drawRoundRect(x + 15, y + 158, w - 30, 26, 6, 6);
-                g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+                g.setFont(GameFontManager.getSmallBoldFont(10.5f));
                 g.setColor(new Color(180, 210, 240));
                 drawCenteredString(g, "[ CLICK / PHÍM " + slot + " ĐỂ CẦM ]", x + w / 2, y + 175);
             }
         } else {
             // Ô trống
-            g.setFont(new Font("SansSerif", Font.ITALIC, 15));
+            g.setFont(GameFontManager.getBoldFont(13.0f));
             g.setColor(new Color(120, 140, 165));
             drawCenteredString(g, "[ Ô TRỐNG ]", x + w / 2, y + 95);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            g.setFont(GameFontManager.getSmallFont(10.5f));
             drawCenteredString(g, "Mở hòm tiếp tế để nhặt súng", x + w / 2, y + 120);
         }
     }
@@ -800,14 +811,14 @@ public class BackpackUI {
         g.drawRoundRect(x, y, w, h, 10, 10);
 
         // Dòng 1: Tiêu đề Slot
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getBoldFont(11.0f));
         g.setColor(new Color(255, 200, 60));
         g.drawString(String.format("[%d] %s", slot, slotTitle), x + 12, y + 19);
 
         if (weapon != null) {
             // Dòng 2: Tên vũ khí và Badge CRIT tự động căn khoảng cách
             String nameText = weapon.getShortDisplayName().toUpperCase();
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
+            g.setFont(GameFontManager.getBoldFont(12.0f));
             g.setColor(weapon.isMelee() ? Color.WHITE : new Color(255, 220, 75));
             g.drawString(nameText, x + 12, y + 36);
 
@@ -820,7 +831,7 @@ public class BackpackUI {
             g.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 5, 5);
             g.setColor(new Color(255, 95, 80));
             g.drawRoundRect(badgeX, badgeY, badgeW, badgeH, 5, 5);
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(9.5f));
             g.drawString("CRIT: " + weapon.getCritChancePercent() + "%", badgeX + 7, badgeY + 12);
 
             // Minh họa Sprite vũ khí phụ (Pistol / Knife): Khung nền sáng tương phản 58x58 ở góc phải
@@ -841,31 +852,31 @@ public class BackpackUI {
             WeaponSpriteManager.renderWeaponSprite(g, weapon, subIconCenterX, subIconCenterY, subIconSize, subIconSize);
 
             // Bố cục thông số chi tiết bên trái (gọn gàng, hoàn toàn không chạm vào khung súng bên phải)
-            g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            g.setFont(GameFontManager.getSmallFont(10.0f));
             g.setColor(new Color(185, 205, 230));
 
             // Dòng 3: Sát thương và DPS (loại bỏ lặp lại CRIT để tránh dài dòng đè vào khung ảnh)
-            g.drawString(String.format("• Sát thương: %d HP   • DPS: %d (Crit: %d)",
+            g.drawString(String.format("- Sát thương: %d HP   - DPS: %d (Crit: %d)",
                     weapon.getDamage(), weapon.getNormalDPS(), weapon.getCritDPS()), x + 12, y + 53);
 
             // Dòng 4: Băng đạn và Tốc bắn / Tốc vung
             if (weapon.isMelee()) {
-                g.drawString(String.format("• Tốc vung: %s   • Loại: Cận chiến (∞)",
+                g.drawString(String.format("- Tốc vung: %s   - Loại: Cận chiến (--)",
                         weapon.getFormattedRPM()), x + 12, y + 69);
             } else {
-                String subAmmo = weapon.hasInfiniteAmmo() ? " (∞)" : "";
-                g.drawString(String.format("• Băng đạn: %d/%d%s   • Tốc: %s",
+                String subAmmo = weapon.hasInfiniteAmmo() ? " (--)" : "";
+                g.drawString(String.format("- Băng đạn: %d/%d%s   - Tốc: %s",
                         weapon.getCurrentAmmo(), weapon.getMagazineSize(), subAmmo, weapon.getFormattedRPM()), x + 12, y + 69);
             }
 
             // Dòng 5: Trạng thái cầm
             if (isEquipped) {
                 g.setColor(new Color(60, 220, 160));
-                g.setFont(new Font("SansSerif", Font.BOLD, 11));
-                g.drawString("★ ĐANG CẦM", x + 12, y + 86);
+                g.setFont(GameFontManager.getSmallBoldFont(10.0f));
+                g.drawString("[ ĐANG CẦM ]", x + 12, y + 86);
             } else {
                 g.setColor(new Color(130, 155, 185));
-                g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+                g.setFont(GameFontManager.getSmallFont(9.5f));
                 g.drawString("[Click hoặc nhấn " + slot + " để cầm]", x + 12, y + 86);
             }
         }

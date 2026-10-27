@@ -349,7 +349,7 @@ public class ShopItem {
      * Khi đã mua xong, chuyển sang nhãn [ ĐÃ BÁN ] màu xám công nghệ.
      */
     private void renderPriceTag(Graphics2D g, int centerX, int centerY, int price, boolean isPurchased, Color accentColor) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         FontMetrics fm = g.getFontMetrics();
 
         String text = isPurchased ? "[ ĐÃ BÁN ]" : price + " CREDITS";
@@ -392,26 +392,26 @@ public class ShopItem {
         g.setStroke(new BasicStroke(1.5f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(11.0f));
         g.setColor(new Color(120, 240, 140));
-        String title = "★ TIẾP TẾ ĐẠN DƯỢC (+2 STACK) ★";
+        String title = "TIẾP TẾ ĐẠN DƯỢC (+2 STACK)";
         FontMetrics fm = g.getFontMetrics();
         g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
 
         g.setColor(new Color(35, 75, 50));
         g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(210, 245, 220));
-        g.drawString("• AR: +60 viên | SMG: +70 viên", boxX + 14, boxY + 38);
-        g.drawString("• Shotgun: +20 viên | Nạp đầy băng", boxX + 14, boxY + 54);
+        g.drawString("- AR: +60 viên | SMG: +70 viên", boxX + 14, boxY + 38);
+        g.drawString("- Shotgun: +20 viên | Nạp đầy băng", boxX + 14, boxY + 54);
 
         g.setColor(new Color(20, 60, 35, 230));
         g.fillRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
         g.setColor(new Color(120, 240, 140));
         g.drawRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(255, 220, 60));
         g.drawString("[F]", boxX + 16, boxY + 79);
         g.setColor(Color.WHITE);
@@ -435,26 +435,26 @@ public class ShopItem {
         g.setStroke(new BasicStroke(1.5f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(11.0f));
         g.setColor(new Color(60, 230, 140));
-        String title = "★ TRẠM CỨU THƯƠNG NANO (+50 HP) ★";
+        String title = "TRẠM CỨU THƯƠNG NANO (+50 HP)";
         FontMetrics fm = g.getFontMetrics();
         g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
 
         g.setColor(new Color(30, 80, 55));
         g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(210, 250, 225));
-        g.drawString("• Hồi phục ngay lập tức +50 HP", boxX + 14, boxY + 38);
-        g.drawString("• Tối đa không vượt quá 100 HP", boxX + 14, boxY + 54);
+        g.drawString("- Hồi phục ngay lập tức +50 HP", boxX + 14, boxY + 38);
+        g.drawString("- Tối đa không vượt quá 100 HP", boxX + 14, boxY + 54);
 
         g.setColor(new Color(20, 65, 40, 230));
         g.fillRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
         g.setColor(new Color(60, 230, 140));
         g.drawRoundRect(boxX + 10, boxY + 66, boxW - 20, 18, 4, 4);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(255, 220, 60));
         g.drawString("[F]", boxX + 16, boxY + 79);
         g.setColor(Color.WHITE);
@@ -475,26 +475,26 @@ public class ShopItem {
         g.setStroke(new BasicStroke(1.5f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(11.0f));
         g.setColor(new Color(0, 230, 255));
-        String title = "★ BÀN NÂNG CẤP VŨ KHÍ (+1★) ★";
+        String title = "BÀN NÂNG CẤP VŨ KHÍ (+1 CẤP)";
         FontMetrics fm = g.getFontMetrics();
         g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
 
         g.setColor(new Color(50, 85, 115));
         g.drawLine(boxX + 12, boxY + 22, boxX + boxW - 12, boxY + 22);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(200, 230, 255));
-        g.drawString("• Nâng cấp súng đang cầm +1 Cấp", boxX + 14, boxY + 38);
-        g.drawString("• +1★ ngẫu nhiên (Tối đa 3 lần/súng)", boxX + 14, boxY + 54);
+        g.drawString("- Nâng cấp súng đang cầm +1 Cấp", boxX + 14, boxY + 38);
+        g.drawString("- +1 Sao ngẫu nhiên (Tối đa 3 lần/súng)", boxX + 14, boxY + 54);
 
         g.setColor(new Color(20, 55, 65, 230));
         g.fillRoundRect(boxX + 10, boxY + 64, boxW - 20, 18, 4, 4);
         g.setColor(new Color(0, 230, 255));
         g.drawRoundRect(boxX + 10, boxY + 64, boxW - 20, 18, 4, 4);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(255, 220, 60));
         g.drawString("[F] NÂNG CẤP (" + price + " CREDITS)", boxX + 16, boxY + 77);
 

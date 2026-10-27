@@ -1,6 +1,7 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.enemy.TargetDummy;
 import com.groupproject.game.entity.player.Player;
 import com.groupproject.game.input.KeyboardHandler;
@@ -190,9 +191,9 @@ public class BossIntroCinematic {
             boolean flash = ((int) (timer * 6)) % 2 == 0;
             Color warnColor = flash ? new Color(255, 50, 50, bannerAlpha) : new Color(255, 180, 0, bannerAlpha);
             g.setColor(warnColor);
-            g.setFont(new Font("SansSerif", Font.BOLD, 14));
+            g.setFont(GameFontManager.getBoldFont(13.0f));
             FontMetrics fmWarn = g.getFontMetrics();
-            String warnMsg = "⚠ // CẢNH BÁO: TRÙM XUẤT HIỆN // ⚠";
+            String warnMsg = "[!] // CẢNH BÁO: TRÙM XUẤT HIỆN // [!]";
             g.drawString(warnMsg, (screenW - fmWarn.stringWidth(warnMsg)) / 2, curBarH + 28);
 
             // Khung thẻ tên Boss hoành tráng ở phần dưới
@@ -212,7 +213,7 @@ public class BossIntroCinematic {
             g.setStroke(new BasicStroke(1.0f));
 
             // Tiêu đề Boss
-            g.setFont(new Font("SansSerif", Font.BOLD, 25));
+            g.setFont(GameFontManager.getBoldFont(22.0f));
             FontMetrics fmTitle = g.getFontMetrics();
             int titleW = fmTitle.stringWidth(bossTitle);
             int titleX = cardX + (cardW - titleW) / 2;
@@ -227,7 +228,7 @@ public class BossIntroCinematic {
             g.drawString(bossTitle, titleX, titleY);
 
             // Danh hiệu
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
+            g.setFont(GameFontManager.getSmallBoldFont(11.5f));
             FontMetrics fmSub = g.getFontMetrics();
             int subW = fmSub.stringWidth(bossSubtitle);
             int subX = cardX + (cardW - subW) / 2;
@@ -236,7 +237,7 @@ public class BossIntroCinematic {
             g.drawString(bossSubtitle, subX, subY);
 
             // Chỉ số chiến thuật
-            g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            g.setFont(GameFontManager.getSmallFont(10.5f));
             FontMetrics fmThreat = g.getFontMetrics();
             int threatW = fmThreat.stringWidth(bossThreatInfo);
             int threatX = cardX + (cardW - threatW) / 2;
@@ -245,7 +246,7 @@ public class BossIntroCinematic {
             g.drawString(bossThreatInfo, threatX, threatY);
 
             // Gợi ý bấm phím bỏ qua ở đáy
-            g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            g.setFont(GameFontManager.getSmallFont(9.5f));
             g.setColor(new Color(160, 180, 200, (int) (bannerAlpha * 0.75)));
             String skipTip = "[SPACE] HOẶC [CLICK CHUỘT] ĐỂ BỎ QUA GIỚI THIỆU";
             FontMetrics fmSkip = g.getFontMetrics();

@@ -104,6 +104,15 @@ public class HubRangeState extends GameState {
     // Góc ngắm bắn 360 độ từ tâm Operative đến con trỏ chuột
     private double aimAngle = 0.0;
 
+    // Nét vẽ đường ngắm nét đứt mờ (Aim Guideline) đồng bộ 100% với PlayingState
+    private static final float[] AIM_DASH_PATTERN = { 6.0f, 6.0f };
+    private static final BasicStroke AIM_GUIDELINE_STROKE = new BasicStroke(1.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f, AIM_DASH_PATTERN, 0.0f);
+    private static final BasicStroke AIM_CIRCLE_STROKE = new BasicStroke(1.0f);
+    private static final Color AIM_LINE_COLOR = new Color(175, 230, 255, 65);
+    private static final Color AIM_CIRCLE_COLOR = new Color(175, 230, 255, 80);
+
+    private MouseHandler cachedMouseHandler;
+
     public HubRangeState(GameStateManager gsm) {
         super(gsm);
         this.camera = new Camera(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
@@ -278,6 +287,7 @@ public class HubRangeState extends GameState {
 
     @Override
     public void update(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
+        this.cachedMouseHandler = mouseH;
         barrierAnimTimer += deltaTime * 5.0;
 
         // Cập nhật thông báo nổi
@@ -527,6 +537,11 @@ public class HubRangeState extends GameState {
             dummy.update(deltaTime);
         }
 
+        // Cập nhật các trạm tương tác (animTimer, bobbingTimer)
+        for (HubStation station : stations) {
+            station.update(deltaTime);
+        }
+
         // Smooth camera bám theo player
         camera.update(player.getCenterX(), player.getCenterY());
     }
@@ -564,11 +579,64 @@ public class HubRangeState extends GameState {
         player.renderOutOfAmmoWarning(g, camera, weaponManager.isCurrentWeaponOutOfAmmo());
         weaponManager.renderSlashes(g, camera);
 
+        // Đường ngắm nét đứt mờ nối từ vị trí người chơi đến con trỏ chuột
+        renderAimGuideline(g);
+
         // --- 7. Vẽ số sát thương bay lên (Damage Popups) ---
         popupManager.render(g, camera);
 
         // --- 8. Vẽ HUD The Range ---
         renderHubHUD(g);
+    }
+
+    /**
+     * Đường ngắm nét đứt mờ nối từ người chơi đến con trỏ chuột tại The Range.
+     * Đồng bộ 100% với cơ chế hiển thị trong trận chiến (PlayingState).
+     * Có thể bật/tắt trong Cài đặt (GameConfig.showAimGuideline).
+     */
+    private void renderAimGuideline(Graphics2D g) {
+        if (!GameConfig.showAimGuideline || cachedMouseHandler == null || player == null || player.isDead()) {
+            return;
+        }
+        // Không vẽ khi đang mở menu tạm dừng, balo hoặc các modal che khuất màn hình
+        if (isPaused || isBackpackOpen || (weaponUpgradeModalUI != null && weaponUpgradeModalUI.isVisible()) || (statReforgeModalUI != null && statReforgeModalUI.isVisible())) {
+            return;
+        }
+
+        int screenPX = camera.worldToScreenX(player.getCenterX());
+        int screenPY = camera.worldToScreenY(player.getCenterY());
+        int mouseSX = cachedMouseHandler.getScreenX();
+        int mouseSY = cachedMouseHandler.getScreenY();
+
+        double dx = mouseSX - screenPX;
+        double dy = mouseSY - screenPY;
+        double dist = Math.hypot(dx, dy);
+
+        // Bán kính an toàn tránh vẽ đè sát thân người chơi (< 24px)
+        if (dist < 24.0) {
+            return;
+        }
+
+        Stroke oldStroke = g.getStroke();
+        Color oldColor = g.getColor();
+
+        // Điểm bắt đầu ngay đầu nòng súng (~24px)
+        double startOffset = 24.0;
+        int startX = (int) (screenPX + (dx / dist) * startOffset);
+        int startY = (int) (screenPY + (dy / dist) * startOffset);
+
+        // Đường kẻ nét đứt mờ (Faint dashed guideline)
+        g.setStroke(AIM_GUIDELINE_STROKE);
+        g.setColor(AIM_LINE_COLOR);
+        g.drawLine(startX, startY, mouseSX, mouseSY);
+
+        // Vòng tròn chấm tâm ngắm nhỏ mờ nhạt quanh con trỏ chuột
+        g.setStroke(AIM_CIRCLE_STROKE);
+        g.setColor(AIM_CIRCLE_COLOR);
+        g.drawOval(mouseSX - 3, mouseSY - 3, 6, 6);
+
+        g.setStroke(oldStroke);
+        g.setColor(oldColor);
     }
 
     /** Hàng tường biên Bắc (trên) và biên Nam (dưới) của The Range để thay thế tường vô hình bằng tường gạch thật */

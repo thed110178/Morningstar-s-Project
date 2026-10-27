@@ -84,13 +84,13 @@ public class MinimapHUD {
         g.setColor(new Color(20, 120, 80));
         g.drawOval(boxX + 10, boxY + 8, 8, 8);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(190, 225, 250));
         g.drawString("TACTICAL RADAR", boxX + 24, boxY + 16);
 
         // Góc phải tiêu đề: nhãn Stage tinh gọn
         String stageTag = String.format("STG 1|%d", currentStage);
-        g.setFont(new Font("SansSerif", Font.BOLD, 9));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(9.0f));
         FontMetrics fmTag = g.getFontMetrics();
         int tagW = fmTag.stringWidth(stageTag);
         g.setColor(new Color(255, 210, 65, 220));
@@ -143,7 +143,7 @@ public class MinimapHUD {
         // 5. Vẽ các căn phòng (Rooms)
         List<Room> rooms = dungeonMap.getRooms();
         if (rooms != null) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 9));
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(9.0f));
             FontMetrics fmRoom = g.getFontMetrics();
 
             for (Room r : rooms) {
@@ -179,12 +179,12 @@ public class MinimapHUD {
                                 bgColor = new Color(22, 50, 85, 235);
                                 borderColor = new Color(60, 155, 240, 230);
                                 textColor = new Color(185, 230, 255);
-                                icon = "✔";
+                                icon = "v";
                             } else {
                                 bgColor = new Color(78, 48, 22, 235);
                                 borderColor = new Color(250, 140, 40, 235);
                                 textColor = new Color(255, 215, 155);
-                                icon = "⚔";
+                                icon = "X";
                             }
                             break;
 
@@ -192,21 +192,21 @@ public class MinimapHUD {
                             bgColor = new Color(85, 72, 18, 235);
                             borderColor = new Color(255, 215, 55, 240);
                             textColor = new Color(255, 240, 130);
-                            icon = "Ⓒ";
+                            icon = "C";
                             break;
 
                         case RESET_STAT:
                             bgColor = new Color(18, 68, 88, 235);
                             borderColor = new Color(38, 205, 230, 240);
                             textColor = new Color(185, 248, 255);
-                            icon = "⚙";
+                            icon = "R";
                             break;
 
                         case UPGRADE:
                             bgColor = new Color(72, 26, 92, 235);
                             borderColor = new Color(195, 72, 255, 240);
                             textColor = new Color(248, 195, 255);
-                            icon = "★";
+                            icon = "*";
                             break;
 
                         case EXTRACT:

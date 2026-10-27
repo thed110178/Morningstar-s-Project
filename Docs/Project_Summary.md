@@ -12,7 +12,7 @@ Cập nhật mới nhất vào ngày: 27/10/2026
   * Ngôn ngữ: **Java 21 LTS**
   * Đồ họa & GUI: **Java Swing + Graphics2D + Double Buffering (Anti-Tearing Engine)**
   * Quản lý gói: **Apache Maven**
-  * Kiểm thử: **JUnit 5 (Jupiter - 242 tests passing 100%)**
+  * Kiểm thử: **JUnit 5 (Jupiter - 244 tests passing 100%)**
   * Kiểm soát phiên bản: **Git**
 
 ---

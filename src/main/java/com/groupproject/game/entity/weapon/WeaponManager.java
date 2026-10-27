@@ -1,6 +1,7 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.Color;
 import java.awt.Font;
@@ -88,7 +89,34 @@ public class WeaponManager {
             }
         }
         addWeapon(weapon);
-        previousWeapon = activeWeapon;
+
+        // Quản lý previousWeapon và activeWeapon:
+        // Nếu khẩu súng cũ đang cầm bị thay thế và ném ra đất (activeWeapon == replacedWeapon),
+        // thì previousWeapon TUYỆT ĐỐI KHÔNG ĐƯỢC trỏ vào replacedWeapon (để tránh vũ khí ma)!
+        // Thay vào đó, previousWeapon sẽ trỏ vào slot chính còn lại (hoặc Pistol slot 3).
+        if (activeWeapon != null && activeWeapon != replacedWeapon && weaponSlots.containsValue(activeWeapon)) {
+            previousWeapon = activeWeapon;
+        } else {
+            int otherSlot = (weapon.getSlotIndex() == 1) ? 2 : 1;
+            if (weaponSlots.containsKey(otherSlot)) {
+                previousWeapon = weaponSlots.get(otherSlot);
+            } else if (weaponSlots.containsKey(3)) {
+                previousWeapon = weaponSlots.get(3);
+            } else {
+                previousWeapon = weaponSlots.get(4);
+            }
+        }
+
+        // Đảm bảo previousWeapon không bao giờ trùng với súng cũ vừa bị thay thế
+        if (previousWeapon == replacedWeapon || (previousWeapon != null && !weaponSlots.containsValue(previousWeapon))) {
+            int otherSlot = (weapon.getSlotIndex() == 1) ? 2 : 1;
+            if (weaponSlots.containsKey(otherSlot)) {
+                previousWeapon = weaponSlots.get(otherSlot);
+            } else {
+                previousWeapon = weaponSlots.get(3);
+            }
+        }
+
         activeWeapon = weapon;
         return replacedWeapon;
     }
@@ -173,12 +201,36 @@ public class WeaponManager {
 
     /**
      * Quick-swaps between the current weapon and the previously equipped weapon (Hotkey [Q]).
+     *
+     * <p>WHY: Cơ chế chuyển đổi vũ khí tức thời khi bấm phím [Q]. Kiểm tra nghiêm ngặt
+     * để đảm bảo vũ khí được chuyển tới BẮT BUỘC phải đang nằm trong túi đồ người chơi (weaponSlots),
+     * triệt tiêu hoàn toàn hiện tượng chuyển sang vũ khí "ma" vừa bị ném ra đất.
      */
     public void quickSwap() {
+        // 1. Kiểm tra tính hợp lệ của previousWeapon: phải còn nằm trong kho đồ và khác activeWeapon
+        if (previousWeapon != null && !weaponSlots.containsValue(previousWeapon)) {
+            previousWeapon = null;
+        }
+
         if (previousWeapon != null && previousWeapon != activeWeapon) {
             Weapon temp = activeWeapon;
             activeWeapon = previousWeapon;
             previousWeapon = temp;
+        } else {
+            // 2. Cơ chế phục hồi thông minh: Nếu previousWeapon không còn hợp lệ,
+            // ưu tiên đổi giữa Slot 1 và Slot 2 (hoặc súng lục Slot 3)
+            int currentSlot = (activeWeapon != null) ? activeWeapon.getSlotIndex() : 1;
+            int targetSlot = (currentSlot == 1) ? 2 : 1;
+            Weapon fallback = weaponSlots.get(targetSlot);
+            if (fallback == null) {
+                fallback = weaponSlots.get(3); // Súng lục Slot 3
+            }
+            if (fallback == null || fallback == activeWeapon) {
+                fallback = weaponSlots.get(4); // Dao găm Slot 4
+            }
+            if (fallback != null && fallback != activeWeapon) {
+                selectSlot(fallback.getSlotIndex());
+            }
         }
     }
     private final CombatKnife fallbackKnife = new CombatKnife();
@@ -309,12 +361,12 @@ public class WeaponManager {
         g.drawRoundRect(hudX, hudY, hudW, hudH, 10, 10);
 
         // 2. Dòng 1: Tên vũ khí đang cầm kèm CẤP ĐỘ (Level) và TỈ LỆ CHÍ MẠNG & HỆ SỐ CHÍ MẠNG
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         String nameAndLevel = String.format("[%d] %s   Lv.%d",
                 activeWeapon.getSlotIndex(),
                 activeWeapon.getName().toUpperCase(),
                 activeWeapon.getLevel());
-        String critInfo = String.format("•   CRIT: %d%% (x%.2f)",
+        String critInfo = String.format("CRIT: %d%% (x%.2f)",
                 activeWeapon.getCritChancePercent(),
                 activeWeapon.getCritMultiplier());
 
@@ -327,10 +379,10 @@ public class WeaponManager {
         g.drawString(critInfo, hudX + 14 + nameW + 8, hudY + 22);
 
         // 3. Dòng 2: Hiển thị đạn băng / nạp đạn của vũ khí đang cầm
-        g.setFont(new Font("SansSerif", Font.BOLD, 20));
+        g.setFont(GameFontManager.getBoldFont(20.0f));
         if (activeWeapon.isMelee()) {
             g.setColor(new Color(180, 225, 255));
-            g.drawString("∞ CẬN CHIẾN", hudX + 14, hudY + 48);
+            g.drawString("[MELEE] CẬN CHIẾN", hudX + 14, hudY + 48);
         } else if (activeWeapon.isReloading()) {
             g.setColor(new Color(255, 130, 40));
             g.drawString("RELOADING...", hudX + 14, hudY + 48);
@@ -349,7 +401,7 @@ public class WeaponManager {
         } else {
             if (activeWeapon.hasInfiniteAmmo()) {
                 g.setColor(activeWeapon.getCurrentAmmo() <= 2 ? new Color(255, 80, 80) : Color.WHITE);
-                g.drawString(String.format("%d / ∞", activeWeapon.getCurrentAmmo()), hudX + 14, hudY + 48);
+                g.drawString(String.format("%d / --", activeWeapon.getCurrentAmmo()), hudX + 14, hudY + 48);
             } else if (activeWeapon.getAmmoType() != null) {
                 int reserve = ammoInventory != null ? ammoInventory.getAmmo(activeWeapon.getAmmoType()) : 0;
                 boolean isOutOfAmmo = (activeWeapon.getCurrentAmmo() <= 0 && reserve <= 0);
@@ -364,7 +416,7 @@ public class WeaponManager {
                 // Loại đạn badge đồng bộ màu chuẩn với hộp đạn rơi bên ngoài
                 FontMetrics fm = g.getFontMetrics();
                 int ammoTextW = fm.stringWidth(ammoDisplay);
-                g.setFont(new Font("SansSerif", Font.BOLD, 12));
+                g.setFont(GameFontManager.getSmallBoldFont(10.0f));
                 g.setColor(activeWeapon.getAmmoType().getColor());
                 g.drawString("[" + activeWeapon.getAmmoType().name() + "]", hudX + 14 + ammoTextW + 8, hudY + 47);
             } else {
@@ -444,11 +496,11 @@ public class WeaponManager {
                 label = w.getShortDisplayName();
             }
 
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             g.setColor(isCur ? new Color(255, 220, 80) : new Color(130, 150, 175));
             g.drawString(keycap, cx + 5, slotY + 12);
 
-            g.setFont(new Font("SansSerif", isCur ? Font.BOLD : Font.PLAIN, 10));
+            g.setFont(isCur ? GameFontManager.getSmallBoldFont(10.0f) : GameFontManager.getSmallFont(10.0f));
             g.setColor(isCur ? Color.WHITE : (w == null ? new Color(90, 105, 125) : new Color(185, 205, 230)));
             g.drawString(label, cx + 5, slotY + 24);
         }
@@ -466,14 +518,14 @@ public class WeaponManager {
         g.setColor(accentColor);
         g.fillOval(x + 5, y + 5, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(190, 205, 225));
-        g.drawString(name + ":", x + 15, y + 13);
+        g.drawString(name + ":", x + 14, y + 13);
 
         boolean isZero = (current <= 0);
         g.setColor(isZero ? new Color(255, 75, 75) : Color.WHITE);
         String amountText = current + "/" + max;
-        g.drawString(amountText, x + 42, y + 13);
+        g.drawString(amountText, x + 40, y + 13);
     }
 
     public Weapon getActiveWeapon() {
@@ -500,7 +552,21 @@ public class WeaponManager {
     }
 
     public Weapon removeWeapon(int slotIndex) {
-        return weaponSlots.remove(slotIndex);
+        Weapon removed = weaponSlots.remove(slotIndex);
+        if (removed != null) {
+            if (previousWeapon == removed) {
+                previousWeapon = null;
+            }
+            if (activeWeapon == removed) {
+                for (int slot : new int[]{1, 2, 3, 4}) {
+                    if (weaponSlots.containsKey(slot)) {
+                        activeWeapon = weaponSlots.get(slot);
+                        break;
+                    }
+                }
+            }
+        }
+        return removed;
     }
 
     public Map<Integer, Weapon> getWeaponSlots() {

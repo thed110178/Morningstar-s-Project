@@ -220,4 +220,61 @@ public class RunSaveManagerTest {
         assertFalse(menuState.isShowConfirmDialog());
         assertFalse(RunSaveManager.hasValidSave(), "Bản lưu phải bị xóa vĩnh viễn khi người chơi xác nhận");
     }
+
+    @Test
+    @DisplayName("Xác thực chu trình: Thoát ở Stage 2 -> Tiếp tục chơi Stage 2 -> Thoát lần nữa vẫn bảo lưu Stage 2 chuẩn xác 100%")
+    void testResumeGameMultiStageCycleKeepsStageConsistent() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState playingState = new PlayingState(gsm);
+        gsm.registerState(GameStateManager.StateType.PLAYING, playingState);
+
+        MenuState menuState = new MenuState(gsm);
+        gsm.registerState(GameStateManager.StateType.MENU, menuState);
+
+        // 1. Tạo bản lưu đang ở Stage 2 với 350 Credits
+        RunProgressData stage2Data = new RunProgressData();
+        stage2Data.setCurrentStage(2);
+        stage2Data.setPlayerCredits(350);
+        stage2Data.setPlayerHealth(80);
+        stage2Data.setPlayerMaxHealth(120);
+        RunSaveManager.saveRunData(stage2Data);
+
+        // Menu kiểm tra có save Stage 2
+        menuState.refreshMenuOptions();
+        assertTrue(menuState.hasSave());
+        assertEquals(2, RunSaveManager.getSavedStage());
+
+        // 2. Người chơi tại Menu bấm 'TIẾP TỤC CHƠI' (Option 0)
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        keyH.setKeyPressed(java.awt.event.KeyEvent.VK_ENTER, true);
+        menuState.update(0.016, keyH, mouseH);
+        keyH.setKeyPressed(java.awt.event.KeyEvent.VK_ENTER, false);
+
+        // Xác nhận đã đặt pendingResumeData cho PlayingState
+        assertTrue(PlayingState.hasPendingResumeData(), "Phải có pendingResumeData sẵn sàng cho PlayingState");
+
+        // Giả lập chuyển cảnh hoàn tất: GameStateManager gọi setState(PLAYING) -> kích hoạt playingState.init()
+        gsm.setState(GameStateManager.StateType.PLAYING);
+
+        // Xác nhận sau khi init(), PlayingState phải ở đúng Stage 2 và 350 Credits (không bị tụt về Stage 1)
+        assertEquals(2, playingState.getCurrentStage(), "PlayingState sau khi resume phải ở đúng Stage 2");
+        assertEquals(350, playingState.getPlayerCredits(), "Credits phải là 350");
+        assertFalse(PlayingState.hasPendingResumeData(), "pendingResumeData phải được giải phóng sau khi nạp");
+
+        // 3. Người chơi lại bấm Thoát ra Menu từ Stage 2 lần nữa
+        RunSaveManager.saveRun(playingState);
+
+        // 4. Kiểm tra file save trên đĩa: Vẫn phải là Stage 2!
+        RunProgressData reloadedData = RunSaveManager.loadRun();
+        assertNotNull(reloadedData);
+        assertEquals(2, reloadedData.getCurrentStage(), "File save sau khi thoát lần 2 vẫn phải là Stage 2");
+        assertEquals(350, reloadedData.getPlayerCredits());
+
+        // 5. Menu hiển thị lại: Phải tiếp tục là Stage 2
+        menuState.refreshMenuOptions();
+        assertTrue(menuState.hasSave());
+        assertEquals(2, RunSaveManager.getSavedStage(), "Menu lần 2 vẫn phải hiển thị tiếp tục chơi Stage 2");
+    }
 }
+

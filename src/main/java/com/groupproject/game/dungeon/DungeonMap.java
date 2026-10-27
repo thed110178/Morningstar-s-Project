@@ -2,6 +2,7 @@ package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameFontManager;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -986,11 +987,11 @@ public class DungeonMap {
             // Hiển thị biển hiệu vòm cửa tinh gọn cho các phòng dịch vụ chức năng (Shop, Xưởng Quân Khí, Nâng Cấp).
             // Loại bỏ hoàn toàn các chữ vẽ đè sàn nhà ([SPAWN], [COMBAT LOCKDOWN], [CLEARED]) để giao diện chiến trường thông thoáng, không che khuất người chơi và kẻ thù.
             if (room.getRoomType() == Room.RoomType.SHOP) {
-                renderDoorArchwayBadge(g, camera, room, "★ CỬA HÀNG ★", new Color(255, 215, 60, 220), new Color(25, 20, 10, 230));
+                renderDoorArchwayBadge(g, camera, room, "CỬA HÀNG", new Color(255, 215, 60, 220), new Color(25, 20, 10, 230));
             } else if (room.getRoomType() == Room.RoomType.RESET_STAT) {
-                renderDoorArchwayBadge(g, camera, room, "★ XƯỞNG QUÂN KHÍ ★", new Color(235, 190, 30, 230), new Color(28, 28, 24, 235));
+                renderDoorArchwayBadge(g, camera, room, "XƯỞNG QUÂN KHÍ", new Color(235, 190, 30, 230), new Color(28, 28, 24, 235));
             } else if (room.getRoomType() == Room.RoomType.UPGRADE) {
-                renderDoorArchwayBadge(g, camera, room, "★ NÂNG CẤP NHÂN VẬT ★", new Color(40, 240, 180, 230), new Color(15, 35, 30, 235));
+                renderDoorArchwayBadge(g, camera, room, "NÂNG CẤP NHÂN VẬT", new Color(40, 240, 180, 230), new Color(15, 35, 30, 235));
             }
         }
     }
@@ -1013,7 +1014,7 @@ public class DungeonMap {
     }
 
     private void renderArchwayBadge(Graphics2D g, int centerX, int centerY, String text, Color themeColor, Color bgColor) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         FontMetrics fm = g.getFontMetrics();
         int textW = fm.stringWidth(text);
         int pad = 8;

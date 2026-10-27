@@ -35,9 +35,10 @@ public class SniperRifle extends Weapon {
     private static final double BULLET_LIFETIME = 1.0;      // Đạn bay xa tới 1450 px (bao quát trọn bản đồ)
     private static final double SPREAD_ANGLE = 0.005;       // Đường đạn thẳng tắp gần như không tản xạ (+- 0.3 độ)
 
-    // Base penetration attributes (1 sao độ xuyên)
-    public static final int BASE_PIERCES = 2;               // Mặc định xuyên qua 2 mục tiêu / cover
-    public static final double BASE_FALLOFF = 0.25;         // Giảm 25% sát thương mỗi lần xuyên phá
+    // Base penetration attributes (1 sao độ xuyên) - Đã tái cân bằng chuẩn chiến thuật:
+    // Lv.1 (1★) chỉ xuyên qua 1 mục tiêu (chạm tối đa 2 kẻ địch/cover), giảm 40% sát thương cho mục tiêu sau
+    public static final int BASE_PIERCES = 1;               // Mặc định xuyên qua 1 mục tiêu (chạm tối đa 2 mục tiêu)
+    public static final double BASE_FALLOFF = 0.40;         // Giảm 40% sát thương sau lần xuyên phá đầu tiên
 
     public SniperRifle() {
         this(1);
@@ -68,27 +69,44 @@ public class SniperRifle extends Weapon {
 
     /**
      * Số lượng mục tiêu (kẻ địch hoặc cover tạm thời) đạn có thể xuyên qua tối đa:
-     * - 1★: 2 lần xuyên (trúng mục tiêu thứ 3 thì dừng).
-     * - Mỗi sao tăng thêm: +1 lần xuyên phá.
+     * - 1★: 1 lần xuyên (trúng tối đa 2 mục tiêu).
+     * - 2★: 1 lần xuyên (trúng tối đa 2 mục tiêu, tối ưu hao hụt sát thương).
+     * - 3★: 2 lần xuyên (trúng tối đa 3 mục tiêu).
+     * - 4★: 2 lần xuyên (trúng tối đa 3 mục tiêu).
+     * - 5★: 3 lần xuyên (trúng tối đa 4 mục tiêu - khống chế trần tránh one-shot toàn bản đồ).
      */
     public int getMaxPierces() {
-        return BASE_PIERCES + (accuracyStars - 1);
+        return BASE_PIERCES + (accuracyStars - 1) / 2;
+    }
+
+    /**
+     * Số lần xuyên dự kiến khi nâng thêm 1 sao Sức Xuyên (Preview).
+     */
+    public int getPreviewMaxPierces() {
+        return BASE_PIERCES + accuracyStars / 2;
     }
 
     /**
      * Tỉ lệ giảm sát thương sau mỗi lần xuyên qua mục tiêu:
-     * - 1★: Giảm 25% sát thương (-25%).
-     * - Mỗi sao thăng cấp: Giảm nhẹ độ sụt giảm sát thương (giảm 5% mỗi sao, tối thiểu chỉ giảm 8%).
+     * - 1★: Giảm 40% sát thương (-40%).
+     * - Mỗi sao thăng cấp: Giảm nhẹ độ sụt giảm sát thương (giảm 5% mỗi sao, tối thiểu vẫn giảm 20%).
      */
     public double getPierceDamageFalloff() {
-        return Math.max(0.08, BASE_FALLOFF - (accuracyStars - 1) * 0.05);
+        return Math.max(0.20, BASE_FALLOFF - (accuracyStars - 1) * 0.05);
     }
 
     /**
-     * Tỉ lệ % giảm sát thương hiển thị trên HUD / Balo (VD: 25%, 20%, 15%).
+     * Tỉ lệ % giảm sát thương hiển thị trên HUD / Balo (VD: 40%, 35%, 30%).
      */
     public int getPierceFalloffPercent() {
         return (int) Math.round(getPierceDamageFalloff() * 100.0);
+    }
+
+    /**
+     * Tỉ lệ % giảm sát thương dự kiến khi nâng thêm 1 sao Sức Xuyên (Preview).
+     */
+    public int getPreviewPierceFalloffPercent() {
+        return (int) Math.round(Math.max(0.20, BASE_FALLOFF - accuracyStars * 0.05) * 100.0);
     }
 
     @Override

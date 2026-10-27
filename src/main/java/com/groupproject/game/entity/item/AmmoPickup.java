@@ -67,7 +67,7 @@ public class AmmoPickup {
                 if (added > 0) {
                     this.collected = true;
                     if (state != null) {
-                        state.showTacticalBanner(String.format("★ ĐÃ NHẶT +%d %s [%d/%d] ★",
+                        state.showTacticalBanner(String.format("ĐÃ NHẶT +%d %s [%d/%d]",
                                 added, type.getDisplayName().toUpperCase(),
                                 inventory.getAmmo(type), type.getMaxCapacity()),
                                 getGlowColor(), 2.0);
@@ -128,7 +128,7 @@ public class AmmoPickup {
         g.drawRoundRect(boxX, boxY, boxW, boxH, 4, 4);
 
         // 4. Nhãn số lượng đạn hiển thị phía trên hộp (VD: "+30 AR")
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         String label = "+" + amount + " " + type.name();
         FontMetrics fm = g.getFontMetrics();
         int labelW = fm.stringWidth(label);

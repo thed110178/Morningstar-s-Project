@@ -338,7 +338,7 @@ public class PauseMenuUI {
         g.setStroke(new BasicStroke(1.0f));
 
         // Tiêu đề
-        g.setFont(new Font("SansSerif", Font.BOLD, 28));
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(24.0f));
         FontMetrics fmTitle = g.getFontMetrics();
         String title = "TẠM DỪNG TRÒ CHƠI";
         int titleX = panelX + (panelW - fmTitle.stringWidth(title)) / 2;
@@ -350,9 +350,9 @@ public class PauseMenuUI {
         g.drawString(title, titleX, titleY);
 
         // Phụ đề
-        g.setFont(new Font("SansSerif", Font.ITALIC, 13));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(11.0f));
         FontMetrics fmSub = g.getFontMetrics();
-        String sub = "CHIẾN TRƯỜNG ĐANG TẠM DỪNG • PAUSE MENU";
+        String sub = "CHIẾN TRƯỜNG ĐANG TẠM DỪNG - PAUSE MENU";
         int subX = panelX + (panelW - fmSub.stringWidth(sub)) / 2;
         int subY = titleY + 22;
         g.setColor(new Color(160, 185, 215));
@@ -369,7 +369,7 @@ public class PauseMenuUI {
         int startBtnY = subY + 40;
         int spacing = 62;
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 17));
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(15.0f));
         FontMetrics fmBtn = g.getFontMetrics();
 
         for (int i = 0; i < MAIN_OPTIONS.length; i++) {
@@ -389,7 +389,7 @@ public class PauseMenuUI {
 
                 // Mũi tên con trỏ neon
                 g.setColor(new Color(255, 255, 255));
-                g.drawString("▶", btnX + 16, btnY + 31);
+                g.drawString(">", btnX + 16, btnY + 31);
             } else {
                 g.setColor(new Color(20, 28, 42, 190));
                 g.fillRoundRect(btnX, btnY, btnW, btnH, 8, 8);
@@ -414,9 +414,9 @@ public class PauseMenuUI {
         }
 
         // Lời nhắc phím ở đáy
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(11.0f));
         g.setColor(new Color(130, 155, 185));
-        String tip = "Dùng chuột hoặc phím [W/S] [LÊN/XUỐNG] [ENTER] • [ESC] để tiếp tục";
+        String tip = "Dùng chuột hoặc phím [W/S] [LÊN/XUỐNG] [ENTER] - [ESC] để tiếp tục";
         int tipX = panelX + (panelW - g.getFontMetrics().stringWidth(tip)) / 2;
         g.drawString(tip, tipX, panelY + panelH - 16);
     }
@@ -436,7 +436,7 @@ public class PauseMenuUI {
         g.setStroke(new BasicStroke(1.0f));
 
         // Tiêu đề
-        g.setFont(new Font("SansSerif", Font.BOLD, 24));
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(18.0f));
         FontMetrics fmTitle = g.getFontMetrics();
         String title = "CÀI ĐẶT PHÍM ĐIỀU KHIỂN (KEYBIND SETTINGS)";
         int titleX = panelX + (panelW - fmTitle.stringWidth(title)) / 2;
@@ -445,14 +445,14 @@ public class PauseMenuUI {
         g.drawString(title, titleX, titleY);
 
         // Hướng dẫn / Thông điệp phản hồi
-        g.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(11.0f));
         String sub;
         Color subColor;
         if (!feedbackMessage.isEmpty()) {
             sub = feedbackMessage;
             subColor = feedbackMessage.contains("TRÙNG") ? new Color(255, 180, 50) : new Color(80, 250, 150);
         } else if (rebindingAction != null) {
-            sub = "ĐANG CHỜ GÁN: Bấm phím bất kỳ • Chuột phải gán [CHUỘT PHẢI] • Click gán [CHUỘT TRÁI] • [ESC] Hủy";
+            sub = "ĐANG CHỜ GÁN: Bấm phím bất kỳ - Chuột phải gán [CHUỘT PHẢI] - Click gán [CHUỘT TRÁI] - [ESC] Hủy";
             subColor = new Color(255, 220, 60);
         } else {
             sub = "Click chuột vào ô phím muốn đổi, sau đó bấm phím trên bàn phím hoặc nút chuột";
@@ -514,7 +514,7 @@ public class PauseMenuUI {
             }
 
             // Tên hành động bên trái hàng
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
             g.setColor(isRebindingThis ? Color.WHITE : (isHovered ? new Color(240, 250, 255) : new Color(195, 215, 235)));
             g.drawString(action.getDisplayNameVi(), rx + 12, ry + 21);
 
@@ -530,7 +530,7 @@ public class PauseMenuUI {
                 g.setColor(Color.WHITE);
                 g.drawRoundRect(keyBoxX, keyBoxY, keyBoxW, keyBoxH, 4, 4);
 
-                g.setFont(new Font("SansSerif", Font.BOLD, 11));
+                g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
                 String pressTip = "BẤM PHÍM MỚI";
                 int ptw = g.getFontMetrics().stringWidth(pressTip);
                 g.drawString(pressTip, keyBoxX + (keyBoxW - ptw) / 2, keyBoxY + 16);
@@ -541,7 +541,7 @@ public class PauseMenuUI {
                 g.drawRoundRect(keyBoxX, keyBoxY, keyBoxW, keyBoxH, 4, 4);
 
                 String keyName = KeyBindings.getKeyName(KeyBindings.getKeyCode(action));
-                g.setFont(new Font("SansSerif", Font.BOLD, 12));
+                g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
                 int kw = g.getFontMetrics().stringWidth(keyName);
                 g.setColor(new Color(0, 220, 255));
                 g.drawString(keyName, keyBoxX + (keyBoxW - kw) / 2, keyBoxY + 16);
@@ -570,13 +570,13 @@ public class PauseMenuUI {
         g.setColor(isAimGuidelineHovered ? new Color(0, 210, 255) : new Color(45, 65, 95));
         g.drawRoundRect(toggleBoxX, toggle1Y, toggleBoxW, toggleBoxH, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(new Color(230, 245, 255));
-        g.drawString("🎯 ĐƯỜNG NGẮM CHUỘT (AIM GUIDELINE)", toggleBoxX + 14, toggle1Y + 22);
+        g.drawString("[NGẮM] ĐƯỜNG NGẮM CHUỘT (AIM GUIDELINE)", toggleBoxX + 14, toggle1Y + 22);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(145, 175, 205));
-        g.drawString("Đường kẻ đứt mờ nối từ người chơi đến con trỏ chuột hỗ trợ ngắm bắn", toggleBoxX + 305, toggle1Y + 22);
+        g.drawString("Đường kẻ đứt mờ nối từ người chơi đến con trỏ chuột hỗ trợ ngắm bắn", toggleBoxX + 310, toggle1Y + 22);
 
         int statusBtnW = 125;
         int statusBtnH = 24;
@@ -589,8 +589,8 @@ public class PauseMenuUI {
             g.fillRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(60, 240, 140));
             g.drawRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
-            String onText = "✔ ĐANG BẬT";
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String onText = "[ ĐANG BẬT ]";
             int otw = g.getFontMetrics().stringWidth(onText);
             g.setColor(Color.WHITE);
             g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtn1Y + 16);
@@ -599,8 +599,8 @@ public class PauseMenuUI {
             g.fillRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(110, 115, 130));
             g.drawRoundRect(statusBtnX, statusBtn1Y, statusBtnW, statusBtnH, 4, 4);
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
-            String offText = "✖ ĐANG TẮT";
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String offText = "[ ĐANG TẮT ]";
             int oftw = g.getFontMetrics().stringWidth(offText);
             g.setColor(new Color(180, 185, 195));
             g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtn1Y + 16);
@@ -613,13 +613,13 @@ public class PauseMenuUI {
         g.setColor(isFpsUpsHovered ? new Color(0, 210, 255) : new Color(45, 65, 95));
         g.drawRoundRect(toggleBoxX, toggle2Y, toggleBoxW, toggleBoxH, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(new Color(230, 245, 255));
-        g.drawString("⚡ CHỈ SỐ FPS & UPS (PERFORMANCE HUD)", toggleBoxX + 14, toggle2Y + 22);
+        g.drawString("[FPS] CHỈ SỐ FPS & UPS (PERFORMANCE HUD)", toggleBoxX + 14, toggle2Y + 22);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(145, 175, 205));
-        g.drawString("Hiển thị số khung hình (FPS) và nhịp cập nhật logic (UPS) thời gian thực", toggleBoxX + 305, toggle2Y + 22);
+        g.drawString("Hiển thị số khung hình (FPS) và nhịp cập nhật logic (UPS) thời gian thực", toggleBoxX + 310, toggle2Y + 22);
 
         int statusBtn2Y = toggle2Y + (toggleBoxH - statusBtnH) / 2;
         boolean isFpsOn = com.groupproject.game.core.GameConfig.showFpsUps;
@@ -628,8 +628,8 @@ public class PauseMenuUI {
             g.fillRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(60, 240, 140));
             g.drawRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
-            String onText = "✔ ĐANG BẬT";
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String onText = "[ ĐANG BẬT ]";
             int otw = g.getFontMetrics().stringWidth(onText);
             g.setColor(Color.WHITE);
             g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtn2Y + 16);
@@ -638,8 +638,8 @@ public class PauseMenuUI {
             g.fillRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(110, 115, 130));
             g.drawRoundRect(statusBtnX, statusBtn2Y, statusBtnW, statusBtnH, 4, 4);
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
-            String offText = "✖ ĐANG TẮT";
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String offText = "[ ĐANG TẮT ]";
             int oftw = g.getFontMetrics().stringWidth(offText);
             g.setColor(new Color(180, 185, 195));
             g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtn2Y + 16);
@@ -666,11 +666,11 @@ public class PauseMenuUI {
             g.setColor(new Color(110, 75, 45));
             g.drawRoundRect(resetBtnX, botBtnY, botBtnW, botBtnH, 8, 8);
         }
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
-        String resetText = "↺ ĐẶT LẠI MẶC ĐỊNH";
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(12.0f));
+        String resetText = "[R] ĐẶT LẠI MẶC ĐỊNH";
         int rtw = g.getFontMetrics().stringWidth(resetText);
         g.setColor(isResetHovered ? Color.WHITE : new Color(230, 180, 120));
-        g.drawString(resetText, resetBtnX + (botBtnW - rtw) / 2, botBtnY + 26);
+        g.drawString(resetText, resetBtnX + (botBtnW - rtw) / 2, botBtnY + 24);
 
         // Nút Quay lại
         if (isBackHovered) {
@@ -686,10 +686,11 @@ public class PauseMenuUI {
             g.setColor(new Color(55, 80, 115));
             g.drawRoundRect(backBtnX, botBtnY, botBtnW, botBtnH, 8, 8);
         }
-        String backText = "✔ HOÀN TẤT (QUAY LẠI)";
+        g.setFont(com.groupproject.game.core.GameFontManager.getBoldFont(12.0f));
+        String backText = "[OK] HOÀN TẤT (QUAY LẠI)";
         int btw = g.getFontMetrics().stringWidth(backText);
         g.setColor(isBackHovered ? Color.WHITE : new Color(180, 215, 245));
-        g.drawString(backText, backBtnX + (botBtnW - btw) / 2, botBtnY + 26);
+        g.drawString(backText, backBtnX + (botBtnW - btw) / 2, botBtnY + 24);
     }
 
     public SubMenu getCurrentSubMenu() {

@@ -102,7 +102,7 @@ public class HealthPickup {
         int heal = size.getHealAmount();
         state.healPlayer(heal);
         used = true;
-        state.showTacticalBanner("✚ ĐÃ SỬ DỤNG " + size.getDisplayName() + " (+" + heal + " HP)!",
+        state.showTacticalBanner("+ ĐÃ SỬ DỤNG " + size.getDisplayName() + " (+" + heal + " HP)!",
                 new Color(60, 240, 140), 2.5);
         return true;
     }
@@ -156,7 +156,7 @@ public class HealthPickup {
         g.setColor(new Color(120, 130, 145));
         g.drawRoundRect(boxX + boxW / 2 - 4, boxY - 3, 8, 4, 2, 2);
 
-        // 4. Biểu tượng Dấu Thập Y Tế Chữa Lành (✚ Medical Cross)
+        // 4. Biểu tượng Dấu Thập Y Tế Chữa Lành (Medical Cross)
         g.setColor(new Color(40, 200, 90));
         int crossW = 4;
         int crossL = 10;
@@ -166,7 +166,7 @@ public class HealthPickup {
         g.fillRect(screenX - crossW / 2, drawY - crossL / 2, crossW, crossL);
 
         // 5. Nhãn chỉ số nhỏ lơ lửng (+25 HP / +50 HP)
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
         FontMetrics fm = g.getFontMetrics();
         String tag = size.getTag();
         int tagW = fm.stringWidth(tag);
@@ -178,7 +178,7 @@ public class HealthPickup {
         // 6. Khung Gợi Ý Tương Tác Phím [F] Khi Người Chơi Lại Gần
         if (showPrompt) {
             String prompt = "[F] DÙNG " + size.getDisplayName() + " (" + size.getTag() + ")";
-            g.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
             FontMetrics pfm = g.getFontMetrics();
             int promptW = pfm.stringWidth(prompt);
             int promptPad = 8;

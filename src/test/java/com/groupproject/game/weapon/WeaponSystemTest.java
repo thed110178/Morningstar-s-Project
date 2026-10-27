@@ -1426,9 +1426,9 @@ public class WeaponSystemTest {
         assertEquals(1, sr.getDamageStars());
         assertEquals(1, sr.getFireRateStars());
         assertEquals(1, sr.getPierceStars());
-        assertEquals(2, sr.getMaxPierces(), "Base penetration must allow 2 pierces (hitting up to 3 targets)");
-        assertEquals(0.25, sr.getPierceDamageFalloff(), 0.001, "Base damage falloff must be 25%");
-        assertEquals(25, sr.getPierceFalloffPercent());
+        assertEquals(1, sr.getMaxPierces(), "Base penetration must allow 1 pierce (hitting up to 2 targets)");
+        assertEquals(0.40, sr.getPierceDamageFalloff(), 0.001, "Base damage falloff must be 40%");
+        assertEquals(40, sr.getPierceFalloffPercent());
         assertFalse(sr.isAutomatic(), "Bolt-action sniper rifle must not be automatic");
 
         // 2. Kiểm tra bắn đạn sinh Projectile có thuộc tính xuyên phá
@@ -1440,49 +1440,40 @@ public class WeaponSystemTest {
 
         Projectile bullet = pm.getActiveProjectiles().get(0);
         assertTrue(bullet.isPiercing(), "Sniper bullet must be marked as piercing");
-        assertEquals(2, bullet.getRemainingPierces());
-        assertEquals(0.25, bullet.getPierceDamageFalloff(), 0.001);
+        assertEquals(1, bullet.getRemainingPierces());
+        assertEquals(0.40, bullet.getPierceDamageFalloff(), 0.001);
         int initialDmg = bullet.getDamage();
         assertTrue(initialDmg >= 95, "Fired damage must be at least base 95");
 
-        // 3. Giả lập đạn xuyên qua 3 mục tiêu liên tiếp
+        // 3. Giả lập đạn xuyên qua mục tiêu 1 và tiêu biến ở mục tiêu 2 (chạm tối đa 2 mục tiêu ở 1★)
         Object dummy1 = new Object();
         Object dummy2 = new Object();
         Object dummy3 = new Object();
-        Object dummy4 = new Object();
 
         assertTrue(bullet.canHit(dummy1));
         bullet.onHitTarget(dummy1);
         assertTrue(bullet.isActive(), "Bullet must remain active after 1st pierce");
-        assertEquals(1, bullet.getRemainingPierces());
+        assertEquals(0, bullet.getRemainingPierces());
         int dmgAfter1 = bullet.getDamage();
-        assertEquals(Math.max(1, (int) Math.round(initialDmg * 0.75)), dmgAfter1);
+        assertEquals(Math.max(1, (int) Math.round(initialDmg * 0.60)), dmgAfter1);
 
         // Mục tiêu 1 không thể bị bắn trúng lần 2 bởi cùng viên đạn
         assertFalse(bullet.canHit(dummy1));
 
-        // Mục tiêu 2
+        // Mục tiêu 2 (hết lượt xuyên -> trúng mục tiêu cuối cùng và tiêu biến)
         assertTrue(bullet.canHit(dummy2));
         bullet.onHitTarget(dummy2);
-        assertTrue(bullet.isActive(), "Bullet must remain active after 2nd pierce");
-        assertEquals(0, bullet.getRemainingPierces());
-        int dmgAfter2 = bullet.getDamage();
-        assertEquals(Math.max(1, (int) Math.round(dmgAfter1 * 0.75)), dmgAfter2);
-
-        // Mục tiêu 3 (hết lượt xuyên -> đạn tiêu biến)
-        assertTrue(bullet.canHit(dummy3));
-        bullet.onHitTarget(dummy3);
         assertFalse(bullet.isActive(), "Bullet must deactivate after penetrating through maximum pierces");
 
-        // Mục tiêu 4 không thể nhận sát thương do đạn đã tắt
-        assertFalse(bullet.canHit(dummy4));
+        // Mục tiêu 3 không thể nhận sát thương do đạn đã tắt
+        assertFalse(bullet.canHit(dummy3));
 
         // 4. Kiểm tra thăng sao Độ Xuyên (AccuracyStars/PierceStars)
         sr.setPierceStars(3); // Thăng lên 3 sao độ xuyên
         assertEquals(3, sr.getPierceStars());
-        assertEquals(4, sr.getMaxPierces(), "3-star pierce must allow 4 penetrations");
-        assertEquals(0.15, sr.getPierceDamageFalloff(), 0.001, "3-star pierce damage falloff must decrease to 15%");
-        assertEquals(15, sr.getPierceFalloffPercent());
+        assertEquals(2, sr.getMaxPierces(), "3-star pierce must allow 2 penetrations");
+        assertEquals(0.30, sr.getPierceDamageFalloff(), 0.001, "3-star pierce damage falloff must decrease to 30%");
+        assertEquals(30, sr.getPierceFalloffPercent());
     }
 
     @Test
@@ -1585,24 +1576,24 @@ public class WeaponSystemTest {
         // 2. Chỉ số ban đầu (1 sao)
         assertEquals(1, sr.getPierceStars());
         assertEquals(1, sr.getAccuracyStars());
-        assertEquals(SniperRifle.BASE_PIERCES, sr.getMaxPierces(), "Base pierces must be 2");
-        assertEquals(25, sr.getPierceFalloffPercent(), "Base falloff must be 25%");
+        assertEquals(SniperRifle.BASE_PIERCES, sr.getMaxPierces(), "Base pierces must be 1");
+        assertEquals(40, sr.getPierceFalloffPercent(), "Base falloff must be 40%");
 
-        // 3. Nâng cấp nhánh Sức Xuyên (ACCURACY)
+        // 3. Nâng cấp nhánh Sức Xuyên (ACCURACY) lên 2 sao
         String upgraded1 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
         assertEquals("SỨC XUYÊN (PIERCE)", upgraded1, "Upgrade return value must reflect Pierce Power");
         assertEquals(2, sr.getLevel());
         assertEquals(2, sr.getPierceStars());
-        assertEquals(3, sr.getMaxPierces(), "Level 2 Pierce star must pierce 3 targets");
-        assertEquals(20, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 20%");
+        assertEquals(1, sr.getMaxPierces(), "Level 2 Pierce star maintains 1 pierce with reduced falloff");
+        assertEquals(35, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 35%");
 
-        // 4. Nâng cấp tiếp nhánh Sức Xuyên lần 2
+        // 4. Nâng cấp tiếp nhánh Sức Xuyên lần 2 lên 3 sao
         String upgraded2 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
         assertEquals("SỨC XUYÊN (PIERCE)", upgraded2);
         assertEquals(3, sr.getLevel());
         assertEquals(3, sr.getPierceStars());
-        assertEquals(4, sr.getMaxPierces(), "Level 3 Pierce star must pierce 4 targets");
-        assertEquals(15, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 15%");
+        assertEquals(2, sr.getMaxPierces(), "Level 3 Pierce star increases to 2 pierces");
+        assertEquals(30, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 30%");
     }
 
     @Test
@@ -1663,5 +1654,43 @@ public class WeaponSystemTest {
         assertNotNull(starResLv2, "Lv.2+ weapon must successfully reforge stars");
         assertEquals(2, starResLv2.level());
         assertEquals(4, ar.getDamageStars() + ar.getFireRateStars() + ar.getAccuracyStars());
+    }
+
+    @Test
+    @DisplayName("Verify quickSwap never switches to ghost weapon discarded on the ground after weapon replacement")
+    void testQuickSwapNeverSwitchesToGhostWeaponAfterReplacement() {
+        WeaponManager wm = new WeaponManager();
+        AssaultRifle ar = new AssaultRifle();
+        Shotgun shotgun = new Shotgun();
+        SniperRifle sr = new SniperRifle();
+
+        // 1. Trang bị AR vào Slot 1 và Shotgun vào Slot 2
+        wm.equipWeapon(ar);
+        wm.equipWeapon(shotgun); // Đang cầm Shotgun Slot 2
+        assertEquals(2, wm.getActiveWeapon().getSlotIndex());
+
+        // 2. Chuyển sang cầm AR ở Slot 1
+        wm.selectSlot(1);
+        assertEquals(1, wm.getActiveWeapon().getSlotIndex());
+        assertSame(ar, wm.getActiveWeapon());
+
+        // 3. Người chơi nhặt Sniper Rifle thay thế AR ở Slot 1
+        Weapon replaced = wm.equipWeapon(sr);
+        assertNotNull(replaced);
+        assertSame(ar, replaced, "AR must be replaced and dropped to the ground");
+        assertSame(sr, wm.getActiveWeapon(), "Active weapon is now Sniper Rifle in Slot 1");
+
+        // 4. Bấm phím [Q] (quickSwap)
+        wm.quickSwap();
+
+        // 5. Khẳng định: Vũ khí đang cầm TUYỆT ĐỐI KHÔNG ĐƯỢC là AR (vũ khí ma bị vứt ra đất)
+        assertNotSame(ar, wm.getActiveWeapon(), "Quick swap MUST NOT switch to ghost weapon discarded on ground");
+        assertTrue(wm.getWeaponSlots().containsValue(wm.getActiveWeapon()), "Active weapon must be valid in inventory");
+        // Phải chuyển sang Shotgun (Slot 2) hoặc súng hợp lệ trong người
+        assertSame(shotgun, wm.getActiveWeapon(), "Quick swap must switch to the remaining valid primary weapon (Slot 2 Shotgun)");
+
+        // 6. Bấm [Q] lần nữa -> chuyển về Sniper Rifle (Slot 1)
+        wm.quickSwap();
+        assertSame(sr, wm.getActiveWeapon(), "Quick swap back must return to Sniper Rifle (Slot 1)");
     }
 }

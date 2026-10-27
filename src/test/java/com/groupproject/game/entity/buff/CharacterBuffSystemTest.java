@@ -14,6 +14,7 @@ import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.WeaponManager;
 import com.groupproject.game.state.GameStateManager;
 import com.groupproject.game.state.PlayingState;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -414,5 +415,40 @@ public class CharacterBuffSystemTest {
                 "Obstacle must be automatically destroyed after grace extension timeout");
         assertFalse(p.isDodging(), "Dodge must end after timeout destruction");
         assertTrue(p.getInvulnerableTimer() >= 0.25, "Safety i-frame must be active after timeout destruction");
+    }
+
+    @Test
+    @DisplayName("Kiểm tra Trạm Nâng Cấp và UI: Mở lên đóng lại nhiều lần bảo lưu nguyên vẹn 3 lựa chọn Buff không bị roll lại")
+    void testCharacterUpgradeUIEnsureBuffsRolledPreservesChoices() {
+        CharacterUpgradeStation station = new CharacterUpgradeStation(100, 100, CharacterUpgradeStation.StationType.BASIC_STATS);
+        com.groupproject.game.ui.CharacterUpgradeUI upgradeUI = new com.groupproject.game.ui.CharacterUpgradeUI();
+
+        // 1. Mở lần đầu tiên -> sinh 3 lựa chọn buff
+        upgradeUI.open(station, buffManager);
+        assertTrue(upgradeUI.isVisible());
+        List<CharacterBuff> firstOpenBuffs = new ArrayList<>(station.getOfferedBuffs());
+        assertEquals(3, firstOpenBuffs.size());
+
+        // 2. Đóng UI lại (người chơi bấm ESC hoặc [F])
+        upgradeUI.close();
+        assertFalse(upgradeUI.isVisible());
+
+        // 3. Mở lại lần 2 -> 3 lựa chọn buff phải được giữ nguyên 100%, không bị reroll
+        upgradeUI.open(station, buffManager);
+        List<CharacterBuff> secondOpenBuffs = station.getOfferedBuffs();
+        assertEquals(3, secondOpenBuffs.size());
+        for (int i = 0; i < 3; i++) {
+            assertSame(firstOpenBuffs.get(i), secondOpenBuffs.get(i),
+                    "Buff at index " + i + " must remain identical across multiple open/close cycles");
+        }
+
+        // 4. Mở lại lần 3 -> vẫn giữ nguyên
+        upgradeUI.close();
+        upgradeUI.open(station, buffManager);
+        List<CharacterBuff> thirdOpenBuffs = station.getOfferedBuffs();
+        for (int i = 0; i < 3; i++) {
+            assertSame(firstOpenBuffs.get(i), thirdOpenBuffs.get(i),
+                    "Buff at index " + i + " must continue to remain unchanged");
+        }
     }
 }

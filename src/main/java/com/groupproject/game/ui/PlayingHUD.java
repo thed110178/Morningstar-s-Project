@@ -1,6 +1,7 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.dungeon.Room;
 import com.groupproject.game.entity.enemy.TargetDummy;
 import com.groupproject.game.entity.player.Player;
@@ -79,9 +80,9 @@ public class PlayingHUD {
         }
 
         // Chữ số hiển thị máu rõ nét ở giữa thanh
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         FontMetrics fm = g.getFontMetrics();
-        String hpText = "✚ HP: " + curHp + " / " + maxHp;
+        String hpText = "+ HP: " + curHp + " / " + maxHp;
         int textW = fm.stringWidth(hpText);
         int textX = barX + (barW - textW) / 2;
         int textY = barY + 16;
@@ -139,14 +140,14 @@ public class PlayingHUD {
         }
 
         // Chữ trạng thái
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         FontMetrics fm = g.getFontMetrics();
         String dodgeKey = KeyBindings.getKeyName(KeyBindings.getKeyCode(GameAction.DODGE));
         String dodgeText;
         Color textColor;
 
         if (isDodging) {
-            dodgeText = "⚡ [" + dodgeKey + "] ĐANG NÉ (i-frames)";
+            dodgeText = "! [" + dodgeKey + "] ĐANG NÉ (i-frames)";
             textColor = new Color(10, 25, 40);
         } else if (canDodge) {
             dodgeText = "[" + dodgeKey + "] NÉ ĐÒN : SẴN SÀNG";
@@ -206,9 +207,9 @@ public class PlayingHUD {
                 }
             }
 
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             FontMetrics fm = g.getFontMetrics();
-            String barrierText = ready ? "🛡 KHIÊN CHẶN ĐÒN : SẴN SÀNG" : String.format("🛡 HỒI PHỤC KHIÊN: %.1fs", cd);
+            String barrierText = ready ? "[KHIÊN] SẴN SÀNG CHẶN ĐÒN" : String.format("[KHIÊN] HỒI PHỤC: %.1fs", cd);
             int textW = fm.stringWidth(barrierText);
             int textX = startX + (barW - textW) / 2;
             int textY = startY + 11;
@@ -225,26 +226,26 @@ public class PlayingHUD {
         // 2. Mini badge các buff chỉ số kích hoạt
         java.util.List<String> activeBadges = new java.util.ArrayList<>();
         if (bm.getAttackMultiplier() > 1.0) {
-            activeBadges.add(String.format("⚔ +%d%%", (int) Math.round((bm.getAttackMultiplier() - 1.0) * 100)));
+            activeBadges.add(String.format("ATK +%d%%", (int) Math.round((bm.getAttackMultiplier() - 1.0) * 100)));
         }
         if (bm.getDamageReduction() > 0) {
-            activeBadges.add(String.format("🛡 -%d%%", (int) Math.round(bm.getDamageReduction() * 100)));
+            activeBadges.add(String.format("DEF +%d%%", (int) Math.round(bm.getDamageReduction() * 100)));
         }
         if (bm.getSpeedMultiplier() > 1.0) {
-            activeBadges.add(String.format("🏃 +%d%%", (int) Math.round((bm.getSpeedMultiplier() - 1.0) * 100)));
+            activeBadges.add(String.format("SPD +%d%%", (int) Math.round((bm.getSpeedMultiplier() - 1.0) * 100)));
         }
         if (bm.hasCriticalMastery()) {
-            activeBadges.add("🎯 CRIT 15%");
+            activeBadges.add("CRIT 15%");
         }
         if (bm.hasShrinkHitbox()) {
-            activeBadges.add("✨ -30% BOX");
+            activeBadges.add("-30% BOX");
         }
         if (bm.hasPhaseDodge()) {
-            activeBadges.add("👻 NÉ XUYÊN");
+            activeBadges.add("NÉ XUYÊN");
         }
 
         if (!activeBadges.isEmpty()) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             FontMetrics fm = g.getFontMetrics();
             int curX = startX;
             for (String badge : activeBadges) {
@@ -284,12 +285,12 @@ public class PlayingHUD {
         g.fillOval(boxX + 10, boxY + 8, 20, 20);
         g.setColor(new Color(180, 140, 20));
         g.drawOval(boxX + 10, boxY + 8, 20, 20);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(new Color(30, 20, 5));
         g.drawString("C", boxX + 16, boxY + 23);
 
         // Chữ số Credits
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        g.setFont(GameFontManager.getBoldFont(15.0f));
         g.setColor(new Color(255, 230, 90));
         g.drawString(playerCredits + " CREDITS", boxX + 38, boxY + 24);
     }
@@ -318,7 +319,7 @@ public class PlayingHUD {
         g.setStroke(new BasicStroke(1.0f));
 
         // Text Stage: "Stage 1|1", "Stage 1|2", "Stage 1|3"...
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        g.setFont(GameFontManager.getBoldFont(15.0f));
         String stageText = String.format("Stage 1|%d", currentStage);
         FontMetrics fm = g.getFontMetrics();
         int textX = boxX + (boxW - fm.stringWidth(stageText)) / 2;
@@ -373,9 +374,9 @@ public class PlayingHUD {
         g.fillRect(cardX + cardW - 10, cardY + 2, 8, 2);
         g.fillRect(cardX + cardW - 4, cardY + 2, 2, 8);
 
-        // Header Title: Boss Name & Hazard Skull
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        String title = "☠ " + bossDummy.getName().toUpperCase() + " ☠";
+        // Header Title: Boss Name & Hazard Icon
+        g.setFont(GameFontManager.getBoldFont(14.0f));
+        String title = "! " + bossDummy.getName().toUpperCase() + " !";
         FontMetrics fm = g.getFontMetrics();
         int titleW = fm.stringWidth(title);
         g.setColor(new Color(255, 220, 80));
@@ -420,7 +421,7 @@ public class PlayingHUD {
         int percentInt = (int) (hpPercent * 100);
         String hpText = String.format("%d / %d HP (%d%%)", bossDummy.getCurrentHealth(), bossDummy.getMaxHealth(),
                 percentInt);
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         FontMetrics hpfm = g.getFontMetrics();
         int hpTextW = hpfm.stringWidth(hpText);
         int hpTextX = (GameConfig.SCREEN_WIDTH - hpTextW) / 2;
@@ -433,7 +434,7 @@ public class PlayingHUD {
         g.drawString(hpText, hpTextX, hpTextY);
 
         // Minion Guardian Status / Reinforcement Countdown indicator
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getBoldFont(11.0f));
         FontMetrics statusFm = g.getFontMetrics();
         String statusText;
         Color statusColor;
@@ -475,10 +476,11 @@ public class PlayingHUD {
         if (bannerMessage == null || bannerMessage.isEmpty())
             return;
 
-        boolean isShortAction = "FIGHT!".equals(bannerMessage) || "CLEAR!".equals(bannerMessage);
-        g.setFont(new Font("SansSerif", Font.BOLD, isShortAction ? 22 : 15));
+        String cleanMessage = GameFontManager.sanitize(bannerMessage);
+        boolean isShortAction = "FIGHT!".equals(cleanMessage) || "CLEAR!".equals(cleanMessage);
+        g.setFont(GameFontManager.getBoldFont(isShortAction ? 22.0f : 15.0f));
         FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(bannerMessage);
+        int textW = fm.stringWidth(cleanMessage);
         int pad = isShortAction ? 32 : 18;
 
         int boxW = textW + pad * 2;
@@ -495,7 +497,7 @@ public class PlayingHUD {
 
         g.setColor(bannerColor);
         int textY = boxY + ((boxH - fm.getHeight()) / 2) + fm.getAscent();
-        g.drawString(bannerMessage, boxX + (boxW - textW) / 2, textY);
+        g.drawString(cleanMessage, boxX + (boxW - textW) / 2, textY);
     }
 
     /**
@@ -521,7 +523,7 @@ public class PlayingHUD {
         }
         String fullPrompt = "[" + interactKey + "] " + actionPrompt;
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
+        g.setFont(GameFontManager.getBoldFont(13.0f));
         FontMetrics fm = g.getFontMetrics();
         int textW = fm.stringWidth(fullPrompt);
         int pad = 12;
@@ -584,11 +586,11 @@ public class PlayingHUD {
         g.drawLine(width - 40, height - 40, width - 40, height - 40 - cSize);
 
         // 3. Victory Title
-        g.setFont(new Font("SansSerif", Font.BOLD, 42));
+        g.setFont(GameFontManager.getBoldFont(32.0f));
         FontMetrics fmTitle = g.getFontMetrics();
         String title = isStandaloneBossFight
-                ? "★ CHIẾN DỊCH HẠ BOSS HOÀN THÀNH ★"
-                : "★ CẢM ƠN VÌ ĐÃ CHƠI DEMO! ★";
+                ? "* CHIẾN DỊCH HẠ BOSS HOÀN THÀNH *"
+                : "* CẢM ƠN VÌ ĐÃ CHƠI DEMO! *";
         int titleX = (width - fmTitle.stringWidth(title)) / 2;
         int titleY = 210;
 
@@ -598,7 +600,7 @@ public class PlayingHUD {
         g.drawString(title, titleX, titleY);
 
         // Subtitle
-        g.setFont(new Font("SansSerif", Font.BOLD, 20));
+        g.setFont(GameFontManager.getBoldFont(18.0f));
         FontMetrics fmSub = g.getFontMetrics();
         String subtitle = isStandaloneBossFight
                 ? "ĐÃ TIÊU DIỆT CHIẾN XA TITAN MK-IV"
@@ -617,22 +619,22 @@ public class PlayingHUD {
         g.setColor(new Color(60, 80, 110));
         g.drawRoundRect(cardX, cardY, cardW, cardH, 12, 12);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        g.setFont(GameFontManager.getSmallFont(12.0f));
         g.setColor(new Color(200, 220, 245));
         if (isStandaloneBossFight) {
-            g.drawString("• Chế độ tác chiến: Thử thách độc lập Boss Fight (Titan Battle Tank)", cardX + 30, cardY + 45);
-            g.drawString("• Mục tiêu: Khắc chế hỏa lực đại pháo & súng máy phòng không", cardX + 30, cardY + 80);
-            g.drawString("• Trạng thái: Mục tiêu cơ giới Titan đã bị vô hiệu hóa hoàn toàn", cardX + 30, cardY + 115);
-            g.drawString("• Dữ liệu tác chiến đã được ghi nhận vào hệ thống", cardX + 30, cardY + 150);
+            g.drawString("- Chế độ tác chiến: Thử thách độc lập Boss Fight (Titan Battle Tank)", cardX + 30, cardY + 45);
+            g.drawString("- Mục tiêu: Khắc chế hỏa lực đại pháo & súng máy phòng không", cardX + 30, cardY + 80);
+            g.drawString("- Trạng thái: Mục tiêu cơ giới Titan đã bị vô hiệu hóa hoàn toàn", cardX + 30, cardY + 115);
+            g.drawString("- Dữ liệu tác chiến đã được ghi nhận vào hệ thống", cardX + 30, cardY + 150);
         } else {
-            g.drawString("• Khu vực: Biome 1 (Alpha Sector) - Hoàn thành xuất sắc toàn bộ Chiến dịch", cardX + 30, cardY + 45);
-            g.drawString("• Chiến tích: Tiêu diệt thành công Boss Chiến Xa Titan MK-IV và mở đường sơ tán", cardX + 30, cardY + 80);
-            g.drawString("• Bản Demo hoàn tất: Bạn có thể tiếp tục rèn luyện vũ khí & thử nghiệm tại The Range", cardX + 30, cardY + 115);
-            g.drawString("• Hãy tiếp tục cải thiện kỹ năng và đón chờ các bản cập nhật tiếp theo!", cardX + 30, cardY + 150);
+            g.drawString("- Khu vực: Biome 1 (Alpha Sector) - Hoàn thành xuất sắc toàn bộ Chiến dịch", cardX + 30, cardY + 45);
+            g.drawString("- Chiến tích: Tiêu diệt thành công Boss Chiến Xa Titan MK-IV và mở đường sơ tán", cardX + 30, cardY + 80);
+            g.drawString("- Bản Demo hoàn tất: Bạn có thể tiếp tục rèn luyện vũ khí & thử nghiệm tại The Range", cardX + 30, cardY + 115);
+            g.drawString("- Hãy tiếp tục cải thiện kỹ năng và đón chờ các bản cập nhật tiếp theo!", cardX + 30, cardY + 150);
         }
 
         // 5. User prompt at bottom
-        g.setFont(new Font("SansSerif", Font.BOLD, 16));
+        g.setFont(GameFontManager.getSmallBoldFont(12.0f));
         FontMetrics fmPrompt = g.getFontMetrics();
         String prompt = isStandaloneBossFight
                 ? "[ Bấm nút bất kỳ hoặc Click chuột để quay về Menu chính ]"
@@ -721,9 +723,9 @@ public class PlayingHUD {
             }
 
             if (textAlpha > 0) {
-                g.setFont(new Font("SansSerif", Font.BOLD, 40));
+                g.setFont(GameFontManager.getBoldFont(40.0f));
                 FontMetrics fmTitle = g.getFontMetrics();
-                String title = "☠ BẠN ĐÃ BỊ HẠ ☠";
+                String title = "[X] BẠN ĐÃ BỊ HẠ [X]";
                 int titleW = fmTitle.stringWidth(title);
 
                 // Đổ bóng đỏ sẫm chiều sâu 3D
@@ -756,14 +758,14 @@ public class PlayingHUD {
         int cx = GameConfig.SCREEN_WIDTH / 2;
 
         // Biểu tượng & Tiêu đề Tử trận
-        g.setFont(new Font("SansSerif", Font.BOLD, 36));
+        g.setFont(GameFontManager.getBoldFont(36.0f));
         FontMetrics fm = g.getFontMetrics();
-        String title = "☠ CHIẾN BINH TỬ TRẬN ☠";
+        String title = "[X] CHIẾN BINH TỬ TRẬN [X]";
         int titleW = fm.stringWidth(title);
         g.setColor(new Color(255, 60, 60));
         g.drawString(title, cx - titleW / 2, 220);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 16));
+        g.setFont(GameFontManager.getBoldFont(16.0f));
         fm = g.getFontMetrics();
         String sub = "OPERATIVE KIA - TÍN HIỆU SINH TỒN ĐÃ MẤT";
         g.setColor(new Color(255, 170, 170));
@@ -780,15 +782,15 @@ public class PlayingHUD {
         g.drawRoundRect(cardX, cardY, cardW, cardH, 10, 10);
         g.setStroke(new BasicStroke(1.0f));
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        g.setFont(GameFontManager.getSmallFont(12.0f));
         g.setColor(new Color(220, 225, 235));
-        g.drawString("• Giai đoạn chiến dịch: Stage " + currentStage + " / " + maxStages, cardX + 30, cardY + 40);
-        g.drawString("• Ngân sách thu thập: " + playerCredits + " CREDITS", cardX + 30, cardY + 70);
-        g.drawString("• Tiến độ dọn phòng: " + clearedRoomCount + " phòng combat", cardX + 30, cardY + 100);
-        g.drawString("• Trang bị hiện có: " + weaponSlotsCount + " vũ khí trong kho", cardX + 30, cardY + 130);
+        g.drawString("- Giai đoạn chiến dịch: Stage " + currentStage + " / " + maxStages, cardX + 30, cardY + 40);
+        g.drawString("- Ngân sách thu thập: " + playerCredits + " CREDITS", cardX + 30, cardY + 70);
+        g.drawString("- Tiến độ dọn phòng: " + clearedRoomCount + " phòng combat", cardX + 30, cardY + 100);
+        g.drawString("- Trang bị hiện có: " + weaponSlotsCount + " vũ khí trong kho", cardX + 30, cardY + 130);
 
         // Hướng dẫn tương tác
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
+        g.setFont(GameFontManager.getSmallBoldFont(12.0f));
         fm = g.getFontMetrics();
         String prompt = "Bấm [ENTER] hoặc [R] để tái xuất phát | [ESC] Về Menu chính";
         g.setColor(new Color(255, 225, 75));

@@ -1,5 +1,6 @@
 package com.groupproject.game.ui;
 
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.buff.CharacterBuff;
 import com.groupproject.game.entity.buff.PlayerBuffManager;
 import com.groupproject.game.entity.station.CharacterUpgradeStation;
@@ -8,7 +9,6 @@ import com.groupproject.game.input.MouseHandler;
 import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -45,7 +45,7 @@ public class CharacterUpgradeUI {
         this.feedbackMessage = "";
         this.feedbackTimer = 0.0;
         if (station != null) {
-            station.rollBuffs(buffManager);
+            station.ensureBuffsRolled(buffManager);
         }
     }
 
@@ -174,7 +174,7 @@ public class CharacterUpgradeUI {
         g.setStroke(new BasicStroke(1.0f));
 
         // 3. Tiêu đề trạm
-        g.setFont(new Font("SansSerif", Font.BOLD, 22));
+        g.setFont(GameFontManager.getBoldFont(18.0f));
         FontMetrics fmTitle = g.getFontMetrics();
         String title = "TRẠM " + sType.titleVi;
         int titleX = modalX + (modalW - fmTitle.stringWidth(title)) / 2;
@@ -182,15 +182,15 @@ public class CharacterUpgradeUI {
         g.drawString(title, titleX, modalY + 38);
 
         // 4. Số dư Credits người chơi
-        g.setFont(new Font("SansSerif", Font.BOLD, 15));
-        String credText = "CREDITS HIỆN CÓ: " + state.getPlayerCredits() + " Ⓒ";
+        g.setFont(GameFontManager.getSmallBoldFont(12.5f));
+        String credText = "CREDITS HIỆN CÓ: " + state.getPlayerCredits() + " CREDITS";
         FontMetrics fmCred = g.getFontMetrics();
         g.setColor(new Color(255, 215, 60));
         g.drawString(credText, modalX + (modalW - fmCred.stringWidth(credText)) / 2, modalY + 66);
 
         // Thông báo phản hồi nếu có
         if (!feedbackMessage.isEmpty()) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
+            g.setFont(GameFontManager.getSmallBoldFont(11.5f));
             FontMetrics fmFb = g.getFontMetrics();
             g.setColor(feedbackColor);
             g.drawString(feedbackMessage, modalX + (modalW - fmFb.stringWidth(feedbackMessage)) / 2, modalY + 90);
@@ -227,9 +227,9 @@ public class CharacterUpgradeUI {
         this.buyButtonBounds = newBuyButtonBounds;
 
         // 6. Lời nhắc phím ở đáy
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.setFont(GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(130, 155, 185));
-        String tip = "Click chuột hoặc bấm phím số [1], [2], [3] để mua • Nhấn [ESC] hoặc [F] để Đóng";
+        String tip = "Click chuột hoặc bấm phím số [1], [2], [3] để mua - Nhấn [ESC] hoặc [F] để Đóng";
         FontMetrics fmTip = g.getFontMetrics();
         g.drawString(tip, modalX + (modalW - fmTip.stringWidth(tip)) / 2, modalY + modalH - 18);
     }
@@ -263,23 +263,23 @@ public class CharacterUpgradeUI {
         g.fillRoundRect(rect.x + 12, rect.y + 12, keyBadgeSize, keyBadgeSize, 6, 6);
         g.setColor(sType.accentColor);
         g.drawRoundRect(rect.x + 12, rect.y + 12, keyBadgeSize, keyBadgeSize, 6, 6);
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.drawString(String.valueOf(index + 1), rect.x + 21, rect.y + 30);
 
         // Phân loại (Nhóm)
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(9.5f));
         String catStr = (buff.getCategory() == CharacterBuff.BuffCategory.BASIC_STAT)
                 ? "[CHỈ SỐ CƠ BẢN]" : "[KỸ NĂNG ĐẶC BIỆT]";
         g.setColor(new Color(140, 175, 210));
         g.drawString(catStr, rect.x + 46, rect.y + 29);
 
         // Tên Buff
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
+        g.setFont(GameFontManager.getBoldFont(12.5f));
         g.setColor(Color.WHITE);
         drawWrappedText(g, buff.getDisplayNameVi(), rect.x + 14, rect.y + 68, rect.width - 28, 18);
 
         // Cấp độ hiện tại / Cấp tối đa
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.setFont(GameFontManager.getSmallFont(10.5f));
         String lvlStr;
         if (buff.getMaxLevel() == 1) {
             lvlStr = isMax ? "Trạng thái: ĐÃ KÍCH HOẠT" : "Trạng thái: CHƯA SỞ HỮU";
@@ -294,7 +294,7 @@ public class CharacterUpgradeUI {
         g.drawLine(rect.x + 14, rect.y + 136, rect.x + rect.width - 14, rect.y + 136);
 
         // Mô tả tác dụng chi tiết
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g.setFont(GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(175, 195, 220));
         drawWrappedText(g, buff.getDescriptionVi(), rect.x + 14, rect.y + 160, rect.width - 28, 17);
 
@@ -311,8 +311,8 @@ public class CharacterUpgradeUI {
             g.fillRoundRect(btnX, btnY, btnW, btnH, 8, 8);
             g.setColor(new Color(50, 180, 100));
             g.drawRoundRect(btnX, btnY, btnW, btnH, 8, 8);
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
-            String maxTxt = "✔ ĐÃ TỐI ĐA";
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
+            String maxTxt = "[ ĐÃ TỐI ĐA ]";
             FontMetrics fm = g.getFontMetrics();
             g.drawString(maxTxt, btnX + (btnW - fm.stringWidth(maxTxt)) / 2, btnY + 26);
         } else {
@@ -323,10 +323,10 @@ public class CharacterUpgradeUI {
             g.setColor(btnBorder);
             g.drawRoundRect(btnX, btnY, btnW, btnH, 8, 8);
 
-            g.setFont(new Font("SansSerif", Font.BOLD, 13));
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             String btnTxt = canAfford
-                    ? "MUA [" + (index + 1) + "] : " + cost + " Ⓒ"
-                    : "THIẾU Ⓒ (CẦN " + cost + " Ⓒ)";
+                    ? "MUA [" + (index + 1) + "] : " + cost + " C"
+                    : "THIẾU C (CẦN " + cost + " C)";
             g.setColor(canAfford ? Color.WHITE : new Color(240, 140, 140));
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnTxt, btnX + (btnW - fm.stringWidth(btnTxt)) / 2, btnY + 26);
@@ -339,7 +339,7 @@ public class CharacterUpgradeUI {
         g.setColor(new Color(40, 50, 70));
         g.drawRoundRect(rect.x, rect.y, rect.width, rect.height, 12, 12);
 
-        g.setFont(new Font("SansSerif", Font.ITALIC, 13));
+        g.setFont(GameFontManager.getSmallFont(10.5f));
         g.setColor(new Color(90, 110, 135));
         String text = "ĐÃ MUA HẾT BUFF NHÓM NÀY";
         FontMetrics fm = g.getFontMetrics();

@@ -1,5 +1,6 @@
 package com.groupproject.game.ui;
 
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
@@ -7,7 +8,6 @@ import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -222,12 +222,12 @@ public class StatReforgeModalUI {
         g2.fillRect(modalX + 2, modalY + 44, modalW - 4, 26);
 
         // Tiêu đề chính
-        g2.setFont(new Font("SansSerif", Font.BOLD, 16));
+        g2.setFont(GameFontManager.getBoldFont(15.0f));
         g2.setColor(new Color(255, 220, 80));
-        g2.drawString("★ BÀN KỸ THUẬT QUÂN KHÍ DÃ CHIẾN (REFORGE WORKBENCH) ★", modalX + 22, modalY + 26);
+        g2.drawString("BÀN KỸ THUẬT QUÂN KHÍ DÃ CHIẾN (REFORGE WORKBENCH)", modalX + 22, modalY + 26);
 
         // Dòng tóm tắt nhanh khí tài
-        g2.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g2.setFont(GameFontManager.getSmallBoldFont(11.0f));
         String sTierTag = targetWeapon.isSTier() ? "[S-TIER] " : "";
         String weaponHeader = String.format("Khí tài: %s%s (Lv.%d) | Hỏa lực: %d DPS (Chí mạng: %d DPS) | Băng đạn: %d viên",
                 sTierTag,
@@ -247,7 +247,7 @@ public class StatReforgeModalUI {
 
         // Thông báo phản hồi nếu có
         if (feedbackTimer > 0 && !feedbackMessage.isEmpty()) {
-            g2.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g2.setFont(GameFontManager.getSmallBoldFont(11.0f));
             g2.setColor(feedbackColor);
             g2.drawString(feedbackMessage, modalX + 22, modalY + 84);
         }
@@ -292,7 +292,7 @@ public class StatReforgeModalUI {
         this.buttonBounds = newBtns;
 
         // 4. Footer
-        g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g2.setFont(GameFontManager.getSmallFont(10.0f));
         g2.setColor(new Color(160, 175, 190));
         String footerText = "[1] Reroll Sao Chỉ Số | [2] Reroll Chí Mạng | Click chuột vào thẻ | [ESC] Thoát bàn kỹ thuật";
         g2.drawString(footerText, modalX + (modalW - fm.stringWidth(footerText)) / 2, modalY + modalH - 14);
@@ -323,19 +323,19 @@ public class StatReforgeModalUI {
         g.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), isStarsAllowed ? 45 : 30));
         g.fillRoundRect(cx + 4, cy + 4, cw - 8, 38, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
+        g.setFont(GameFontManager.getBoldFont(12.5f));
         g.setColor(themeColor);
-        String headerTitle = isStarsAllowed ? "[1] REROLL SAO CHỈ SỐ" : "[1] REROLL SAO [🔒 KHÓA]";
+        String headerTitle = isStarsAllowed ? "[1] REROLL SAO CHỈ SỐ" : "[1] REROLL SAO [KHÓA]";
         g.drawString(headerTitle, cx + 14, cy + 26);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         g.setColor(new Color(190, 210, 225));
         String subHeader = isStarsAllowed ? "Tái phân bổ ngẫu nhiên sao thặng dư vào 3 nhánh" : "Yêu cầu vũ khí đạt cấp 2 trở lên (chưa có sao thặng dư)";
         g.drawString(subHeader, cx + 14, cy + 54);
 
         // --- KHUNG 1: THÔNG SỐ SAO HIỆN TẠI CỦA SÚNG ---
         int boxY = cy + 64;
-        int boxH = 138;
+        int boxH = 185;
         int boxW = cw - 24;
         int boxX = cx + 12;
 
@@ -345,72 +345,55 @@ public class StatReforgeModalUI {
         g.setStroke(new BasicStroke(1.0f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(new Color(140, 205, 255));
-        g.drawString("▸ CẤU HÌNH SAO HIỆN TẠI (CURRENT STATS):", boxX + 10, boxY + 18);
+        g.drawString("> CẤU HÌNH SAO HIỆN TẠI (CURRENT STATS):", boxX + 12, boxY + 22);
 
         // 3 nhánh sao chi tiết
-        int rowY = boxY + 38;
-        drawStatRow(g, boxX + 10, rowY, "Sát thương (DMG):",
+        int rowY = boxY + 48;
+        drawStatRow(g, boxX + 12, rowY, "Sát thương (DMG):",
                 targetWeapon.getDamageStars(),
                 String.format("%d DMG", targetWeapon.getDamage()),
                 new Color(255, 120, 120));
 
-        rowY += 24;
+        rowY += 28;
         int approxRpm = targetWeapon.getFireRateCooldown() > 0 ? (int) Math.round(60.0 / targetWeapon.getFireRateCooldown()) : 0;
-        drawStatRow(g, boxX + 10, rowY, "Tốc độ bắn (RPM):",
+        drawStatRow(g, boxX + 12, rowY, "Tốc độ bắn (RPM):",
                 targetWeapon.getFireRateStars(),
                 String.format("%.2fs (~%d RPM)", targetWeapon.getFireRateCooldown(), approxRpm),
                 new Color(120, 220, 140));
 
-        rowY += 24;
+        rowY += 28;
         if (targetWeapon instanceof SniperRifle sr) {
-            drawStatRow(g, boxX + 10, rowY, "Sức xuyên (PIERCE):",
+            drawStatRow(g, boxX + 12, rowY, "Sức xuyên (PIERCE):",
                 sr.getPierceStars(),
                 String.format("Xuyên %d mục tiêu (-%d%%)", sr.getMaxPierces(), sr.getPierceFalloffPercent()),
                 new Color(185, 100, 255));
         } else {
-            drawStatRow(g, boxX + 10, rowY, "Độ chính xác (ACC):",
+            drawStatRow(g, boxX + 12, rowY, "Độ chính xác (ACC):",
                 targetWeapon.getAccuracyStars(),
                 String.format("±%.2f rad", targetWeapon.getCurrentSpreadAngle()),
                 new Color(255, 210, 100));
         }
 
         // Dòng tổng sao thặng dư
-        rowY += 22;
-        g.setFont(new Font("SansSerif", Font.ITALIC, 10));
+        rowY += 30;
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         if (isStarsAllowed) {
             g.setColor(new Color(165, 185, 205));
             int totalExtra = (targetWeapon.getDamageStars() - 1) + (targetWeapon.getFireRateStars() - 1) + (targetWeapon.getAccuracyStars() - 1);
-            g.drawString(String.format("Tổng: %d★ (Lv.%d) ➔ Sẽ chia lại %d sao thặng dư",
+            g.drawString(String.format("Tổng: %d Sao (Lv.%d) -> Sẽ chia lại %d sao thặng dư",
                     targetWeapon.getDamageStars() + targetWeapon.getFireRateStars() + targetWeapon.getAccuracyStars(),
                     targetWeapon.getLevel(),
-                    totalExtra), boxX + 10, rowY);
+                    totalExtra), boxX + 12, rowY);
         } else {
             g.setColor(new Color(255, 150, 70));
-            g.drawString("⚠ Súng Lv.1 chưa có sao nâng cấp thặng dư để tái phân bổ!", boxX + 10, rowY);
+            g.drawString("[!]: Súng Lv.1 chưa có sao nâng cấp thặng dư để tái phân bổ!", boxX + 12, rowY);
         }
-
-        // --- KHUNG 2: CAM KẾT BẢO LƯU CHÍ MẠNG ---
-        int pledgeY = boxY + boxH + 8;
-        int pledgeH = 50;
-        g.setColor(new Color(18, 30, 24));
-        g.fillRoundRect(boxX, pledgeY, boxW, pledgeH, 6, 6);
-        g.setColor(new Color(60, 180, 100, 100));
-        g.drawRoundRect(boxX, pledgeY, boxW, pledgeH, 6, 6);
-
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
-        g.setColor(new Color(90, 245, 150));
-        g.drawString(String.format("✔ BẢO LƯU 100%% CHÍ MẠNG: %d%% (x%.2f)",
-                targetWeapon.getCritChancePercent(), targetWeapon.getCritMultiplier()), boxX + 10, pledgeY + 20);
-
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        g.setColor(new Color(170, 215, 190));
-        g.drawString("Tỉ lệ và hệ số chí mạng của súng được giữ nguyên tuyệt đối.", boxX + 10, pledgeY + 38);
 
         // Thông tin số lần rèn & chi phí
         int infoY = cy + ch - 58;
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(new Color(180, 195, 210));
         String countStr = hubMode ? "Miễn phí (Không giới hạn tại The Range)" : String.format("Đã rèn: %d lần | Chi phí: %d Credits", reforgeCount, cost);
         g.drawString(countStr, cx + 14, infoY);
@@ -429,15 +412,15 @@ public class StatReforgeModalUI {
             g.setColor(new Color(80, 85, 100));
             g.drawRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(255, 150, 70));
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
-            String btnText = "🔒 KHÓA (YÊU CẦU SÚNG LV.2+)";
+            g.setFont(GameFontManager.getSmallBoldFont(10.5f));
+            String btnText = "[KHÓA] (YÊU CẦU SÚNG LV.2+)";
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 23);
         } else if (canAfford) {
             g.setColor(hovered ? themeColor : new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 180));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(20, 25, 30));
-            g.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             String btnText = hubMode ? "REROLL SAO CHỈ SỐ [1]" : String.format("REROLL SAO CHỈ SỐ (%d C) [1]", cost);
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 23);
@@ -445,7 +428,7 @@ public class StatReforgeModalUI {
             g.setColor(new Color(50, 55, 65));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(200, 110, 110));
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            g.setFont(GameFontManager.getSmallBoldFont(10.5f));
             String btnText = String.format("THIẾU TIỀN (CẦN %d CREDITS)", cost);
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 23);
@@ -474,17 +457,17 @@ public class StatReforgeModalUI {
         g.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 45));
         g.fillRoundRect(cx + 4, cy + 4, cw - 8, 38, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 14));
+        g.setFont(GameFontManager.getBoldFont(12.5f));
         g.setColor(themeColor);
         g.drawString("[2] REROLL CHÍ MẠNG", cx + 14, cy + 26);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         g.setColor(new Color(225, 205, 190));
         g.drawString("Gieo lại ngẫu nhiên tỉ lệ và hệ số sát thương chí mạng", cx + 14, cy + 54);
 
         // --- KHUNG 1: CHỈ SỐ CHÍ MẠNG HIỆN TẠI CỦA SÚNG ---
         int boxY = cy + 64;
-        int boxH = 138;
+        int boxH = 185;
         int boxW = cw - 24;
         int boxX = cx + 12;
 
@@ -494,31 +477,31 @@ public class StatReforgeModalUI {
         g.setStroke(new BasicStroke(1.0f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(new Color(255, 175, 120));
-        g.drawString("▸ CHỈ SỐ CHÍ MẠNG HIỆN TẠI (CURRENT CRIT):", boxX + 10, boxY + 18);
+        g.drawString("> CHỈ SỐ CHÍ MẠNG HIỆN TẠI (CURRENT CRIT):", boxX + 12, boxY + 22);
 
         // Hàng thông số số liệu lớn
         int critPct = targetWeapon.getCritChancePercent();
         double critMult = targetWeapon.getCritMultiplier();
         int critDmg = (int) Math.round(targetWeapon.getDamage() * critMult);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(new Color(255, 200, 80));
-        g.drawString(String.format("Tỉ Lệ: %d%%", critPct), boxX + 10, boxY + 40);
+        g.drawString(String.format("Tỉ Lệ: %d%%", critPct), boxX + 12, boxY + 48);
 
         g.setColor(new Color(255, 145, 70));
-        g.drawString(String.format("Hệ Số: x%.2f", critMult), boxX + 120, boxY + 40);
+        g.drawString(String.format("Hệ Số: x%.2f", critMult), boxX + 125, boxY + 48);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(new Color(220, 200, 190));
-        g.drawString(String.format("Nổ Dame: %d DMG", critDmg), boxX + 225, boxY + 40);
+        g.drawString(String.format("Nổ Dame: %d DMG", critDmg), boxX + 235, boxY + 48);
 
         // Thanh đo trực quan (Progress Bar từ 5% đến 50%)
-        int barX = boxX + 10;
-        int barY = boxY + 54;
-        int barW = boxW - 20;
-        int barH = 10;
+        int barX = boxX + 12;
+        int barY = boxY + 68;
+        int barW = boxW - 24;
+        int barH = 12;
 
         g.setColor(new Color(40, 30, 25));
         g.fillRoundRect(barX, barY, barW, barH, 4, 4);
@@ -530,52 +513,33 @@ public class StatReforgeModalUI {
         g.fillRoundRect(barX, barY, fillW, barH, 4, 4);
 
         // Vạch mốc trên thanh đo
-        g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         g.setColor(new Color(160, 145, 135));
-        g.drawString("5% (Min)", barX, barY + 22);
-        g.drawString("25%", barX + barW / 2 - 8, barY + 22);
-        g.drawString("50% (Max)", barX + barW - 44, barY + 22);
+        g.drawString("5% (Min)", barX, barY + 24);
+        g.drawString("25%", barX + barW / 2 - 10, barY + 24);
+        g.drawString("50% (Max)", barX + barW - 48, barY + 24);
 
         // Khuyến nghị / Đánh giá hiện tại
-        int evalY = boxY + 108;
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        int evalY = boxY + 126;
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         if (critPct < 18) {
             g.setColor(new Color(255, 100, 90));
-            g.drawString("● ĐÁNH GIÁ: THẤP ➔ KHUYẾN NGHỊ NÊN REROLL (Cơ hội tăng cao)", boxX + 10, evalY);
+            g.drawString("* ĐÁNH GIÁ: THẤP -> KHUYẾN NGHỊ NÊN REROLL (Cơ hội tăng cao)", boxX + 12, evalY);
         } else if (critPct <= 32) {
             g.setColor(new Color(255, 205, 80));
-            g.drawString("● ĐÁNH GIÁ: TRUNG BÌNH ➔ CÓ THỂ REROLL ĐỂ TÌM MỐC CAO", boxX + 10, evalY);
+            g.drawString("* ĐÁNH GIÁ: TRUNG BÌNH -> CÓ THỂ REROLL ĐỂ TÌM MỐC CAO", boxX + 12, evalY);
         } else {
             g.setColor(new Color(90, 240, 140));
-            g.drawString("● ĐÁNH GIÁ: RẤT CAO ➔ NÊN GIỮ LẠI (Reroll có nguy cơ giảm!)", boxX + 10, evalY);
+            g.drawString("* ĐÁNH GIÁ: RẤT CAO -> NÊN GIỮ LẠI (Reroll có nguy cơ giảm!)", boxX + 12, evalY);
         }
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 9));
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         g.setColor(new Color(175, 160, 150));
-        g.drawString("Dải gieo lại ngẫu nhiên: Tỉ lệ [5% - 50%] | Hệ số [1.50x - 2.00x]", boxX + 10, evalY + 16);
-
-        // --- KHUNG 2: CAM KẾT BẢO LƯU SAO CHỈ SỐ ---
-        int pledgeY = boxY + boxH + 8;
-        int pledgeH = 50;
-        g.setColor(new Color(18, 30, 24));
-        g.fillRoundRect(boxX, pledgeY, boxW, pledgeH, 6, 6);
-        g.setColor(new Color(60, 180, 100, 100));
-        g.drawRoundRect(boxX, pledgeY, boxW, pledgeH, 6, 6);
-
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
-        g.setColor(new Color(90, 245, 150));
-        boolean isSniper = targetWeapon instanceof SniperRifle;
-        String thirdStatCode = isSniper ? "PIERCE" : "ACC";
-        g.drawString(String.format("✔ BẢO LƯU 100%% CẤU HÌNH SAO: DMG %d★ | RPM %d★ | %s %d★",
-                targetWeapon.getDamageStars(), targetWeapon.getFireRateStars(), thirdStatCode, targetWeapon.getAccuracyStars()), boxX + 10, pledgeY + 20);
-
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        g.setColor(new Color(170, 215, 190));
-        g.drawString("Toàn bộ số sao và cấp độ của 3 nhánh chỉ số được giữ nguyên.", boxX + 10, pledgeY + 38);
+        g.drawString("Dải gieo lại ngẫu nhiên: Tỉ lệ [5% - 50%] | Hệ số [1.50x - 2.00x]", boxX + 12, evalY + 20);
 
         // Thông tin số lần rèn & chi phí
         int infoY = cy + ch - 58;
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(new Color(180, 195, 210));
         String countStr = hubMode ? "Miễn phí (Không giới hạn tại The Range)" : String.format("Đã rèn: %d lần | Chi phí: %d Credits", reforgeCount, cost);
         g.drawString(countStr, cx + 14, infoY);
@@ -592,7 +556,7 @@ public class StatReforgeModalUI {
             g.setColor(hovered ? themeColor : new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 180));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(20, 25, 30));
-            g.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             String btnText = hubMode ? "REROLL CHÍ MẠNG [2]" : String.format("REROLL CHÍ MẠNG (%d C) [2]", cost);
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 23);
@@ -600,7 +564,7 @@ public class StatReforgeModalUI {
             g.setColor(new Color(50, 55, 65));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(200, 110, 110));
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            g.setFont(GameFontManager.getSmallBoldFont(10.5f));
             String btnText = String.format("THIẾU TIỀN (CẦN %d CREDITS)", cost);
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 23);
@@ -611,18 +575,16 @@ public class StatReforgeModalUI {
      * Hàm phụ trợ vẽ từng hàng sao với icon vàng đẹp mắt.
      */
     private void drawStatRow(Graphics2D g, int x, int y, String label, int stars, String valText, Color valColor) {
-        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.setFont(GameFontManager.getSmallFont(10.5f));
         g.setColor(new Color(205, 220, 235));
         g.drawString(label, x, y);
 
-        // Vẽ chuỗi sao
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
-        g.setColor(new Color(255, 215, 60));
-        String starStr = Weapon.formatStars(stars);
-        g.drawString(starStr, x + 120, y);
+        // Vẽ icon sao vector đồ họa đẹp mắt không phụ thuộc font
+        Weapon.renderStarIcons(g, x + 124, y - 4, stars, 3, 5, 12);
 
         // Giá trị cụ thể
+        g.setFont(GameFontManager.getSmallBoldFont(10.5f));
         g.setColor(valColor);
-        g.drawString(valText, x + 195, y);
+        g.drawString(valText, x + 172, y);
     }
 }

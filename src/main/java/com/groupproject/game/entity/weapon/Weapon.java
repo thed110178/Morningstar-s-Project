@@ -564,6 +564,69 @@ public abstract class Weapon {
         return sb.toString().trim();
     }
 
+    /**
+     * Kết xuất hàng icon ngôi sao 5 cánh đồ họa sắc nét bằng Graphics2D (Vector Stars).
+     * Tránh hoàn toàn việc phụ thuộc vào Unicode font chữ, chống lỗi ô vuông .notdef.
+     *
+     * @param g           Đối tượng đồ họa Graphics2D.
+     * @param startX      Tọa độ X bắt đầu vẽ hàng sao.
+     * @param centerY     Tọa độ Y trung tâm của hàng sao.
+     * @param stars       Số lượng sao hiện có của nhánh chỉ số (1 -> 3).
+     * @param maxSlots    Tổng số sao tối đa của súng (mặc định 3).
+     * @param starRadius  Bán kính của mỗi ngôi sao (mặc định 5px).
+     * @param spacing     Khoảng cách giữa các ngôi sao (mặc định 14px).
+     * @return Tọa độ X kết thúc sau khi vẽ xong hàng sao (để tiếp tục vẽ chuỗi số liệu).
+     */
+    public static int renderStarIcons(java.awt.Graphics2D g, int startX, int centerY, int stars, int maxSlots, int starRadius, int spacing) {
+        int curX = startX + starRadius;
+        for (int i = 1; i <= maxSlots; i++) {
+            boolean filled = (i <= stars);
+            drawFivePointStar(g, curX, centerY, starRadius, filled);
+            curX += spacing;
+        }
+        return curX - spacing + starRadius + 6;
+    }
+
+    public static int renderStarIcons(java.awt.Graphics2D g, int startX, int centerY, int stars) {
+        return renderStarIcons(g, startX, centerY, stars, 3, 5, 14);
+    }
+
+    private static void drawFivePointStar(java.awt.Graphics2D g, int cx, int cy, int radius, boolean filled) {
+        int points = 5;
+        int[] xPoints = new int[points * 2];
+        int[] yPoints = new int[points * 2];
+        double innerRadius = radius * 0.44;
+
+        for (int i = 0; i < points * 2; i++) {
+            double r = (i % 2 == 0) ? radius : innerRadius;
+            double angle = i * Math.PI / points - Math.PI / 2.0;
+            xPoints[i] = (int) Math.round(cx + r * Math.cos(angle));
+            yPoints[i] = (int) Math.round(cy + r * Math.sin(angle));
+        }
+
+        if (filled) {
+            // Sao vàng kim rực rỡ có đổ bóng và viền
+            g.setColor(new java.awt.Color(255, 215, 0));
+            g.fillPolygon(xPoints, yPoints, points * 2);
+            g.setColor(new java.awt.Color(195, 140, 15));
+            g.setStroke(new java.awt.BasicStroke(0.9f));
+            g.drawPolygon(xPoints, yPoints, points * 2);
+            g.setStroke(new java.awt.BasicStroke(1.0f));
+
+            // Chấm sáng lấp lánh ở tâm
+            g.setColor(new java.awt.Color(255, 255, 230, 200));
+            g.fillRect(cx - 1, cy - 1, 2, 2);
+        } else {
+            // Sao rỗng tối màu công nghệ cao
+            g.setColor(new java.awt.Color(20, 28, 40, 180));
+            g.fillPolygon(xPoints, yPoints, points * 2);
+            g.setColor(new java.awt.Color(65, 80, 105));
+            g.setStroke(new java.awt.BasicStroke(0.8f));
+            g.drawPolygon(xPoints, yPoints, points * 2);
+            g.setStroke(new java.awt.BasicStroke(1.0f));
+        }
+    }
+
     // --- Getters & Setters ---
 
     public int getLevel() {

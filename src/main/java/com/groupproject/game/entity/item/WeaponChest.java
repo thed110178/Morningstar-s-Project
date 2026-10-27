@@ -1,6 +1,7 @@
 package com.groupproject.game.entity.item;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
@@ -299,7 +300,7 @@ public class WeaponChest {
                 g.drawString("C", rewardCenterX - 4, rewardCenterY + 4);
 
                 // Nhãn tiền nổi
-                String creditTitle = "★ +" + creditsReward + " CREDITS ★";
+                String creditTitle = "+ " + creditsReward + " CREDITS";
                 renderTag(g, rewardCenterX, rewardCenterY - 18, creditTitle, new Color(255, 220, 60));
 
                 if (showPrompt) {
@@ -347,7 +348,7 @@ public class WeaponChest {
                     g.setColor(new Color(255, 215, 0));
                     g.setStroke(new BasicStroke(1.2f));
                     g.drawRoundRect(badgeX - 7, badgeY - 7, 15, 15, 4, 4);
-                    g.setFont(new Font("SansSerif", Font.BOLD, 10));
+                    g.setFont(GameFontManager.getSmallBoldFont(10.0f));
                     g.drawString("S", badgeX - 3, badgeY + 4);
                 }
 
@@ -359,7 +360,7 @@ public class WeaponChest {
                     renderWeaponStatCard(g, rewardCenterX, weaponDisplayY - 26, droppedWeapon, "NHẶT TRANG BỊ");
                 } else {
                     // Khi đứng xa: Chỉ hiện nhãn tên súng và cấp độ cơ bản (Có viền vàng rực nếu là S-Tier)
-                    String weaponTitle = "★ " + droppedWeapon.getShortDisplayName().toUpperCase() + " ★";
+                    String weaponTitle = droppedWeapon.getShortDisplayName().toUpperCase();
                     Color tagColor = droppedWeapon.isSTier() ? new Color(255, 215, 0) : new Color(255, 215, 60);
                     renderTag(g, rewardCenterX, weaponDisplayY - 24, weaponTitle, tagColor);
                 }
@@ -381,9 +382,10 @@ public class WeaponChest {
     }
 
     private void renderTag(Graphics2D g, int centerX, int centerY, String text, Color textColor) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 11));
+        String clean = GameFontManager.sanitize(text);
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(text);
+        int textW = fm.stringWidth(clean);
         int pad = 6;
 
         int boxW = textW + pad * 2;
@@ -397,13 +399,14 @@ public class WeaponChest {
         g.drawRoundRect(boxX, boxY, boxW, boxH, 4, 4);
 
         g.setColor(textColor);
-        g.drawString(text, boxX + pad, boxY + 13);
+        g.drawString(clean, boxX + pad, boxY + 13);
     }
 
     private void renderPrompt(Graphics2D g, int centerX, int centerY, String text) {
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        String clean = GameFontManager.sanitize(text);
+        g.setFont(GameFontManager.getSmallBoldFont(11.0f));
         FontMetrics fm = g.getFontMetrics();
-        int textW = fm.stringWidth(text);
+        int textW = fm.stringWidth(clean);
         int pad = 8;
 
         int boxW = textW + pad * 2;
@@ -422,7 +425,8 @@ public class WeaponChest {
 
         // Chữ nội dung
         g.setColor(Color.WHITE);
-        g.drawString(text.substring(3), boxX + pad + fm.stringWidth("[F] "), boxY + 15);
+        String bodyText = clean.startsWith("[F] ") ? clean.substring(4) : (clean.startsWith("[F]") ? clean.substring(3) : clean);
+        g.drawString(bodyText, boxX + pad + fm.stringWidth("[F] "), boxY + 15);
     }
 
     /**
@@ -445,10 +449,10 @@ public class WeaponChest {
         g.setStroke(new BasicStroke(isSTier ? 2.0f : 1.5f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
-        // 2. Tiêu đề tên súng kèm cấp độ và số lần nâng cấp (VD: ★ [S] AR I [0/3] ★)
-        g.setFont(new Font("SansSerif", Font.BOLD, 12));
+        // 2. Tiêu đề tên súng kèm cấp độ và số lần nâng cấp (VD: [S] AR I [0/3])
+        g.setFont(GameFontManager.getBoldFont(12.0f));
         g.setColor(isSTier ? new Color(255, 225, 60) : new Color(255, 215, 60));
-        String title = "★ " + weapon.getShortDisplayName().toUpperCase() + " [" + weapon.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "] ★";
+        String title = weapon.getShortDisplayName().toUpperCase() + " [" + weapon.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "]";
         FontMetrics fm = g.getFontMetrics();
         g.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + 16);
 
@@ -458,25 +462,33 @@ public class WeaponChest {
 
         // 3. 5 hàng chỉ số đo bằng sao, chí mạng và DPS
         boolean isSniper = weapon instanceof SniperRifle;
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setFont(GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(200, 220, 240));
-        g.drawString("• Sát thương:", boxX + 14, boxY + 36);
-        g.drawString("• Tốc ra đạn:", boxX + 14, boxY + 51);
-        g.drawString(isSniper ? "• Sức xuyên:" : "• Chính xác:", boxX + 14, boxY + 66);
-        g.drawString("• Chí mạng:", boxX + 14, boxY + 81);
-        g.drawString("• Chỉ số DPS:", boxX + 14, boxY + 96);
+        g.drawString("- Sát thương:", boxX + 14, boxY + 36);
+        g.drawString("- Tốc ra đạn:", boxX + 14, boxY + 51);
+        g.drawString(isSniper ? "- Sức xuyên:" : "- Chính xác:", boxX + 14, boxY + 66);
+        g.drawString("- Chí mạng:", boxX + 14, boxY + 81);
+        g.drawString("- Chỉ số DPS:", boxX + 14, boxY + 96);
 
-        // Giá trị sao màu vàng kim và thông số
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        // Giá trị sao đồ họa màu vàng kim và thông số
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(255, 225, 75));
-        g.drawString(Weapon.formatStars(weapon.getDamageStars()) + " (" + weapon.getDamage() + " DMG)", boxX + 88, boxY + 36);
-        g.drawString(Weapon.formatStars(weapon.getFireRateStars()) + " (" + weapon.getFormattedRPM() + ")", boxX + 88, boxY + 51);
+
+        int nextX1 = Weapon.renderStarIcons(g, boxX + 88, boxY + 36 - 4, weapon.getDamageStars());
+        g.drawString("(" + weapon.getDamage() + " DMG)", nextX1, boxY + 36);
+
+        int nextX2 = Weapon.renderStarIcons(g, boxX + 88, boxY + 51 - 4, weapon.getFireRateStars());
+        g.drawString("(" + weapon.getFormattedRPM() + ")", nextX2, boxY + 51);
+
         if (isSniper) {
             SniperRifle sr = (SniperRifle) weapon;
-            g.drawString(Weapon.formatStars(sr.getPierceStars()) + " (" + sr.getMaxPierces() + " mục tiêu | -" + sr.getPierceFalloffPercent() + "%)", boxX + 88, boxY + 66);
+            int nextX3 = Weapon.renderStarIcons(g, boxX + 88, boxY + 66 - 4, sr.getPierceStars());
+            g.drawString("(" + sr.getMaxPierces() + " mục tiêu | -" + sr.getPierceFalloffPercent() + "%)", nextX3, boxY + 66);
         } else {
-            g.drawString(Weapon.formatStars(weapon.getAccuracyStars()) + " (" + weapon.getFormattedSpread() + ")", boxX + 88, boxY + 66);
+            int nextX3 = Weapon.renderStarIcons(g, boxX + 88, boxY + 66 - 4, weapon.getAccuracyStars());
+            g.drawString("(" + weapon.getFormattedSpread() + ")", nextX3, boxY + 66);
         }
+
         g.setColor(new Color(255, 130, 90));
         g.drawString(weapon.getCritChancePercent() + "% (x" + String.format("%.2f", weapon.getCritMultiplier()) + " DMG)", boxX + 88, boxY + 81);
         g.setColor(new Color(0, 225, 255));
@@ -484,9 +496,9 @@ public class WeaponChest {
 
         int promptY = boxY + 106;
         if (isSTier) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 10));
+            g.setFont(GameFontManager.getSmallBoldFont(10.0f));
             g.setColor(new Color(255, 215, 0));
-            g.drawString("★ ĐẶC QUYỀN S: +1 Cấp mỗi khi qua Stage", boxX + 14, boxY + 112);
+            g.drawString("[S] ĐẶC QUYỀN: +1 Cấp mỗi khi qua Stage", boxX + 14, boxY + 112);
             promptY = boxY + 122;
         }
 
@@ -496,7 +508,7 @@ public class WeaponChest {
         g.setColor(new Color(60, 220, 160));
         g.drawRoundRect(boxX + 10, promptY, boxW - 20, 16, 4, 4);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 10));
+        g.setFont(GameFontManager.getSmallBoldFont(10.0f));
         g.setColor(new Color(255, 220, 60));
         g.drawString("[F] " + actionPrompt, boxX + 16, promptY + 12);
 

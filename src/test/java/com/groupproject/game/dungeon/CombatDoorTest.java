@@ -2,6 +2,8 @@ package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.entity.enemy.TargetDummy;
+import com.groupproject.game.state.GameStateManager;
+import com.groupproject.game.state.PlayingState;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -515,4 +517,41 @@ public class CombatDoorTest {
         assertTrue(state.getCombatTargets().isEmpty(), "No combat targets remaining");
         assertFalse(state.getWeaponChests().isEmpty(), "Weapon chest must spawn upon completing all phases");
     }
+
+    @Test
+    @DisplayName("Verify Boss is pre-spawned in Boss Stage but Boss Health Bar is NOT revealed until entering Boss Room")
+    void testBossSpawnedAheadOfTimeWithoutRevealingHealthBar() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.init();
+
+        // Tiến vào Stage 4 (Boss Stage)
+        while (state.getCurrentStage() < PlayingState.BOSS_STAGE) {
+            state.advanceToNextStage();
+        }
+        assertEquals(PlayingState.BOSS_STAGE, state.getCurrentStage());
+
+        // 1. Con Boss (xe tăng) ĐÃ được tiền sản sinh trong phòng Boss
+        TargetDummy boss = state.getBossDummy();
+        assertNotNull(boss, "BossTank must be pre-spawned in arena ahead of time");
+        assertTrue(boss.isAlive(), "Boss must be alive initially");
+
+        // 2. NHƯNG thanh máu Boss TUYỆT ĐỐI CHƯA ĐƯỢC HIỂN THỊ (người chơi vẫn đang ở Spawn Room)
+        assertFalse(state.isBossHealthBarRevealed(),
+                "Boss health bar must NOT be revealed before player enters the Boss Room!");
+
+        // Vẽ thử HUD khi thanh máu chưa reveal -> không lỗi và thanh máu không render
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+        state.render(g);
+
+        // 3. Khi người chơi kích hoạt trận chiến / bước vào phòng Boss
+        state.setBossHealthBarRevealed(true);
+        assertTrue(state.isBossHealthBarRevealed(), "Boss health bar should be revealed once battle is engaged");
+
+        // Vẽ lại HUD khi đã reveal -> render mượt mà
+        state.render(g);
+        g.dispose();
+    }
 }
+

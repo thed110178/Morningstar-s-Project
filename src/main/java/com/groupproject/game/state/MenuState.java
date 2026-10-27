@@ -1,6 +1,7 @@
 package com.groupproject.game.state;
 
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import com.groupproject.game.storage.RunProgressData;
@@ -46,14 +47,14 @@ public class MenuState extends GameState {
     private final Rectangle cancelBtnBounds = new Rectangle();
 
     // Typography styling
-    private final Font titleFont = new Font("SansSerif", Font.BOLD, 54);
-    private final Font subtitleFont = new Font("SansSerif", Font.ITALIC, 22);
-    private final Font menuFont = new Font("SansSerif", Font.BOLD, 26);
-    private final Font infoFont = new Font("SansSerif", Font.PLAIN, 18);
-    private final Font dialogTitleFont = new Font("SansSerif", Font.BOLD, 22);
-    private final Font dialogBodyFont = new Font("SansSerif", Font.BOLD, 17);
-    private final Font dialogSubFont = new Font("SansSerif", Font.ITALIC, 14);
-    private final Font btnFont = new Font("SansSerif", Font.BOLD, 16);
+    private final Font titleFont = GameFontManager.getBoldFont(54.0f);
+    private final Font subtitleFont = GameFontManager.getFont(Font.ITALIC, 22.0f);
+    private final Font menuFont = GameFontManager.getBoldFont(26.0f);
+    private final Font infoFont = GameFontManager.getFont(18.0f);
+    private final Font dialogTitleFont = GameFontManager.getBoldFont(22.0f);
+    private final Font dialogBodyFont = GameFontManager.getBoldFont(17.0f);
+    private final Font dialogSubFont = GameFontManager.getFont(Font.ITALIC, 14.0f);
+    private final Font btnFont = GameFontManager.getBoldFont(16.0f);
 
     public MenuState(GameStateManager gsm) {
         super(gsm);
@@ -264,12 +265,9 @@ public class MenuState extends GameState {
     private void resumeSavedGame() {
         RunProgressData data = RunSaveManager.loadRun();
         if (data != null) {
-            GameState state = gsm.getState(GameStateManager.StateType.PLAYING);
-            if (state instanceof PlayingState ps) {
-                ps.resumeFromSave(data);
-                gsm.transitionTo(GameStateManager.StateType.PLAYING, "TIẾP TỤC CHIẾN DỊCH", "STAGE " + savedStage);
-                return;
-            }
+            PlayingState.setPendingResumeData(data);
+            gsm.transitionTo(GameStateManager.StateType.PLAYING, "TIẾP TỤC CHIẾN DỊCH", "STAGE " + savedStage);
+            return;
         }
         // Nếu file save bị lỗi hoặc không nạp được -> làm mới menu
         refreshMenuOptions();

@@ -1,12 +1,12 @@
 package com.groupproject.game.ui;
 
+import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -173,12 +173,12 @@ public class WeaponUpgradeModalUI {
         g2.fillRoundRect(modalX + 2, modalY + 2, modalW - 4, 62, 10, 10);
         g2.fillRect(modalX + 2, modalY + 40, modalW - 4, 24);
 
-        g2.setFont(new Font("SansSerif", Font.BOLD, 17));
+        g2.setFont(GameFontManager.getBoldFont(15.0f));
         g2.setColor(new Color(255, 220, 80));
-        g2.drawString("★ BẢNG NÂNG CẤP VŨ KHÍ CHIẾN THUẬT (CHỌN 1 TRONG 3 CHỈ SỐ) ★", modalX + 24, modalY + 28);
+        g2.drawString("BẢNG NÂNG CẤP VŨ KHÍ CHIẾN THUẬT (CHỌN 1 TRONG 3 CHỈ SỐ)", modalX + 24, modalY + 28);
 
         // Dòng phụ đề thông tin vũ khí & chi phí
-        g2.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g2.setFont(GameFontManager.getSmallBoldFont(11.0f));
         String upgradeProg = hubMode
                 ? "The Range (Max Lv.10)"
                 : (targetWeapon.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + " lần");
@@ -222,7 +222,7 @@ public class WeaponUpgradeModalUI {
         this.buttonBounds = newBtns;
 
         // 4. Footer hướng dẫn
-        g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        g2.setFont(GameFontManager.getSmallFont(10.0f));
         g2.setColor(new Color(160, 175, 190));
         String footerText = "[1, 2, 3] Chọn nhanh nhánh nâng cấp | Click chuột vào thẻ | [ESC] Thoát bỏ qua";
         g2.drawString(footerText, modalX + (modalW - fm.stringWidth(footerText)) / 2, modalY + modalH - 18);
@@ -253,13 +253,13 @@ public class WeaponUpgradeModalUI {
         g.setColor(new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 45));
         g.fillRoundRect(cx + 4, cy + 4, cw - 8, 38, 6, 6);
 
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+        g.setFont(GameFontManager.getBoldFont(11.5f));
         g.setColor(themeColor);
         String headerTitle = String.format("[%d] %s", index + 1, targetWeapon.getStatDisplayName(statType));
         g.drawString(headerTitle, cx + 12, cy + 28);
 
         // Mô tả ngắn
-        g.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        g.setFont(GameFontManager.getSmallFont(9.5f));
         g.setColor(new Color(190, 205, 215));
         g.drawString(targetWeapon.getStatDescription(statType), cx + 12, cy + 62);
 
@@ -269,74 +269,98 @@ public class WeaponUpgradeModalUI {
 
         // Thông số chi tiết: Hiện tại -> Mới
         int lineY = cy + 96;
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
-        // 1. Cấp sao nhánh
+        // 1. Cấp sao nhánh (Vẽ icon sao đồ họa vector trực quan)
         int currentStars = switch (statType) {
             case DAMAGE -> targetWeapon.getDamageStars();
             case FIRE_RATE -> targetWeapon.getFireRateStars();
             case ACCURACY -> targetWeapon.getAccuracyStars();
         };
+        g.setFont(GameFontManager.getSmallFont(10.5f));
         g.setColor(new Color(210, 220, 230));
         g.drawString("Cấp sao nhánh:", cx + 14, lineY);
+
+        // Vẽ vector sao hiện tại -> sao sau nâng cấp
+        Weapon.renderStarIcons(g, cx + 14, lineY + 16, currentStars, 3, 5, 12);
+        g.setFont(GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(new Color(255, 215, 60));
-        g.drawString(currentStars + "★  ➔  " + (currentStars + 1) + "★ (+1★)", cx + 14, lineY + 18);
+        g.drawString("->", cx + 58, lineY + 20);
+        Weapon.renderStarIcons(g, cx + 78, lineY + 16, currentStars + 1, 3, 5, 12);
+        g.setColor(new Color(100, 255, 140));
+        g.drawString("(+1)", cx + 122, lineY + 20);
 
         // 2. Chỉ số cụ thể
         lineY += 46;
+        g.setFont(GameFontManager.getSmallFont(10.5f));
         g.setColor(new Color(210, 220, 230));
         if (statType == Weapon.UpgradeStatType.DAMAGE) {
             g.drawString("Sát thương đơn:", cx + 14, lineY);
             int newDmg = targetWeapon.getPreviewDamage(statType);
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             g.setColor(themeColor);
-            g.drawString(targetWeapon.getDamage() + "  ➔  " + newDmg + " (+20%)", cx + 14, lineY + 18);
+            g.drawString(targetWeapon.getDamage() + "  ->  " + newDmg + " (+20%)", cx + 14, lineY + 18);
 
             lineY += 42;
+            g.setFont(GameFontManager.getSmallFont(10.5f));
             g.setColor(new Color(210, 220, 230));
             g.drawString("Sát thương DPS:", cx + 14, lineY);
             int newDPS = targetWeapon.getPreviewNormalDPS(statType);
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             g.setColor(themeColor);
-            g.drawString(targetWeapon.getNormalDPS() + "  ➔  " + newDPS + " DPS", cx + 14, lineY + 18);
+            g.drawString(targetWeapon.getNormalDPS() + "  ->  " + newDPS + " DPS", cx + 14, lineY + 18);
 
         } else if (statType == Weapon.UpgradeStatType.FIRE_RATE) {
             g.drawString("Độ trễ bắn:", cx + 14, lineY);
             double newCd = targetWeapon.getPreviewFireRateCooldown(statType);
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             g.setColor(themeColor);
-            g.drawString(String.format("%.3fs ➔ %.3fs", targetWeapon.getFireRateCooldown(), newCd), cx + 14, lineY + 18);
+            g.drawString(String.format("%.3fs -> %.3fs", targetWeapon.getFireRateCooldown(), newCd), cx + 14, lineY + 18);
 
             lineY += 42;
+            g.setFont(GameFontManager.getSmallFont(10.5f));
             g.setColor(new Color(210, 220, 230));
             g.drawString("Sát thương DPS:", cx + 14, lineY);
             int newDPS = targetWeapon.getPreviewNormalDPS(statType);
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             g.setColor(themeColor);
-            g.drawString(targetWeapon.getNormalDPS() + "  ➔  " + newDPS + " DPS", cx + 14, lineY + 18);
+            g.drawString(targetWeapon.getNormalDPS() + "  ->  " + newDPS + " DPS", cx + 14, lineY + 18);
 
         } else { // ACCURACY hoặc SỨC XUYÊN (PIERCE đối với Sniper Rifle)
             if (isSniper) {
                 SniperRifle sr = (SniperRifle) targetWeapon;
                 g.drawString("Mục tiêu xuyên phá:", cx + 14, lineY);
                 int curPierces = sr.getMaxPierces();
-                int newPierces = curPierces + 1;
+                int newPierces = sr.getPreviewMaxPierces();
+                int diffPierces = newPierces - curPierces;
+                g.setFont(GameFontManager.getSmallBoldFont(11.0f));
                 g.setColor(themeColor);
-                g.drawString(curPierces + "  ➔  " + newPierces + " (+1 mục tiêu)", cx + 14, lineY + 18);
+                String pierceText = (diffPierces > 0)
+                        ? String.format("%d  ->  %d (+%d mục tiêu)", curPierces, newPierces, diffPierces)
+                        : String.format("%d mục tiêu (Tối ưu hao hụt)", curPierces);
+                g.drawString(pierceText, cx + 14, lineY + 18);
 
                 lineY += 42;
+                g.setFont(GameFontManager.getSmallFont(10.5f));
                 g.setColor(new Color(210, 220, 230));
                 g.drawString("Hao hụt sát thương:", cx + 14, lineY);
                 int curFalloff = sr.getPierceFalloffPercent();
-                int newFalloff = (int) Math.round(Math.max(0.08, SniperRifle.BASE_FALLOFF - sr.getPierceStars() * 0.05) * 100.0);
+                int newFalloff = sr.getPreviewPierceFalloffPercent();
+                g.setFont(GameFontManager.getSmallBoldFont(11.0f));
                 g.setColor(themeColor);
-                g.drawString(String.format("-%d%% ➔ -%d%% (Tối ưu)", curFalloff, newFalloff), cx + 14, lineY + 18);
+                g.drawString(String.format("-%d%% -> -%d%% (Tối ưu)", curFalloff, newFalloff), cx + 14, lineY + 18);
             } else {
                 g.drawString("Góc tản đạn:", cx + 14, lineY);
                 double curDeg = Math.toDegrees(targetWeapon.getMaxSpreadAngle());
                 double newDeg = Math.toDegrees(targetWeapon.getPreviewSpreadAngle(statType));
+                g.setFont(GameFontManager.getSmallBoldFont(11.0f));
                 g.setColor(themeColor);
-                g.drawString(String.format("±%.1f° ➔ ±%.1f°", curDeg, newDeg), cx + 14, lineY + 18);
+                g.drawString(String.format("±%.1f° -> ±%.1f°", curDeg, newDeg), cx + 14, lineY + 18);
 
                 lineY += 42;
+                g.setFont(GameFontManager.getSmallFont(10.5f));
                 g.setColor(new Color(210, 220, 230));
                 g.drawString("Chùm đạn:", cx + 14, lineY);
+                g.setFont(GameFontManager.getSmallBoldFont(11.0f));
                 g.setColor(themeColor);
                 g.drawString("Gom chặt hơn 35%", cx + 14, lineY + 18);
             }
@@ -354,7 +378,7 @@ public class WeaponUpgradeModalUI {
             g.setColor(hovered ? themeColor : new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 180));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(20, 25, 30));
-            g.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g.setFont(GameFontManager.getSmallBoldFont(11.0f));
             String btnText = "CHỌN NÂNG CẤP [" + (index + 1) + "]";
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 22);
@@ -362,7 +386,7 @@ public class WeaponUpgradeModalUI {
             g.setColor(new Color(50, 55, 65));
             g.fillRoundRect(btnX, btnY, btnW, btnH, 6, 6);
             g.setColor(new Color(160, 100, 100));
-            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            g.setFont(GameFontManager.getSmallBoldFont(10.5f));
             String btnText = "KHÔNG ĐỦ TIỀN";
             FontMetrics fm = g.getFontMetrics();
             g.drawString(btnText, btnX + (btnW - fm.stringWidth(btnText)) / 2, btnY + 22);
