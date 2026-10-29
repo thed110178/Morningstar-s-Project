@@ -835,7 +835,15 @@ public final class GameSoundManager {
 
     public static synchronized void stopReload() {
         for (ActiveVoice voice : ACTIVE_VOICES) {
-            if (voice != null && (voice.reloadChannel || voice.effect == SoundEffect.GUN_SHOTGUN_RELOAD)) {
+            if (voice != null && (voice.reloadChannel
+                    || voice.effect == SoundEffect.GUN_SHOTGUN_RELOAD
+                    || voice.effect == SoundEffect.GUN_SHOTGUN_LOADING_AMMO
+                    || voice.effect == SoundEffect.GUN_SNIPER_LOADING_AMMO
+                    || voice.effect == SoundEffect.GUN_RIFLE_RELOAD
+                    || voice.effect == SoundEffect.GUN_PISTOL_RELOAD
+                    || voice.effect == SoundEffect.GUN_SCR_RELOAD
+                    || voice.effect == SoundEffect.GUN_SNIPER_RELOAD
+                    || voice.effect == SoundEffect.GUN_SMG_RELOAD)) {
                 voice.stopped = true;
             }
         }

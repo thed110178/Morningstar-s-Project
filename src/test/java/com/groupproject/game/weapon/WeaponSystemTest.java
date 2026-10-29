@@ -1693,4 +1693,62 @@ public class WeaponSystemTest {
         wm.quickSwap();
         assertSame(sr, wm.getActiveWeapon(), "Quick swap back must return to Sniper Rifle (Slot 1)");
     }
+    @Test
+    @DisplayName("Kiểm tra khi đang nạp đạn mà đổi súng (selectSlot hoặc quickSwap), quá trình nạp đạn ĐƯỢC TẠM DỪNG (Pause), không nạp ngầm trong túi, và TIẾP TỤC (Resume) khi cầm lại")
+    void testReloadPausedOnWeaponSwapAndResumes() {
+        WeaponManager wm = new WeaponManager();
+        wm.getAmmoInventory().addAmmo(com.groupproject.game.entity.item.AmmoType.AR, 100);
+
+        AssaultRifle ar = new AssaultRifle(1);
+        wm.addWeapon(ar);
+        wm.selectSlot(1);
+
+        // Đặt băng đạn còn 20/30 viên
+        ar.setCurrentAmmo(20);
+        assertEquals(20, ar.getCurrentAmmo(), "Băng đạn ban đầu còn 20 viên");
+
+        // Bắt đầu nạp đạn (thời gian nạp AR là 1.8s)
+        wm.reload();
+        assertTrue(ar.isReloading(), "Assault Rifle phải đang trong trạng thái nạp đạn");
+        assertEquals(1.8, ar.getReloadTimer(), 0.01);
+
+        // Nạp được 0.8s -> còn lại 1.0s
+        wm.update(0.8);
+        assertTrue(ar.isReloading());
+        assertEquals(1.0, ar.getReloadTimer(), 0.05);
+
+        // Đổi sang súng lục Slot 3 -> Quá trình nạp đạn của AR phải bị TẠM DỪNG (Pause)!
+        wm.selectSlot(3);
+        assertEquals(3, wm.getActiveWeapon().getSlotIndex(), "Đã chuyển sang Slot 3");
+        assertFalse(ar.isReloading(), "Assault Rifle không được coi là active reloading trong túi");
+        assertTrue(ar.isReloadPaused(), "Assault Rifle phải ở trạng thái reloadPaused");
+        assertEquals(1.0, ar.getReloadTimer(), 0.05, "Thời gian nạp còn lại (1.0s) phải được bảo lưu nguyên vẹn");
+
+        // Thời gian trôi qua 3 giây trong lúc cầm súng lục
+        for (int i = 0; i < 30; i++) {
+            wm.update(0.1);
+        }
+
+        assertFalse(ar.isReloading(), "Assault Rifle không được nạp ngầm trong túi");
+        assertEquals(1.0, ar.getReloadTimer(), 0.05, "Thời gian nạp còn lại vẫn giữ nguyên 1.0s không đổi");
+        assertEquals(20, ar.getCurrentAmmo(), "Băng đạn Assault Rifle vẫn phải giữ nguyên 20 viên, không được tự động nạp");
+
+        // Đổi lại về Slot 1 -> Quá trình nạp đạn phải được TIẾP TỤC (Resume) từ mốc 1.0s còn lại!
+        wm.selectSlot(1);
+        assertSame(ar, wm.getActiveWeapon(), "Đã cầm lại AR");
+        assertTrue(ar.isReloading(), "AR phải tự động tiếp tục nạp đạn khi được rút ra cầm trên tay");
+        assertFalse(ar.isReloadPaused(), "Trạng thái reloadPaused đã kết thúc");
+        assertEquals(1.0, ar.getReloadTimer(), 0.05, "Tiếp tục từ 1.0s");
+
+        // Cập nhật thêm 0.5s -> còn 0.5s, vẫn đang nạp
+        wm.update(0.5);
+        assertTrue(ar.isReloading());
+        assertEquals(0.5, ar.getReloadTimer(), 0.05);
+        assertEquals(20, ar.getCurrentAmmo(), "Chưa nạp xong nên vẫn còn 20 viên");
+
+        // Cập nhật nốt 0.6s -> vượt qua 0.5s còn lại -> nạp hoàn tất!
+        wm.update(0.6);
+        assertFalse(ar.isReloading(), "Nạp đạn đã hoàn tất");
+        assertEquals(30, ar.getCurrentAmmo(), "Băng đạn đã được nạp đầy 30 viên thành công!");
+    }
 }

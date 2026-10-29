@@ -56,6 +56,7 @@ public abstract class Weapon {
     protected double cooldownTimer = 0.0;
     protected double reloadTimer = 0.0;
     protected boolean reloading = false;
+    protected boolean reloadPaused = false;
 
     /**
      * Constructs a base weapon configuration with spread angle.
@@ -131,6 +132,7 @@ public abstract class Weapon {
                 }
                 reloadTimer = 0.0;
                 reloading = false;
+                reloadPaused = false;
                 GameSoundManager.stopReload();
             }
         }
@@ -147,7 +149,11 @@ public abstract class Weapon {
                 return;
             }
             reloading = true;
-            reloadTimer = reloadDuration;
+            if (reloadPaused && reloadTimer > 0) {
+                reloadPaused = false;
+            } else {
+                reloadTimer = reloadDuration;
+            }
             onStartReload();
         }
     }
@@ -161,12 +167,43 @@ public abstract class Weapon {
     /**
      * Cancels an ongoing reload cycle immediately (e.g. when interrupted by shooting).
      */
-    public void cancelReload() {
+    /**
+     * Tạm dừng tiến trình nạp đạn (ví dụ khi người chơi đổi sang vũ khí khác).
+     * Bảo lưu thời gian nạp còn lại (reloadTimer) thay vì hủy bỏ từ đầu.
+     */
+    public void pauseReload() {
         if (reloading) {
             reloading = false;
+            reloadPaused = true;
+            GameSoundManager.stopReload();
+        }
+    }
+
+    /**
+     * Tiếp tục tiến trình nạp đạn đã bị tạm dừng khi người chơi chuyển lại cầm vũ khí này.
+     */
+    public void resumeReload() {
+        if (reloadPaused && reloadTimer > 0) {
+            reloading = true;
+            reloadPaused = false;
+            onStartReload();
+        }
+    }
+
+    /**
+     * Hủy bỏ hoàn toàn tiến trình nạp đạn.
+     */
+    public void cancelReload() {
+        if (reloading || reloadPaused) {
+            reloading = false;
+            reloadPaused = false;
             reloadTimer = 0.0;
             GameSoundManager.stopReload();
         }
+    }
+
+    public boolean isReloadPaused() {
+        return reloadPaused;
     }
 
     /**
@@ -176,6 +213,7 @@ public abstract class Weapon {
         if (magazineSize > 0) {
             this.currentAmmo = magazineSize;
             this.reloading = false;
+            this.reloadPaused = false;
             this.reloadTimer = 0.0;
         }
     }
@@ -229,7 +267,7 @@ public abstract class Weapon {
      * Checks if the weapon is ready to strike or fire.
      */
     public boolean canAttack() {
-        return cooldownTimer <= 0 && !reloading;
+        return cooldownTimer <= 0 && !reloading && !reloadPaused;
     }
 
     /**
@@ -274,8 +312,8 @@ public abstract class Weapon {
     }
 
     public double getReloadProgress() {
-        if (!reloading || reloadDuration <= 0) return 0.0;
-        return 1.0 - (reloadTimer / reloadDuration);
+        if ((!reloading && !reloadPaused) || reloadDuration <= 0) return 0.0;
+        return Math.max(0.0, Math.min(1.0, 1.0 - (reloadTimer / reloadDuration)));
     }
 
     public double getReloadTimer() {

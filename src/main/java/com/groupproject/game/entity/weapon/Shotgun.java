@@ -84,6 +84,7 @@ public class Shotgun extends Weapon {
                             // Đã nạp đầy hoặc hết đạn dự trữ: hoàn tất chu kỳ nạp tự nhiên,
                             // để âm thanh viên cuối cùng vang trọn vẹn, không cưỡng chế stopReload()
                             reloading = false;
+                            reloadPaused = false;
                             reloadTimer = 0.0;
                         }
                     } else {
@@ -111,15 +112,23 @@ public class Shotgun extends Weapon {
      * Mỗi lần nạp là 1 lần phát tiếng độc lập.
      */
     @Override
+    protected void onStartReload() {
+        GameSoundManager.playShotgunShellReload();
+    }
+
+    @Override
     public void reload() {
         if (magazineSize > 0 && currentAmmo < magazineSize && !reloading) {
             if (ammoType != null && boundAmmoInventory != null && boundAmmoInventory.getAmmo(ammoType) <= 0) {
                 return;
             }
             reloading = true;
-            reloadTimer = reloadDuration; // 0.45s cho viên đầu tiên
-            // Mỗi lần nạp là 1 lần phát tiếng: viên đầu tiên bắt đầu nạp
-            GameSoundManager.playShotgunShellReload();
+            if (reloadPaused && reloadTimer > 0) {
+                reloadPaused = false;
+            } else {
+                reloadTimer = reloadDuration; // 0.45s cho viên đầu tiên
+            }
+            onStartReload();
         }
     }
 
@@ -133,8 +142,8 @@ public class Shotgun extends Weapon {
     public boolean attack(double originX, double originY, double aimAngle,
             ProjectileManager pm, List<MeleeSlash> slashList) {
 
-        // 1. Nếu đang nạp đạn:
-        if (reloading) {
+        // 1. Nếu đang nạp đạn (kể cả đang tạm dừng):
+        if (reloading || reloadPaused) {
             if (currentAmmo > 0) {
                 // Người chơi bấm bắn khi đã có ít nhất 1 viên -> Hủy nạp đạn ngay lập tức!
                 cancelReload();

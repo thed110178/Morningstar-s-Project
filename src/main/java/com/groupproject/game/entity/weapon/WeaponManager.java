@@ -142,7 +142,15 @@ public class WeaponManager {
             }
         }
 
+        if (activeWeapon != null) {
+            if (activeWeapon == replacedWeapon) {
+                activeWeapon.cancelReload();
+            } else {
+                activeWeapon.pauseReload();
+            }
+        }
         activeWeapon = weapon;
+        activeWeapon.resumeReload();
         playWeaponDraw(activeWeapon);
         return replacedWeapon;
     }
@@ -216,11 +224,15 @@ public class WeaponManager {
     public void selectSlot(int slotIndex) {
         Weapon selected = weaponSlots.get(slotIndex);
         if (selected != null && selected != activeWeapon) {
+            // WHY: Khi đổi súng, quá trình nạp đạn của vũ khí cũ ĐƯỢC TẠM DỪNG (Pause Reload),
+            // bảo lưu tiến trình thời gian nạp còn lại và ngắt âm thanh nạp đạn.
             if (activeWeapon != null) {
-                activeWeapon.cancelReload();
+                activeWeapon.pauseReload();
             }
             previousWeapon = activeWeapon;
             activeWeapon = selected;
+            // Nếu vũ khí vừa được chọn trước đó đang nạp dở, tự động TIẾP TỤC nạp tiếp (Resume Reload)
+            activeWeapon.resumeReload();
             playWeaponDraw(activeWeapon);
         }
     }
@@ -243,12 +255,14 @@ public class WeaponManager {
         }
 
         if (previousWeapon != null && previousWeapon != activeWeapon) {
+            // WHY: Tạm dừng nạp đạn vũ khí hiện tại và tiếp tục nạp vũ khí được tráo sang (nếu có)
             if (activeWeapon != null) {
-                activeWeapon.cancelReload();
+                activeWeapon.pauseReload();
             }
             Weapon temp = activeWeapon;
             activeWeapon = previousWeapon;
             previousWeapon = temp;
+            activeWeapon.resumeReload();
             playWeaponDraw(activeWeapon);
         } else {
             // 2. Cơ chế phục hồi thông minh: Nếu previousWeapon không còn hợp lệ,
@@ -320,9 +334,16 @@ public class WeaponManager {
      * Updates weapon cooldowns, reload timers, and active melee strike animations.
      */
     public void update(double deltaTime) {
-        // Update all weapons in inventory (so secondary weapons can finish reloading in pocket)
+        // Cập nhật hồi chiêu cho các vũ khí (cooldownTimer)
+        // Nhưng CHỈ vũ khí đang cầm trên tay (activeWeapon) mới được phép nạp đạn.
+        // Mọi vũ khí phụ cất trong túi đều bị hủy nạp đạn ngay lập tức, không được nạp ngầm.
         for (Weapon w : weaponSlots.values()) {
-            w.update(deltaTime);
+            if (w != null) {
+                if (w != activeWeapon && w.isReloading()) {
+                    w.pauseReload();
+                }
+                w.update(deltaTime);
+            }
         }
         fallbackKnife.update(deltaTime);
 
@@ -417,7 +438,7 @@ public class WeaponManager {
         if (activeWeapon.isMelee()) {
             g.setColor(new Color(180, 225, 255));
             g.drawString("[MELEE] CẬN CHIẾN", hudX + 14, hudY + 48);
-        } else if (activeWeapon.isReloading()) {
+        } else if (activeWeapon.isReloading() || activeWeapon.isReloadPaused()) {
             g.setColor(new Color(255, 130, 40));
             g.drawString("RELOADING...", hudX + 14, hudY + 48);
 
