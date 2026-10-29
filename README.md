@@ -17,10 +17,10 @@ Cập nhật mới nhất vào ngày: 30/10/2026
 
 | Student ID | Name | Main Responsibility |
 | ---------- | ---- | ------------------- |
-| *(Your ID)* | *(Your Name)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Multi-Stage Dungeon, Multi-Phase Combat Lockdown, State Pattern, Audio Engine Mixer. |
-| *(Member 2)* | *(Member Name)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Star-Level AR Accuracy Recoil, Melee Slashes, Spare Ammo Reserves, Pause/Resume Reload Mechanics. |
-| *(Member 3)* | *(Member Name)* | **Enemy AI & Encounter Systems**: BFS Tile Pathfinding, Obstacle Steering Feelers, Tactical Strafing, Spawn Telegraph Portals, Titan Battle Tank Boss. |
-| *(Member 4)* | *(Member Name)* | **UI, Telemetry & QA Engineer**: Automated JUnit 5 Test Suite (**260/260 unit tests PASS 100%**), Sci-Fi HUD, Interactive Volume Slider, Portable JRE Packaging. |
+| *(Your ID)* | *(Phung The Dương)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Multi-Stage Dungeon, Multi-Phase Combat Lockdown, State Pattern, Audio Engine Mixer. |
+| *(Member 2)* | *(Pham Gia Bao)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Star-Level AR Accuracy Recoil, Melee Slashes, Spare Ammo Reserves, Pause/Resume Reload Mechanics. |
+| *(Member 3)* | *Nguyen Phan Anh)* | **Enemy AI & Encounter Systems**: BFS Tile Pathfinding, Obstacle Steering Feelers, Tactical Strafing, Spawn Telegraph Portals, Titan Battle Tank Boss. |
+| *(Member 4)* | *(Nguyen Hoang ANh)* | **UI, Telemetry & QA Engineer**: Automated JUnit 5 Test Suite (**260/260 unit tests PASS 100%**), Sci-Fi HUD, Interactive Volume Slider, Portable JRE Packaging. |
 
 ---
 
