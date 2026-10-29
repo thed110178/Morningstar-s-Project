@@ -492,5 +492,69 @@ public class KeyBindingsAndPauseMenuTest {
         com.groupproject.game.core.GameSoundManager.setSfxVolume(0.50f);
         com.groupproject.game.core.GameSoundManager.setBgmVolume(0.50f);
     }
+
+        @Test
+    @DisplayName("Kiểm tra giữ chuột kéo trái phải (Continuous Dragging) trên thanh trượt âm lượng SFX và BGM")
+    void testSliderDraggingSfxAndBgm() {
+        PauseMenuUI menu = new PauseMenuUI();
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        menu.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+        menu.render(g, 1280, 720);
+        g.dispose();
+
+        java.awt.Rectangle sfxBar = menu.getSfxVolBarBounds();
+        java.awt.Rectangle bgmBar = menu.getBgmVolBarBounds();
+
+        // 1. Nhấn chuột vào điểm 20% trên thanh trượt SFX
+        int click20X = sfxBar.x + (int) (sfxBar.width * 0.20);
+        int clickY = (int) sfxBar.getCenterY();
+        clickMouse(MouseEvent.BUTTON1, click20X, clickY);
+        menu.update(keyH, mouseH, 0.016);
+
+        assertTrue(menu.isDraggingSfxSlider(), "Phải chuyển sang trạng thái đang kéo thanh trượt SFX");
+        assertEquals(0.20f, com.groupproject.game.core.GameSoundManager.getSfxVolume(), 0.02f);
+        mouseH.update();
+
+        // 2. Giữ chuột và rê sang phải tới điểm 80% (Mouse Drag)
+        int drag80X = sfxBar.x + (int) (sfxBar.width * 0.80);
+        MouseEvent dragEvt = new MouseEvent(dummyComponent, MouseEvent.MOUSE_DRAGGED, System.currentTimeMillis(), 0, drag80X, clickY, 0, false);
+        mouseH.mouseDragged(dragEvt);
+        menu.update(keyH, mouseH, 0.016);
+
+        assertEquals(0.80f, com.groupproject.game.core.GameSoundManager.getSfxVolume(), 0.02f, "Âm lượng SFX phải kéo lên 80%");
+        mouseH.update();
+
+        // 3. Nhả chuột (Mouse Release) -> Kết thúc kéo
+        MouseEvent releaseEvt = new MouseEvent(dummyComponent, MouseEvent.MOUSE_RELEASED, System.currentTimeMillis(), 0, drag80X, clickY, 1, false, MouseEvent.BUTTON1);
+        mouseH.mouseReleased(releaseEvt);
+        menu.update(keyH, mouseH, 0.016);
+        mouseH.update();
+
+        assertFalse(menu.isDraggingSfxSlider(), "Sau khi nhả chuột phải tắt trạng thái kéo");
+
+        // 4. Kéo thanh trượt BGM từ 50% xuống 15%
+        int bgmClick50X = bgmBar.x + (int) (bgmBar.width * 0.50);
+        int bgmClickY = (int) bgmBar.getCenterY();
+        clickMouse(MouseEvent.BUTTON1, bgmClick50X, bgmClickY);
+        menu.update(keyH, mouseH, 0.016);
+        assertTrue(menu.isDraggingBgmSlider());
+        mouseH.update();
+
+        int bgmDrag15X = bgmBar.x + (int) (bgmBar.width * 0.15);
+        MouseEvent dragBgmEvt = new MouseEvent(dummyComponent, MouseEvent.MOUSE_DRAGGED, System.currentTimeMillis(), 0, bgmDrag15X, bgmClickY, 0, false);
+        mouseH.mouseDragged(dragBgmEvt);
+        menu.update(keyH, mouseH, 0.016);
+
+        assertEquals(0.15f, com.groupproject.game.core.GameSoundManager.getBgmVolume(), 0.02f, "Âm lượng BGM phải kéo xuống 15%");
+        mouseH.update();
+
+        mouseH.mouseReleased(new MouseEvent(dummyComponent, MouseEvent.MOUSE_RELEASED, System.currentTimeMillis(), 0, bgmDrag15X, bgmClickY, 1, false, MouseEvent.BUTTON1));
+        menu.update(keyH, mouseH, 0.016);
+        mouseH.update();
+        assertFalse(menu.isDraggingBgmSlider());
+    }
 }
+
 

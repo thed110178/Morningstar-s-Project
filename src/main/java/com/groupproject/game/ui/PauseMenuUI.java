@@ -82,6 +82,10 @@ public class PauseMenuUI {
     private boolean isBgmIncHovered = false;
     private boolean isBgmBarHovered = false;
     private boolean isBgmMuteHovered = false;
+
+    // Trạng thái giữ chuột kéo thanh trượt (Interactive Slider Dragging)
+    private boolean isDraggingSfxSlider = false;
+    private boolean isDraggingBgmSlider = false;
     private GameAction hoveredAction = null;
 
     private String feedbackMessage = "";
@@ -104,6 +108,8 @@ public class PauseMenuUI {
         this.rebindingAction = null;
         this.feedbackMessage = "";
         this.feedbackTimer = 0.0;
+        this.isDraggingSfxSlider = false;
+        this.isDraggingBgmSlider = false;
     }
 
     /**
@@ -288,6 +294,40 @@ public class PauseMenuUI {
             }
         }
 
+        // 2.5 Xử lý kéo giữ chuột trái chỉnh thanh trượt âm lượng (Continuous Slider Dragging)
+        if (!mouseH.isLeftPressed()) {
+            isDraggingSfxSlider = false;
+            isDraggingBgmSlider = false;
+        }
+
+        if (isDraggingSfxSlider && sfxVolBarBounds.width > 0) {
+            float ratio = (float) (mouseX - sfxVolBarBounds.x) / (float) sfxVolBarBounds.width;
+            float clamped = Math.max(0.0f, Math.min(1.0f, ratio));
+            clamped = Math.round(clamped * 100.0f) / 100.0f; // Bước 1% siêu mượt
+            if (Math.abs(clamped - GameSoundManager.getSfxVolume()) >= 0.005f) {
+                GameSoundManager.setSfxVolume(clamped);
+                if (GameSoundManager.isSfxMuted()) {
+                    GameSoundManager.setSfxMuted(false);
+                }
+            }
+            feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(clamped * 100));
+            feedbackTimer = 1.0;
+        }
+
+        if (isDraggingBgmSlider && bgmVolBarBounds.width > 0) {
+            float ratio = (float) (mouseX - bgmVolBarBounds.x) / (float) bgmVolBarBounds.width;
+            float clamped = Math.max(0.0f, Math.min(1.0f, ratio));
+            clamped = Math.round(clamped * 100.0f) / 100.0f; // Bước 1% siêu mượt
+            if (Math.abs(clamped - GameSoundManager.getBgmVolume()) >= 0.005f) {
+                GameSoundManager.setBgmVolume(clamped);
+                if (GameSoundManager.isBgmMuted()) {
+                    GameSoundManager.setBgmMuted(false);
+                }
+            }
+            feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(clamped * 100));
+            feedbackTimer = 1.0;
+        }
+
         // 3. Click chuột
         if (mouseH.isLeftClickedOnce()) {
             if (isBackHovered) {
@@ -347,13 +387,19 @@ public class PauseMenuUI {
             }
 
             if (isSfxBarHovered && sfxVolBarBounds.width > 0) {
+                if (mouseH.isLeftPressed()) {
+                    isDraggingSfxSlider = true;
+                }
                 float ratio = (float) (mouseX - sfxVolBarBounds.x) / (float) sfxVolBarBounds.width;
                 float clamped = Math.max(0.0f, Math.min(1.0f, ratio));
-                clamped = Math.round(clamped * 20.0f) / 20.0f; // Bước 5%
+                clamped = Math.round(clamped * 100.0f) / 100.0f;
                 GameSoundManager.setSfxVolume(clamped);
+                if (GameSoundManager.isSfxMuted()) {
+                    GameSoundManager.setSfxMuted(false);
+                }
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(clamped * 100));
-                feedbackTimer = 1.8;
+                feedbackTimer = 1.5;
                 return PauseAction.NONE;
             }
 
@@ -392,13 +438,19 @@ public class PauseMenuUI {
             }
 
             if (isBgmBarHovered && bgmVolBarBounds.width > 0) {
+                if (mouseH.isLeftPressed()) {
+                    isDraggingBgmSlider = true;
+                }
                 float ratio = (float) (mouseX - bgmVolBarBounds.x) / (float) bgmVolBarBounds.width;
                 float clamped = Math.max(0.0f, Math.min(1.0f, ratio));
-                clamped = Math.round(clamped * 20.0f) / 20.0f; // Bước 5%
+                clamped = Math.round(clamped * 100.0f) / 100.0f;
                 GameSoundManager.setBgmVolume(clamped);
+                if (GameSoundManager.isBgmMuted()) {
+                    GameSoundManager.setBgmMuted(false);
+                }
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(clamped * 100));
-                feedbackTimer = 1.8;
+                feedbackTimer = 1.5;
                 return PauseAction.NONE;
             }
 
@@ -751,24 +803,33 @@ public class PauseMenuUI {
         g.setColor(Color.WHITE);
         g.drawString("-", decBtnX + 10, statusSfxBtnY + 16);
 
-        // Thanh đo SFX Volume Bar
+        // Thanh đo & Con trượt SFX Slider (Draggable Slider Track & Thumb)
         float sfxVol = GameSoundManager.getSfxVolume();
         boolean isSfxMuted = GameSoundManager.isSfxMuted();
         g.setColor(new Color(10, 14, 22));
-        g.fillRoundRect(barX, statusSfxBtnY + 1, barW, barH, 4, 4);
+        g.fillRoundRect(barX, statusSfxBtnY + 1, barW, barH, 6, 6);
         if (!isSfxMuted && sfxVol > 0.001f) {
             int fillW = Math.max(4, (int) (barW * sfxVol));
             g.setColor(new Color(0, 170, 220, 210));
-            g.fillRoundRect(barX, statusSfxBtnY + 1, fillW, barH, 4, 4);
+            g.fillRoundRect(barX, statusSfxBtnY + 1, fillW, barH, 6, 6);
         }
-        g.setColor(isSfxBarHovered ? new Color(0, 220, 255) : new Color(60, 85, 120));
-        g.drawRoundRect(barX, statusSfxBtnY + 1, barW, barH, 4, 4);
+        g.setColor((isSfxBarHovered || isDraggingSfxSlider) ? new Color(0, 220, 255) : new Color(60, 85, 120));
+        g.drawRoundRect(barX, statusSfxBtnY + 1, barW, barH, 6, 6);
 
-        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
-        String sfxPercentStr = isSfxMuted ? "0% (MUTE)" : String.format("%d%%", Math.round(sfxVol * 100));
+        // Con trượt hình tròn nổi bật (Draggable Slider Thumb Handle)
+        int sfxThumbX = barX + (int) (barW * sfxVol);
+        int sfxThumbY = statusSfxBtnY + 1 + (barH / 2);
+        int sfxThumbR = (isSfxBarHovered || isDraggingSfxSlider) ? 7 : 6;
+        g.setColor((isSfxBarHovered || isDraggingSfxSlider) ? new Color(230, 255, 255) : new Color(175, 235, 255));
+        g.fillOval(sfxThumbX - sfxThumbR, sfxThumbY - sfxThumbR, sfxThumbR * 2, sfxThumbR * 2);
+        g.setColor(new Color(0, 160, 220));
+        g.drawOval(sfxThumbX - sfxThumbR, sfxThumbY - sfxThumbR, sfxThumbR * 2, sfxThumbR * 2);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(9.0f));
+        String sfxPercentStr = isSfxMuted ? "MUTE" : String.format("%d%%", Math.round(sfxVol * 100));
         int sfxVpw = g.getFontMetrics().stringWidth(sfxPercentStr);
         g.setColor(Color.WHITE);
-        g.drawString(sfxPercentStr, barX + (barW - sfxVpw) / 2, statusSfxBtnY + 15);
+        g.drawString(sfxPercentStr, barX + (barW - sfxVpw) / 2, statusSfxBtnY + 14);
 
         // Nút Tăng [+] SFX
         g.setColor(isSfxIncHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
@@ -827,24 +888,33 @@ public class PauseMenuUI {
         g.setColor(Color.WHITE);
         g.drawString("-", decBtnX + 10, statusBgmBtnY + 16);
 
-        // Thanh đo BGM Volume Bar
+        // Thanh đo & Con trượt BGM Slider (Draggable Slider Track & Thumb)
         float bgmVol = GameSoundManager.getBgmVolume();
         boolean isBgmMuted = GameSoundManager.isBgmMuted();
         g.setColor(new Color(10, 14, 22));
-        g.fillRoundRect(barX, statusBgmBtnY + 1, barW, barH, 4, 4);
+        g.fillRoundRect(barX, statusBgmBtnY + 1, barW, barH, 6, 6);
         if (!isBgmMuted && bgmVol > 0.001f) {
             int fillW = Math.max(4, (int) (barW * bgmVol));
             g.setColor(new Color(180, 130, 255, 210)); // Màu tím thanh lịch riêng cho BGM
-            g.fillRoundRect(barX, statusBgmBtnY + 1, fillW, barH, 4, 4);
+            g.fillRoundRect(barX, statusBgmBtnY + 1, fillW, barH, 6, 6);
         }
-        g.setColor(isBgmBarHovered ? new Color(200, 160, 255) : new Color(60, 85, 120));
-        g.drawRoundRect(barX, statusBgmBtnY + 1, barW, barH, 4, 4);
+        g.setColor((isBgmBarHovered || isDraggingBgmSlider) ? new Color(200, 160, 255) : new Color(60, 85, 120));
+        g.drawRoundRect(barX, statusBgmBtnY + 1, barW, barH, 6, 6);
 
-        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
-        String bgmPercentStr = isBgmMuted ? "0% (MUTE)" : String.format("%d%%", Math.round(bgmVol * 100));
+        // Con trượt hình tròn nổi bật (Draggable Slider Thumb Handle)
+        int bgmThumbX = barX + (int) (barW * bgmVol);
+        int bgmThumbY = statusBgmBtnY + 1 + (barH / 2);
+        int bgmThumbR = (isBgmBarHovered || isDraggingBgmSlider) ? 7 : 6;
+        g.setColor((isBgmBarHovered || isDraggingBgmSlider) ? new Color(255, 240, 255) : new Color(230, 205, 255));
+        g.fillOval(bgmThumbX - bgmThumbR, bgmThumbY - bgmThumbR, bgmThumbR * 2, bgmThumbR * 2);
+        g.setColor(new Color(170, 120, 240));
+        g.drawOval(bgmThumbX - bgmThumbR, bgmThumbY - bgmThumbR, bgmThumbR * 2, bgmThumbR * 2);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(9.0f));
+        String bgmPercentStr = isBgmMuted ? "MUTE" : String.format("%d%%", Math.round(bgmVol * 100));
         int bgmVpw = g.getFontMetrics().stringWidth(bgmPercentStr);
         g.setColor(Color.WHITE);
-        g.drawString(bgmPercentStr, barX + (barW - bgmVpw) / 2, statusBgmBtnY + 15);
+        g.drawString(bgmPercentStr, barX + (barW - bgmVpw) / 2, statusBgmBtnY + 14);
 
         // Nút Tăng [+] BGM
         g.setColor(isBgmIncHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
@@ -1069,6 +1139,14 @@ public class PauseMenuUI {
 
     public Rectangle getBgmVolMuteBtnBounds() {
         return bgmVolMuteBtnBounds;
+    }
+
+    public boolean isDraggingSfxSlider() {
+        return isDraggingSfxSlider;
+    }
+
+    public boolean isDraggingBgmSlider() {
+        return isDraggingBgmSlider;
     }
 
     // Getters tương thích ngược

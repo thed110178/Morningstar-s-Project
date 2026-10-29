@@ -481,7 +481,7 @@ public final class GameSoundManager {
             mixerLine.start();
             mixerRunning = true;
 
-            mixerThread = new Thread(GameSoundManager::runMixerLoop, "DontKnow-AudioMixer");
+            mixerThread = new Thread(GameSoundManager::runMixerLoop, "AloneInTheZone-AudioMixer");
             mixerThread.setDaemon(true);
             mixerThread.setPriority(Thread.MAX_PRIORITY);
             mixerThread.start();
@@ -936,7 +936,7 @@ public final class GameSoundManager {
             props.setProperty("sfxMuted", Boolean.toString(sfxMuted));
             props.setProperty("bgmMuted", Boolean.toString(bgmMuted));
             try (FileOutputStream fos = new FileOutputStream(file)) {
-                props.store(fos, "DontKnow Audio Settings");
+                props.store(fos, "Alone in the zone Audio Settings");
             }
         } catch (Exception e) {
             LOGGER.log(Level.FINE, "Không thể lưu audio settings", e);

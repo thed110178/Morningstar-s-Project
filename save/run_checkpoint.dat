@@ -1,0 +1,29 @@
+# DONTKNOW RUN CHECKPOINT
+version=1.0.0-DEMO-261027
+timestamp=1793273704220
+stage=3
+playerHealth=82
+playerMaxHealth=100
+playerCredits=225
+activeWeaponSlot=3
+enemiesKilled=0
+bossesDefeated=0
+damageDealt=0
+shotsFired=0
+shotsHit=0
+creditsCollected=0
+
+[AMMO]
+AR=30
+SHOTGUN=36
+SMG=175
+SR=30
+
+[BUFFS]
+KILL_HEAL=1
+
+[WEAPONS]
+weapon=1;Assault Rifle (AR);1;1;1;1;0.1200;1.8000;0;false
+weapon=2;Assault Rifle (AR);2;1;1;2;0.1000;1.6500;30;false
+weapon=3;Tactical 9mm Pistol;1;1;1;1;0.1300;1.6000;3;false
+weapon=4;Combat Knife;1;1;1;1;0.4900;1.8500;0;false

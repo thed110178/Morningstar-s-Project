@@ -327,7 +327,7 @@ public class MenuState extends GameState {
         // --- 2. Title & Glowing Subtitle ---
         g.setFont(titleFont);
         FontMetrics fmTitle = g.getFontMetrics();
-        String title = "DontKnow";
+        String title = "Alone in the zone";
         int titleX = (GameConfig.SCREEN_WIDTH - fmTitle.stringWidth(title)) / 2;
         int titleY = 160;
 
@@ -341,7 +341,7 @@ public class MenuState extends GameState {
         // Subtitle
         g.setFont(subtitleFont);
         FontMetrics fmSub = g.getFontMetrics();
-        String subtitle = "An unplanned top-down roguelite shooter";
+        String subtitle = "Top-Down Tactical Roguelite Shooter";
         g.setColor(new Color(160, 180, 210));
         g.drawString(subtitle, (GameConfig.SCREEN_WIDTH - fmSub.stringWidth(subtitle)) / 2, titleY + 36);
 
