@@ -40,7 +40,11 @@ public class WeaponManager {
         } else if (weapon instanceof AssaultRifle) {
             drawEffect = SoundEffect.GUN_RIFLE_DRAW;
         } else if (weapon instanceof SemiCarbineRifle) {
-            drawEffect = SoundEffect.GUN_SC_DRAW;
+            drawEffect = SoundEffect.GUN_SCR_DRAW;
+        } else if (weapon instanceof Shotgun) {
+            drawEffect = SoundEffect.GUN_SHOTGUN_DRAW;
+        } else if (weapon instanceof SMG) {
+            drawEffect = SoundEffect.GUN_SMG_DRAW;
         } else if (weapon instanceof SniperRifle) {
             drawEffect = SoundEffect.GUN_SNIPER_DRAW;
         } else {

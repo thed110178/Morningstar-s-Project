@@ -83,12 +83,14 @@ public final class GameSoundManager {
         GUN_RIFLE_DRAW("gun_rifle_draw.wav", 2),
         GUN_RIFLE_RELOAD("gun_rifle_reload.wav", 2),
         GUN_RIFLE_SHOOT("gun_rifle_shoot.wav", 20), // Súng trường sấy auto + đuôi vọng dài: 20 kênh trộn đồng thời
-        GUN_SC_DRAW("gun_sc_draw.wav", 2),
-        GUN_SC_RELOAD("gun_sc_reload.wav", 2),
-        GUN_SC_SHOOT("gun_sc_shoot.wav", 8),
+        GUN_SCR_DRAW("gun_scr_draw.wav", 2),
+        GUN_SCR_RELOAD("gun_scr_reload.wav", 2),
+        GUN_SCR_SHOOT("gun_scr_shoot.wav", 8),
+        GUN_SHOTGUN_DRAW("gun_shotgun_draw.wav", 2),
         GUN_SHOTGUN_LOADING_AMMO("gun_shotgun_loadingAmmo.wav", 6), // Tiếng bơm tay lên đạn sau mỗi phát bắn của Shotgun (0.75s)
         GUN_SHOTGUN_RELOAD("gun_shotgun_reload.wav", 8), // Súng shotgun nạp từng viên: 8 kênh độc lập
         GUN_SHOTGUN_SHOOT("gun_shotgun_shoot.wav", 8),
+        GUN_SMG_DRAW("gun_smg_draw.wav", 2),
         GUN_SMG_RELOAD("gun_smg_reload.wav", 2),
         GUN_SMG_SHOOT("gun_smg_shoot.wav", 24),     // Súng tiểu liên sấy siêu tốc + đuôi vọng dài: 24 kênh trộn đồng thời
         GUN_SNIPER_DRAW("gun_sniper_draw.wav", 2),
