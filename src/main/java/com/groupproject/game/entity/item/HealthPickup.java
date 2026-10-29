@@ -1,10 +1,11 @@
 package com.groupproject.game.entity.item;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 
@@ -94,6 +95,7 @@ public class HealthPickup {
         if (used || state == null) return false;
 
         if (state.getPlayerCurrentHealth() >= state.getPlayerMaxHealth()) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             state.showTacticalBanner("MÁU ĐÃ ĐẠT TỐI ĐA (" + state.getPlayerMaxHealth() + "/" + state.getPlayerMaxHealth() + " HP)! KHÔNG CẦN CỨU THƯƠNG",
                     new Color(255, 180, 50), 2.2);
             return false;

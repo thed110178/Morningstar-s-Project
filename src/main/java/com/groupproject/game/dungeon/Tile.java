@@ -1,6 +1,8 @@
 package com.groupproject.game.dungeon;
 
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.core.GameSpriteManager;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -144,8 +146,10 @@ public class Tile {
         this.health -= damage;
         if (this.health <= 0) {
             setType(TileType.FLOOR);
+            GameSoundManager.play(SoundEffect.HIT_CRATE_BREAKING);
             return true;
         }
+        GameSoundManager.play(SoundEffect.HIT_CRATE);
         return false;
     }
 

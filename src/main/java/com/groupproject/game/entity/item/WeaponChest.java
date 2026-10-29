@@ -2,6 +2,8 @@ package com.groupproject.game.entity.item;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
@@ -168,6 +170,7 @@ public class WeaponChest {
                         new Color(255, 215, 60), 3.5);
                 return true;
             } else if (rewardType == ChestRewardType.WEAPON && droppedWeapon != null) {
+                GameSoundManager.play(SoundEffect.INTERACT);
                 Weapon toEquip = droppedWeapon;
                 Weapon replaced = state.getWeaponManager().equipWeapon(toEquip);
                 if (replaced != null) {

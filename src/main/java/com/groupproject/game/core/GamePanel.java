@@ -65,8 +65,8 @@ public class GamePanel extends JPanel {
         stateManager.registerState(GameStateManager.StateType.THE_RANGE, new com.groupproject.game.hub.HubRangeState(stateManager));
         stateManager.registerState(GameStateManager.StateType.PLAYING, new PlayingState(stateManager));
 
-        // Mặc định kích hoạt cờ spawn trực tiếp vào phòng Boss cho chế độ kiểm thử
-        com.groupproject.game.state.PlayingState.setSpawnDirectlyInBossRoom(true);
+        // Mặc định tắt cờ spawn trực tiếp vào phòng Boss (chỉ bật khi người chơi chọn chế độ Boss Fight trên Menu)
+        com.groupproject.game.state.PlayingState.setSpawnDirectlyInBossRoom(false);
 
         // Set default startup state to the Main Menu
         stateManager.setState(GameStateManager.StateType.MENU);

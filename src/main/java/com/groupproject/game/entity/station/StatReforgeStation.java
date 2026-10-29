@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.station;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
@@ -147,11 +149,13 @@ public class StatReforgeStation {
 
         Weapon weapon = state.getWeaponManager().getActiveWeapon();
         if (weapon == null) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             state.showTacticalBanner("KHÔNG TÌM THẤY VŨ KHÍ TRÊN TAY!", new Color(255, 100, 100), 2.0);
             return false;
         }
 
         // Mở Modal UI Xưởng Quân Khí
+        GameSoundManager.play(SoundEffect.INTERACT);
         state.openStatReforgeModal(weapon, this);
         return true;
     }
@@ -163,6 +167,7 @@ public class StatReforgeStation {
         if (state == null || weapon == null) return false;
         int cost = getCurrentCost(weapon);
         if (state.getPlayerCredits() < cost) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             state.showTacticalBanner("KHÔNG ĐỦ CREDITS! (CẦN " + cost + " CREDITS - HIỆN CÓ: "
                     + state.getPlayerCredits() + ")", new Color(255, 75, 75), 2.2);
             return false;
@@ -173,6 +178,7 @@ public class StatReforgeStation {
         reforgeCount++;
         flashTimer = 0.50;
         state.triggerScreenShake(0.12);
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
 
         String bannerMsg = String.format("★ HIỆU CHỈNH: %s (Lv.%d) [DMG: %d★ | RPM: %d★ | ACC: %d★] (CHÍ MẠNG: %d%%) [-%d CREDITS] ★",
                 weapon.getShortDisplayName().toUpperCase(),
@@ -192,11 +198,15 @@ public class StatReforgeStation {
     public Weapon.ReforgeResult executeReforgeStars(PlayingState state, Weapon weapon) {
         if (state == null || weapon == null) return null;
         if (weapon.getLevel() <= 1) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             state.showTacticalBanner("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ TÁI CHẾ!", new Color(255, 140, 60), 2.5);
             return null;
         }
         int cost = getStarsReforgeCost(weapon);
-        if (state.getPlayerCredits() < cost) return null;
+        if (state.getPlayerCredits() < cost) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
+            return null;
+        }
 
         Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
         if (res == null) return null;
@@ -206,6 +216,7 @@ public class StatReforgeStation {
         reforgeCount++;
         flashTimer = 0.50;
         state.triggerScreenShake(0.12);
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
 
         String msg = String.format("★ REROLL SAO: %s (Lv.%d) [DMG: %d★ | RPM: %d★ | ACC: %d★] [-%d CREDITS] ★",
                 weapon.getShortDisplayName().toUpperCase(),
@@ -224,7 +235,10 @@ public class StatReforgeStation {
     public Weapon.ReforgeResult executeReforgeCrit(PlayingState state, Weapon weapon) {
         if (state == null || weapon == null) return null;
         int cost = getCritReforgeCost(weapon);
-        if (state.getPlayerCredits() < cost) return null;
+        if (state.getPlayerCredits() < cost) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
+            return null;
+        }
 
         state.deductCredits(cost);
         Weapon.ReforgeResult res = weapon.reforgeCritOnly();
@@ -232,6 +246,7 @@ public class StatReforgeStation {
         reforgeCount++;
         flashTimer = 0.50;
         state.triggerScreenShake(0.12);
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
 
         String msg = String.format("★ REROLL CHÍ MẠNG: %s [CRIT: %d%% x%.2f] [-%d CREDITS] ★",
                 weapon.getShortDisplayName().toUpperCase(),

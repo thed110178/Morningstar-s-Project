@@ -17,6 +17,13 @@
     </properties>
 
     <dependencies>
+        <!-- JLayer MP3 Decoder for Background Music (BGM) MP3 playback -->
+        <dependency>
+            <groupId>javazoom</groupId>
+            <artifactId>jlayer</artifactId>
+            <version>1.0.1</version>
+        </dependency>
+
         <!-- JUnit 5 for Unit and Integration Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

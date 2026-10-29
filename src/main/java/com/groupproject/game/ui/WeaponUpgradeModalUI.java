@@ -1,6 +1,8 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.input.KeyboardHandler;
@@ -77,6 +79,7 @@ public class WeaponUpgradeModalUI {
 
         // 1. Phím thoát [ESC]
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             close();
             return;
         }
@@ -85,19 +88,29 @@ public class WeaponUpgradeModalUI {
         boolean canAfford = hubMode || (playerCredits >= cost);
 
         // 2. Phím tắt số [1], [2], [3]
-        if (canAfford) {
-            if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
+            if (canAfford) {
                 triggerSelection(Weapon.UpgradeStatType.DAMAGE);
-                return;
+            } else {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
             }
-            if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
+            return;
+        }
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
+            if (canAfford) {
                 triggerSelection(Weapon.UpgradeStatType.FIRE_RATE);
-                return;
+            } else {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
             }
-            if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
+            return;
+        }
+        if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
+            if (canAfford) {
                 triggerSelection(Weapon.UpgradeStatType.ACCURACY);
-                return;
+            } else {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
             }
+            return;
         }
 
         // 3. Chuột hover và click
@@ -113,16 +126,20 @@ public class WeaponUpgradeModalUI {
             }
         }
 
-        if (canAfford && mouseH.isLeftClickedOnce()) {
+        if (mouseH.isLeftClickedOnce()) {
             List<Rectangle> btns = this.buttonBounds;
             for (int i = 0; i < btns.size(); i++) {
                 if (btns.get(i).contains(mx, my) || (i < cards.size() && cards.get(i).contains(mx, my))) {
-                    Weapon.UpgradeStatType selected = switch (i) {
-                        case 0 -> Weapon.UpgradeStatType.DAMAGE;
-                        case 1 -> Weapon.UpgradeStatType.FIRE_RATE;
-                        default -> Weapon.UpgradeStatType.ACCURACY;
-                    };
-                    triggerSelection(selected);
+                    if (canAfford) {
+                        Weapon.UpgradeStatType selected = switch (i) {
+                            case 0 -> Weapon.UpgradeStatType.DAMAGE;
+                            case 1 -> Weapon.UpgradeStatType.FIRE_RATE;
+                            default -> Weapon.UpgradeStatType.ACCURACY;
+                        };
+                        triggerSelection(selected);
+                    } else {
+                        GameSoundManager.play(SoundEffect.BUY_FAILED);
+                    }
                     return;
                 }
             }

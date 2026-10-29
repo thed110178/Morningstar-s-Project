@@ -1,10 +1,11 @@
 package com.groupproject.game.entity.item;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.state.PlayingState;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 
@@ -66,6 +67,7 @@ public class AmmoPickup {
                 int added = inventory.addAmmo(type, amount);
                 if (added > 0) {
                     this.collected = true;
+                    GameSoundManager.play(SoundEffect.INTERACT, 0.85f);
                     if (state != null) {
                         state.showTacticalBanner(String.format("ĐÃ NHẶT +%d %s [%d/%d]",
                                 added, type.getDisplayName().toUpperCase(),

@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.projectile.Projectile;
@@ -273,6 +275,7 @@ public class RangedPistolEnemy extends TargetDummy {
                         barrelX, barrelY, facingAngle + spread,
                         bulletSpeed, bulletDamage, 2.5, false // Hostile enemy bullet
                 ));
+                GameSoundManager.play(SoundEffect.ENEMY_UNIVERSAL_FIRE);
 
                 muzzleFlashTimer = 0.09;
                 burstRemaining--;

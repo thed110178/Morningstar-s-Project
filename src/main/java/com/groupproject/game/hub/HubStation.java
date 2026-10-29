@@ -8,7 +8,6 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Stroke;
 
 /**
@@ -51,7 +50,6 @@ public abstract class HubStation {
 
     private static final BasicStroke STROKE_ACTIVE = new BasicStroke(2.0f);
     private static final BasicStroke STROKE_INACTIVE = new BasicStroke(1.2f);
-    private static final BasicStroke STROKE_DEFAULT = new BasicStroke(1.0f);
     private static final Font FONT_PROMPT = new Font("SansSerif", Font.BOLD, 12);
 
     public void render(Graphics2D g, Camera camera, boolean playerNear) {

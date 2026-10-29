@@ -276,5 +276,42 @@ public class RunSaveManagerTest {
         assertTrue(menuState.hasSave());
         assertEquals(2, RunSaveManager.getSavedStage(), "Menu lần 2 vẫn phải hiển thị tiếp tục chơi Stage 2");
     }
+
+    @Test
+    @DisplayName("Khởi động lại game (GamePanel mới) rồi bấm Tiếp tục chơi không bao giờ bị đẩy nhầm vào phòng Boss Tank")
+    void testColdStartResumeNeverEntersStandaloneBossFight() {
+        // 1. Giả lập có bản lưu ở Stage 2 trước khi bật game
+        RunProgressData saved = new RunProgressData();
+        saved.setCurrentStage(2);
+        saved.setPlayerCredits(200);
+        saved.setPlayerHealth(90);
+        saved.setPlayerMaxHealth(100);
+        RunSaveManager.saveRunData(saved);
+
+        // 2. Khởi tạo mới GamePanel giống hệt lúc người chơi vừa bật lại game sau khi tắt
+        com.groupproject.game.core.GamePanel panel = new com.groupproject.game.core.GamePanel();
+        assertFalse(PlayingState.isSpawnDirectlyInBossRoom(), "Mặc định khi bật GamePanel không được bật cờ spawnDirectlyInBossRoom");
+
+        GameStateManager gsm = panel.getStateManager();
+        MenuState menuState = (MenuState) gsm.getState(GameStateManager.StateType.MENU);
+        PlayingState playingState = (PlayingState) gsm.getState(GameStateManager.StateType.PLAYING);
+
+        // Kể cả khi cờ spawnDirectlyInBossRoom vô tình bị bật trước đó, bấm Tiếp tục chơi vẫn phải ưu tiên nạp bản lưu
+        PlayingState.setSpawnDirectlyInBossRoom(true);
+        menuState.refreshMenuOptions();
+        assertTrue(menuState.hasSave());
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        keyH.setKeyPressed(java.awt.event.KeyEvent.VK_ENTER, true);
+        menuState.update(0.016, keyH, mouseH);
+        keyH.setKeyPressed(java.awt.event.KeyEvent.VK_ENTER, false);
+
+        gsm.setState(GameStateManager.StateType.PLAYING);
+
+        assertFalse(playingState.isStandaloneBossFight(), "Bấm Tiếp tục chơi tuyệt đối không được vào chế độ Standalone Boss Fight");
+        assertEquals(2, playingState.getCurrentStage(), "Phải nạp đúng Stage 2 từ bản lưu");
+        assertEquals(200, playingState.getPlayerCredits(), "Phải khôi phục đúng 200 Credits từ bản lưu");
+    }
 }
 

@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.BasicStroke;
@@ -74,9 +76,13 @@ public class Shotgun extends Weapon {
                         currentAmmo++;
                         boundAmmoInventory.consumeAmmo(ammoType, 1);
 
+                        // Nếu chưa đầy đạn và kho còn đạn: mỗi lần nạp là 1 lần phát tiếng!
                         if (currentAmmo < magazineSize && boundAmmoInventory.getAmmo(ammoType) > 0) {
                             reloadTimer = reloadDuration;
+                            GameSoundManager.playShotgunShellReload();
                         } else {
+                            // Đã nạp đầy hoặc hết đạn dự trữ: hoàn tất chu kỳ nạp tự nhiên,
+                            // để âm thanh viên cuối cùng vang trọn vẹn, không cưỡng chế stopReload()
                             reloading = false;
                             reloadTimer = 0.0;
                         }
@@ -90,6 +96,7 @@ public class Shotgun extends Weapon {
 
                     if (currentAmmo < magazineSize) {
                         reloadTimer = reloadDuration;
+                        GameSoundManager.playShotgunShellReload();
                     } else {
                         reloading = false;
                         reloadTimer = 0.0;
@@ -101,6 +108,7 @@ public class Shotgun extends Weapon {
 
     /**
      * Bắt đầu tiến trình nạp đạn từng viên nếu chưa đầy và kho dự trữ còn đạn.
+     * Mỗi lần nạp là 1 lần phát tiếng độc lập.
      */
     @Override
     public void reload() {
@@ -110,6 +118,8 @@ public class Shotgun extends Weapon {
             }
             reloading = true;
             reloadTimer = reloadDuration; // 0.45s cho viên đầu tiên
+            // Mỗi lần nạp là 1 lần phát tiếng: viên đầu tiên bắt đầu nạp
+            GameSoundManager.playShotgunShellReload();
         }
     }
 
@@ -175,6 +185,9 @@ public class Shotgun extends Weapon {
                     isCrit);
             pm.spawn(pellet);
         }
+        // Phát tiếng nổ Shotgun và tiếng kéo ốp lót tay bơm lên đạn (Pump-Action) sau mỗi phát bắn
+        GameSoundManager.play(SoundEffect.GUN_SHOTGUN_SHOOT);
+        GameSoundManager.playChamber(SoundEffect.GUN_SHOTGUN_LOADING_AMMO);
 
         // Tiêu hao 1 viên đạn lớn và đặt lại cooldown
         currentAmmo--;

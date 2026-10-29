@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.station;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.buff.CharacterBuff;
 import com.groupproject.game.entity.buff.PlayerBuffManager;
 import com.groupproject.game.state.PlayingState;
@@ -9,7 +11,6 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -121,6 +122,7 @@ public class CharacterUpgradeStation {
         state.deductCredits(cost);
         boolean applied = buffManager.applyBuff(buff, state.getPlayer(), state.getWeaponManager());
         if (applied) {
+            GameSoundManager.play(SoundEffect.BUY_COMPLETE);
             // Nếu buff đã max cấp sau khi mua, refresh lại ô đó nếu còn buff khác
             if (buffManager.isMaxLevel(buff)) {
                 rollBuffs(buffManager);

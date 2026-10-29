@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.BasicStroke;
@@ -203,6 +205,7 @@ public class SemiCarbineRifle extends Weapon {
         Projectile bullet = new Projectile(muzzleX, muzzleY, firedAngle, BULLET_SPEED,
                 shotDamage, BULLET_LIFETIME, true, isCrit);
         pm.spawn(bullet);
+        GameSoundManager.play(SoundEffect.GUN_RIFLE_SHOOT);
 
         // Tiêu hao đạn và hồi cooldown
         currentAmmo--;
@@ -213,6 +216,11 @@ public class SemiCarbineRifle extends Weapon {
         }
 
         return true;
+    }
+
+    @Override
+    protected void onStartReload() {
+        GameSoundManager.playReload(SoundEffect.GUN_RIFLE_RELOAD);
     }
 
     @Override

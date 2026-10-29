@@ -92,22 +92,10 @@ public final class WeaponSpriteManager {
             // Tiếp tục fallback sang file hệ thống
         }
 
-        // 2. Thử tải trực tiếp từ thư mục Material/ trên đĩa cứng
+        // 2. Thử tải trực tiếp từ thư mục src/main/resources/weapons trên đĩa cứng
         if (image == null) {
             try {
-                File file = new File("Material", fileName);
-                if (file.exists() && file.isFile()) {
-                    image = ImageIO.read(file);
-                }
-            } catch (Exception ignored) {
-                // Tiếp tục thử các thư mục release dự phòng
-            }
-        }
-
-        // 3. Thử tải từ release/Material hoặc release/app/Material
-        if (image == null) {
-            try {
-                File file = new File("release/Material", fileName);
+                File file = new File("src/main/resources/weapons", fileName);
                 if (file.exists() && file.isFile()) {
                     image = ImageIO.read(file);
                 }

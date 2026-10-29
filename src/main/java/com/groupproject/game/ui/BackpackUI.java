@@ -1,6 +1,8 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.buff.CharacterBuff;
 import com.groupproject.game.entity.buff.PlayerBuffManager;
 import com.groupproject.game.entity.player.Player;
@@ -11,7 +13,6 @@ import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -104,23 +105,28 @@ public class BackpackUI {
 
         // 0. Phím tắt chuyển đổi Tab: [Q] -> Khí Tài, [E] -> Hồ Sơ & Perks
         if (keyH.isKeyPressedOnce(KeyEvent.VK_Q)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             activeTab = BackpackTab.WEAPONS;
         }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_E)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             activeTab = BackpackTab.CHARACTER_PERKS;
         }
 
         // 1. Tương tác nhấn chuột trái
         if (mouseH.isLeftClickedOnce()) {
             if (isCloseHovered) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 return true; // Yêu cầu đóng Balo
             }
 
             if (isTabWeaponsHovered) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 activeTab = BackpackTab.WEAPONS;
                 return false;
             }
             if (isTabPerksHovered) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 activeTab = BackpackTab.CHARACTER_PERKS;
                 return false;
             }
@@ -133,12 +139,16 @@ public class BackpackUI {
                 }
 
                 if (slot1Bounds.contains(mouseX, mouseY)) {
+                    GameSoundManager.play(SoundEffect.UI_INTERACT);
                     if (weaponManager.getWeaponInSlot(1) != null) weaponManager.selectSlot(1);
                 } else if (slot2Bounds.contains(mouseX, mouseY)) {
+                    GameSoundManager.play(SoundEffect.UI_INTERACT);
                     if (weaponManager.getWeaponInSlot(2) != null) weaponManager.selectSlot(2);
                 } else if (slot3Bounds.contains(mouseX, mouseY)) {
+                    GameSoundManager.play(SoundEffect.UI_INTERACT);
                     weaponManager.selectSlot(3);
                 } else if (slot4Bounds.contains(mouseX, mouseY)) {
+                    GameSoundManager.play(SoundEffect.UI_INTERACT);
                     weaponManager.selectSlot(4);
                 }
             }
@@ -150,21 +160,26 @@ public class BackpackUI {
                 triggerSwap(weaponManager);
             }
             if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 weaponManager.selectSlot(1);
             }
             if (keyH.isKeyPressedOnce(KeyEvent.VK_2) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD2)) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 weaponManager.selectSlot(2);
             }
             if (keyH.isKeyPressedOnce(KeyEvent.VK_3) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD3)) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 weaponManager.selectSlot(3);
             }
             if (keyH.isKeyPressedOnce(KeyEvent.VK_4) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD4)) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 weaponManager.selectSlot(4);
             }
         }
 
         // Đóng balo khi bấm phím ESC (phím TAB được toggle trực tiếp từ PlayingState)
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             return true;
         }
 
@@ -181,8 +196,10 @@ public class BackpackUI {
     private void triggerSwap(WeaponManager weaponManager) {
         boolean success = weaponManager.swapPrimarySlots();
         if (success) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             feedbackMessage = "★ ĐÃ HOÁN ĐỔI VỊ TRÍ VŨ KHÍ [1] ⇄ [2] THÀNH CÔNG ★";
         } else {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             feedbackMessage = "CẢ HAI Ô VŨ KHÍ CHÍNH ĐỀU TRỐNG (MỞ HÒM ĐỂ NHẶT SÚNG)";
         }
         feedbackTimer = 2.2;

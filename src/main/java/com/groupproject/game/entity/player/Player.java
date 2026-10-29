@@ -2,6 +2,8 @@ package com.groupproject.game.entity.player;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.weapon.Weapon;
@@ -356,6 +358,7 @@ public class Player {
         this.dodgeCooldownTimer = DODGE_COOLDOWN / buffManager.getDodgeCooldownFactor();
         this.ghostSpawnTimer = 0.0;
         spawnGhost();
+        GameSoundManager.play(SoundEffect.DODGE);
         return true;
     }
 
@@ -404,12 +407,17 @@ public class Player {
 
     /**
      * Hồi máu cho chiến binh, giới hạn tối đa bởi maxHealth.
+     * Phát hiệu ứng âm thanh hồi máu (HEALING) khi sinh lực thực sự tăng lên.
      *
      * @param amount Lượng máu hồi phục.
      */
     public void heal(int amount) {
         if (isDead || amount <= 0) return;
+        int prevHealth = currentHealth;
         currentHealth = Math.min(maxHealth, currentHealth + amount);
+        if (currentHealth > prevHealth) {
+            GameSoundManager.play(SoundEffect.HEALING);
+        }
     }
 
     /**
@@ -893,9 +901,11 @@ public class Player {
     // --- Các phương thức hỗ trợ hoạt cảnh tử trận (Death Slide Mechanics) ---
 
     /**
-     * Kích hoạt chuỗi hoạt cảnh tử trận: Biến thành đầu lâu trượt ma sát trên sàn hầm ngục.
+     * Kích hoạt chuỗi hoạt cảnh tử trận: Biến thành đầu lâu trượt ma sát trên sàn hầm ngục
+     * và phát hiệu ứng âm thanh kết thúc ván đấu (GAME_OVER).
      */
     public void initiateDeathSequence() {
+        boolean wasAlreadyDead = this.isDead;
         this.isDead = true;
         this.deathTimer = 0.0;
         this.dodging = false;
@@ -903,6 +913,11 @@ public class Player {
         this.deathRotation = 0.0;
         this.skidSpawnTimer = 0.0;
         this.deathSkidParticles.clear();
+        GameSoundManager.stopReload();
+        if (!wasAlreadyDead) {
+            GameSoundManager.play(SoundEffect.GAME_OVER);
+            GameSoundManager.playGameOverBgm();
+        }
 
         // Xác định hướng và vận tốc trượt ban đầu theo quán tính di chuyển hoặc bị hất văng ra sau
         double slideSpeed = 280.0; // 280 px/s ban đầu

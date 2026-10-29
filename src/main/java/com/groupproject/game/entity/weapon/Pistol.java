@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.BasicStroke;
@@ -55,6 +57,7 @@ public class Pistol extends Weapon {
         Projectile bullet = new Projectile(muzzleX, muzzleY, aimAngle, BULLET_SPEED,
                 shotDamage, 1.6, true, isCrit);
         pm.spawn(bullet);
+        GameSoundManager.play(SoundEffect.GUN_PISTOL_SHOOT);
 
         // Deduct ammunition and reset trigger cooldown
         currentAmmo--;
@@ -66,6 +69,11 @@ public class Pistol extends Weapon {
         }
 
         return true;
+    }
+
+    @Override
+    protected void onStartReload() {
+        GameSoundManager.playReload(SoundEffect.GUN_PISTOL_RELOAD);
     }
 
     @Override

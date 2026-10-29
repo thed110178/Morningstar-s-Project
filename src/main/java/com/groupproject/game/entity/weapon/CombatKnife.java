@@ -1,9 +1,9 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.projectile.ProjectileManager;
-import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.List;
 
@@ -43,6 +43,8 @@ public class CombatKnife extends Weapon {
         if (slashList != null) {
             slashList.add(slash);
         }
+
+        GameSoundManager.play(SoundEffect.GUN_MELEE);
 
         cooldownTimer = fireRateCooldown;
         return true;

@@ -1,6 +1,8 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
@@ -111,6 +113,7 @@ public class StatReforgeModalUI {
 
         // 1. Phím thoát [ESC] hoặc [F]
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             close();
             return;
         }
@@ -124,10 +127,12 @@ public class StatReforgeModalUI {
         // 2. Phím tắt số [1] và [2]
         if (keyH.isKeyPressedOnce(KeyEvent.VK_1) || keyH.isKeyPressedOnce(KeyEvent.VK_NUMPAD1)) {
             if (!isStarsAllowed) {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
                 showFeedback("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ REROLL! HÃY NÂNG CẤP LÊN LV.2+ TRƯỚC.", new Color(255, 140, 60));
             } else if (canAffordStars) {
                 triggerAction(ReforgeType.STARS_ONLY);
             } else {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
                 showFeedback("KHÔNG ĐỦ CREDITS ĐỂ REROLL SAO CHỈ SỐ!", new Color(255, 90, 90));
             }
             return;
@@ -137,6 +142,7 @@ public class StatReforgeModalUI {
             if (canAffordCrit) {
                 triggerAction(ReforgeType.CRIT_ONLY);
             } else {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
                 showFeedback("KHÔNG ĐỦ CREDITS ĐỂ REROLL CHÍ MẠNG!", new Color(255, 90, 90));
             }
             return;
@@ -161,16 +167,19 @@ public class StatReforgeModalUI {
                 if (btns.get(i).contains(mx, my) || (i < cards.size() && cards.get(i).contains(mx, my))) {
                     if (i == 0) {
                         if (!isStarsAllowed) {
+                            GameSoundManager.play(SoundEffect.BUY_FAILED);
                             showFeedback("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ REROLL! HÃY NÂNG CẤP LÊN LV.2+ TRƯỚC.", new Color(255, 140, 60));
                         } else if (canAffordStars) {
                             triggerAction(ReforgeType.STARS_ONLY);
                         } else {
+                            GameSoundManager.play(SoundEffect.BUY_FAILED);
                             showFeedback("KHÔNG ĐỦ CREDITS ĐỂ REROLL SAO CHỈ SỐ!", new Color(255, 90, 90));
                         }
                     } else {
                         if (canAffordCrit) {
                             triggerAction(ReforgeType.CRIT_ONLY);
                         } else {
+                            GameSoundManager.play(SoundEffect.BUY_FAILED);
                             showFeedback("KHÔNG ĐỦ CREDITS ĐỂ REROLL CHÍ MẠNG!", new Color(255, 90, 90));
                         }
                     }

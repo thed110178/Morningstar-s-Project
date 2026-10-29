@@ -1,5 +1,7 @@
 package com.groupproject.game.hub;
 
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.weapon.Weapon;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -37,11 +39,13 @@ public class HubUpgradeStation extends HubStation {
     public void onInteract(HubRangeState hub) {
         Weapon current = hub.getWeaponManager().getActiveWeapon();
         if (current == null || current.isMelee() || current.getSlotIndex() == 3 || current.getSlotIndex() == 4) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             hub.showNotification("CHỈ CÓ THỂ NÂNG CẤP VŨ KHÍ CHÍNH (SLOT 1 & 2)!");
             return;
         }
 
         if (current.getLevel() >= MAX_HUB_LEVEL) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             hub.showNotification(current.getName() + " ĐÃ ĐẠT CẤP TỐI ĐA (LV." + MAX_HUB_LEVEL + ")!");
             return;
         }
@@ -58,6 +62,7 @@ public class HubUpgradeStation extends HubStation {
     public void executeUpgrade(HubRangeState hub, Weapon weapon, Weapon.UpgradeStatType selectedStat) {
         if (hub == null || weapon == null) return;
         if (weapon.getLevel() >= MAX_HUB_LEVEL) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             hub.showNotification(weapon.getName() + " ĐÃ ĐẠT CẤP TỐI ĐA (LV." + MAX_HUB_LEVEL + ")!");
             return;
         }
@@ -69,6 +74,7 @@ public class HubUpgradeStation extends HubStation {
             weapon.recalculateStatsFromStars();
         }
         String statName = selectedStat != null ? weapon.getStatDisplayName(selectedStat) : "Ngẫu nhiên";
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
         hub.showNotification("ĐÃ NÂNG CẤP " + weapon.getShortDisplayName() + "! (+1 SAO " + statName + ")");
     }
 

@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.core.GameSpriteManager;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.projectile.ProjectileManager;
@@ -130,13 +132,18 @@ public class MedicEnemy extends TargetDummy {
             pulseAnimTimer = 0.35; // Trigger visual emerald pulse ring
 
             if (targets != null) {
+                boolean healedAnyAlly = false;
                 for (TargetDummy ally : targets) {
                     if (ally != this && ally.isAlive() && !ally.isSpawning()) {
                         double distToAlly = Math.hypot(ally.getCenterX() - x, ally.getCenterY() - y);
-                        if (distToAlly <= healRadius) {
+                        if (distToAlly <= healRadius && ally.getCurrentHealth() < ally.getMaxHealth()) {
                             ally.heal(healAmount);
+                            healedAnyAlly = true;
                         }
                     }
+                }
+                if (healedAnyAlly) {
+                    GameSoundManager.play(SoundEffect.HEALING, 0.55f);
                 }
             }
         }

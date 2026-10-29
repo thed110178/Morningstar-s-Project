@@ -2,6 +2,8 @@ package com.groupproject.game.state;
 
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.input.KeyboardHandler;
 import com.groupproject.game.input.MouseHandler;
 import com.groupproject.game.storage.RunProgressData;
@@ -106,6 +108,7 @@ public class MenuState extends GameState {
         showSettings = false;
         showConfirmDialog = false;
         confirmSelection = 1;
+        GameSoundManager.playBgm(GameSoundManager.BgmTrack.MENU);
     }
 
     @Override
@@ -137,6 +140,7 @@ public class MenuState extends GameState {
         if (showHowToPlay) {
             if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE) || keyH.isKeyPressedOnce(KeyEvent.VK_ENTER)
                     || mouseH.isLeftClickedOnce()) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 showHowToPlay = false;
             }
             return;
@@ -144,12 +148,14 @@ public class MenuState extends GameState {
 
         // --- Keyboard Navigation (WASD / Arrow Keys) ---
         if (keyH.isKeyPressedOnce(KeyEvent.VK_UP) || keyH.isKeyPressedOnce(KeyEvent.VK_W)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             selectedOption--;
             if (selectedOption < 0) {
                 selectedOption = options.length - 1; // Wrap around to bottom
             }
         }
         if (keyH.isKeyPressedOnce(KeyEvent.VK_DOWN) || keyH.isKeyPressedOnce(KeyEvent.VK_S)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             selectedOption++;
             if (selectedOption >= options.length) {
                 selectedOption = 0; // Wrap around to top
@@ -163,6 +169,7 @@ public class MenuState extends GameState {
             if (optionBounds[i] != null && optionBounds[i].contains(mouseX, mouseY)) {
                 selectedOption = i;
                 if (mouseH.isLeftClickedOnce()) {
+                    GameSoundManager.play(SoundEffect.UI_INTERACT);
                     selectCurrentOption();
                     return;
                 }
@@ -171,6 +178,7 @@ public class MenuState extends GameState {
 
         // --- Confirm Selection via Keyboard ---
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             selectCurrentOption();
         }
     }
@@ -182,17 +190,20 @@ public class MenuState extends GameState {
         // Phím điều hướng Trái / Phải hoặc A / D
         if (keyH.isKeyPressedOnce(KeyEvent.VK_LEFT) || keyH.isKeyPressedOnce(KeyEvent.VK_A)
                 || keyH.isKeyPressedOnce(KeyEvent.VK_RIGHT) || keyH.isKeyPressedOnce(KeyEvent.VK_D)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             confirmSelection = 1 - confirmSelection;
         }
 
         // Phím ESC: Hủy bỏ ngay lập tức
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             showConfirmDialog = false;
             return;
         }
 
         // Phím Enter / Space: Thực thi lựa chọn
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ENTER) || keyH.isKeyPressedOnce(KeyEvent.VK_SPACE)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             executeConfirmAction();
             return;
         }
@@ -203,12 +214,14 @@ public class MenuState extends GameState {
         if (confirmBtnBounds.contains(mouseX, mouseY)) {
             confirmSelection = 0;
             if (mouseH.isLeftClickedOnce()) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 executeConfirmAction();
                 return;
             }
         } else if (cancelBtnBounds.contains(mouseX, mouseY)) {
             confirmSelection = 1;
             if (mouseH.isLeftClickedOnce()) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 executeConfirmAction();
                 return;
             }
@@ -265,6 +278,7 @@ public class MenuState extends GameState {
     private void resumeSavedGame() {
         RunProgressData data = RunSaveManager.loadRun();
         if (data != null) {
+            PlayingState.setSpawnDirectlyInBossRoom(false);
             PlayingState.setPendingResumeData(data);
             gsm.transitionTo(GameStateManager.StateType.PLAYING, "TIẾP TỤC CHIẾN DỊCH", "STAGE " + savedStage);
             return;

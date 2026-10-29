@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.shop;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.item.WeaponChest;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
@@ -120,29 +122,35 @@ public class ShopItem {
         if (type == ShopItemType.WEAPON_UPGRADE) {
             Weapon activeW = state.getWeaponManager().getActiveWeapon();
             if (activeW == null || activeW.isMelee()) {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
                 state.showTacticalBanner("VŨ KHÍ NÀY KHÔNG THỂ NÂNG CẤP! HÃY CHỌN SÚNG CHÍNH HOẶC SÚNG LỤC",
                         new Color(255, 75, 75), 2.5);
                 return false;
             }
             if (!activeW.canUpgrade()) {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
                 state.showTacticalBanner("VŨ KHÍ ĐÃ ĐẠT GIỚI HẠN NÂNG CẤP (" + Weapon.MAX_UPGRADE_COUNT + "/" + Weapon.MAX_UPGRADE_COUNT + " LẦN)! KHÔNG THỂ NÂNG THÊM",
                         new Color(255, 180, 50), 2.5);
                 return false;
             }
             if (state.getPlayerCredits() < price) {
+                GameSoundManager.play(SoundEffect.BUY_FAILED);
                 state.showTacticalBanner("KHÔNG ĐỦ CREDITS! (CẦN " + price + " CREDITS - HIỆN CÓ: " + state.getPlayerCredits() + ")",
                         new Color(255, 75, 75), 2.2);
                 return false;
             }
 
             // Mở Modal Nâng Cấp Vũ Khí cho phép người chơi chủ động chọn 1 trong 3 chỉ số (DMG, RPM, ACC)
+            GameSoundManager.play(SoundEffect.INTERACT);
             state.openWeaponUpgradeModal(activeW, price, false, selectedStat -> {
                 if (state.getPlayerCredits() < price) {
+                    GameSoundManager.play(SoundEffect.BUY_FAILED);
                     state.showTacticalBanner("KHÔNG ĐỦ CREDITS ĐỂ HOÀN TẤT NÂNG CẤP!", new Color(255, 75, 75), 2.0);
                     return;
                 }
                 state.deductCredits(price);
                 String upgradedStatName = activeW.upgradeChosenStat(selectedStat);
+                GameSoundManager.play(SoundEffect.BUY_COMPLETE);
                 String statLabel = upgradedStatName != null ? upgradedStatName : activeW.getStatDisplayName(selectedStat);
                 state.showTacticalBanner("★ NÂNG CẤP THÀNH CÔNG: " + activeW.getShortDisplayName() +
                         " [NÂNG: " + activeW.getUpgradeCount() + "/" + Weapon.MAX_UPGRADE_COUNT + "] (+1★ " + statLabel + ") (-" + price + "C) ★",
@@ -153,6 +161,7 @@ public class ShopItem {
 
         // 2. Kiểm tra điều kiện máu trước khi mua Cứu Thương
         if (type == ShopItemType.HEALTH && state.getPlayerCurrentHealth() >= state.getPlayerMaxHealth()) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             state.showTacticalBanner("MÁU ĐÃ ĐẠT TỐI ĐA (" + state.getPlayerMaxHealth() + "/" + state.getPlayerMaxHealth() + " HP)! KHÔNG CẦN CỨU THƯƠNG",
                     new Color(255, 180, 50), 2.2);
             return false;
@@ -160,13 +169,15 @@ public class ShopItem {
 
         // 3. Xử lý các quầy hàng mua đứt: Kiểm tra đủ tiền
         if (state.getPlayerCredits() < price) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             state.showTacticalBanner("KHÔNG ĐỦ CREDITS! (CẦN " + price + " CREDITS - HIỆN CÓ: " + state.getPlayerCredits() + ")",
                     new Color(255, 75, 75), 2.2);
             return false;
         }
 
-        // Khấu trừ tiền tệ
+        // Khấu trừ tiền tệ và phát âm thanh hoàn tất giao dịch
         state.deductCredits(price);
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
 
         if (type == ShopItemType.PRIMARY_WEAPON && weapon != null) {
             Weapon replaced = state.getWeaponManager().equipWeapon(weapon);

@@ -52,7 +52,7 @@ public final class GameFontManager {
         primaryFont = new Font("SansSerif", Font.BOLD, 14);
 
         // 2. Nạp Font thành phần nhỏ: dearpix-1-94.ttf (giữ lại cho các nhãn bé, thông số chi tiết)
-        smallFont = loadFontResource("/fonts/dearpix-1-94.ttf", "Font/dearpix-1-94.ttf", "DeArPix 1.94");
+        smallFont = loadFontResource("/fonts/dearpix-1-94.ttf", "src/main/resources/fonts/dearpix-1-94.ttf", "DeArPix 1.94");
         if (smallFont != null) {
             ge.registerFont(smallFont);
         } else {

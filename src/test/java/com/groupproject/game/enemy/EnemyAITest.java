@@ -784,7 +784,7 @@ class EnemyAITest {
     }
 
     @Test
-    @DisplayName("Verify BossCannonShell AoE explosion damages player with 40 DMG across restored 165px radius")
+    @DisplayName("Verify BossCannonShell AoE explosion deals 40 DMG at epicenter and falls off gradually with distance across 165px radius")
     void testBossCannonShellAoEDetonation() {
         GameStateManager gsm = new GameStateManager();
         PlayingState state = new PlayingState(gsm);
@@ -795,22 +795,41 @@ class EnemyAITest {
         double px = state.getPlayerX() + 14.0;
         double py = state.getPlayerY() + 14.0;
 
-        // Shell lands 120px away from player (well within restored 165px explosion radius)
-        BossCannonShell shell = new BossCannonShell(px + 120.0, py, 0, 1350.0, 40, 2.0, 165.0);
-        shell.explode(state, state.getDungeonMap());
+        // 1. Epicenter direct hit (dist = 0px): must deal full 40 HP damage
+        BossCannonShell shellEpicenter = new BossCannonShell(px, py, 0, 1350.0, 40, 2.0, 165.0);
+        shellEpicenter.explode(state, state.getDungeonMap());
 
-        assertTrue(shell.hasExploded(), "Shell must be marked as exploded");
-        assertFalse(shell.isActive(), "Shell must be deactivated upon detonation");
+        assertTrue(shellEpicenter.hasExploded(), "Shell must be marked as exploded");
+        assertFalse(shellEpicenter.isActive(), "Shell must be deactivated upon detonation");
         assertEquals(60, state.getPlayerCurrentHealth(),
-                "Player within 165px explosion radius must take 40 damage (100 -> 60 HP)");
+                "Player at the explosion epicenter must take full 40 HP damage (100 -> 60 HP)");
         assertFalse(state.getActiveExplosions().isEmpty(),
                 "Detonating shell must spawn an active ExplosionVisual in PlayingState");
 
-        // Another shell landing at 200px (outside 165px radius) does not damage player further
+        // 2. Mid-range distance (dist = 80px): damage must be strictly less than 40 HP
         state.setInvulnerableTimer(0.0);
+        state.setPlayerCurrentHealth(100);
+        BossCannonShell shellMid = new BossCannonShell(px + 80.0, py, 0, 1350.0, 40, 2.0, 165.0);
+        shellMid.explode(state, state.getDungeonMap());
+        int midDmg = 100 - state.getPlayerCurrentHealth();
+        assertTrue(midDmg > 0 && midDmg < 40,
+                "Player at mid-range (80px) must take attenuated damage (< 40 HP), actual: " + midDmg);
+
+        // 3. Outer-range distance (dist = 135px): damage must be strictly less than mid-range damage
+        state.setInvulnerableTimer(0.0);
+        state.setPlayerCurrentHealth(100);
+        BossCannonShell shellOuter = new BossCannonShell(px + 135.0, py, 0, 1350.0, 40, 2.0, 165.0);
+        shellOuter.explode(state, state.getDungeonMap());
+        int outerDmg = 100 - state.getPlayerCurrentHealth();
+        assertTrue(outerDmg > 0 && outerDmg < midDmg,
+                "Player near outer edge (135px) must take less damage than mid-range (80px), actual: " + outerDmg);
+
+        // 4. Outside 165px radius (dist = 200px): does not damage player
+        state.setInvulnerableTimer(0.0);
+        state.setPlayerCurrentHealth(100);
         BossCannonShell shellMiss = new BossCannonShell(px + 200.0, py, 0, 1350.0, 40, 2.0, 165.0);
         shellMiss.explode(state, state.getDungeonMap());
-        assertEquals(60, state.getPlayerCurrentHealth(),
+        assertEquals(100, state.getPlayerCurrentHealth(),
                 "Player outside 165px explosion radius must not take damage");
     }
 

@@ -1,12 +1,13 @@
 package com.groupproject.game.hub;
 
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.weapon.Weapon;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 
 /**
  * Trạm tái rèn / Reroll sao và chí mạng miễn phí (Free Reforge Station) trong The Range.
@@ -37,6 +38,7 @@ public class HubRerollStation extends HubStation {
     public void onInteract(HubRangeState hub) {
         Weapon current = hub.getWeaponManager().getActiveWeapon();
         if (current == null || current.isMelee() || current.getSlotIndex() == 3 || current.getSlotIndex() == 4) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             hub.showNotification("CHỈ CÓ THỂ TÁI RÈN VŨ KHÍ CHÍNH (SLOT 1 & 2)!");
             return;
         }
@@ -48,6 +50,7 @@ public class HubRerollStation extends HubStation {
     public Weapon.ReforgeResult executeReforgeStars(HubRangeState hub, Weapon weapon) {
         if (weapon == null) return null;
         if (weapon.getLevel() <= 1) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             if (hub != null) {
                 hub.showNotification("VŨ KHÍ LV.1 CHƯA CÓ SAO NÂNG CẤP ĐỂ REROLL!");
             }
@@ -55,6 +58,7 @@ public class HubRerollStation extends HubStation {
         }
         Weapon.ReforgeResult res = weapon.reforgeStarsOnly();
         if (res == null) return null;
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
         if (hub != null) {
             hub.showNotification("★ REROLL SAO: DMG " + res.newDmgStars() + "★ | RPM " + res.newFrStars() + "★ | ACC " + res.newAccStars() + "★ ★");
         }
@@ -64,6 +68,7 @@ public class HubRerollStation extends HubStation {
     public Weapon.ReforgeResult executeReforgeCrit(HubRangeState hub, Weapon weapon) {
         if (weapon == null) return null;
         Weapon.ReforgeResult res = weapon.reforgeCritOnly();
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
         if (hub != null) {
             hub.showNotification("★ REROLL CHÍ MẠNG: CRIT " + res.newCritPercent() + "% (x" + String.format(java.util.Locale.US, "%.2f", weapon.getCritMultiplier()) + ") ★");
         }
@@ -73,6 +78,7 @@ public class HubRerollStation extends HubStation {
     public Weapon.ReforgeResult executeReforge(HubRangeState hub, Weapon weapon) {
         if (weapon == null) return null;
         Weapon.ReforgeResult res = weapon.reforge();
+        GameSoundManager.play(SoundEffect.BUY_COMPLETE);
         if (hub != null) {
             hub.showNotification("TÁI RÈN THÀNH CÔNG! DMG: " + res.newDmgStars() + "★ | RPM: " + res.newFrStars()
                     + "★ | ACC: " + res.newAccStars() + "★ | CRIT: " + res.newCritPercent() + "%");

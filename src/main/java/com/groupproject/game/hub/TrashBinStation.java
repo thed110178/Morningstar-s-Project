@@ -1,5 +1,7 @@
 package com.groupproject.game.hub;
 
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.weapon.Weapon;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -30,12 +32,14 @@ public class TrashBinStation extends HubStation {
     public void onInteract(HubRangeState hub) {
         Weapon current = hub.getWeaponManager().getActiveWeapon();
         if (current == null) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             hub.showNotification("BẠN ĐANG KHÔNG CẦM VŨ KHÍ NÀO!");
             return;
         }
 
         int slot = current.getSlotIndex();
         if (slot == 3 || slot == 4 || current.isMelee()) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             hub.showNotification("KHÔNG THỂ VỨT BỎ SÚNG LỤC HOẶC DAO CẬN CHIẾN!");
             return;
         }

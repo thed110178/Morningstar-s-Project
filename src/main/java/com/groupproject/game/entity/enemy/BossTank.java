@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.enemy;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.entity.projectile.BossCannonShell;
 import com.groupproject.game.entity.projectile.ExplosionVisual;
@@ -104,6 +106,7 @@ public class BossTank extends TargetDummy {
         if (state == TankState.RAM_WINDUP) {
             this.ramWindupDuration = isCannonAwakened() ? 0.48 : 0.58;
             this.stateTimer = this.ramWindupDuration;
+            GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
         } else if (state == TankState.RAM_RUSH && this.chargeDistRemaining <= 0) {
             this.chargeDistRemaining = 800.0;
         }
@@ -327,6 +330,7 @@ public class BossTank extends TargetDummy {
                 ramWindupDuration = 0.58; // 0.58s lấy đà bẻ lái và phát vệt đỏ cảnh báo đường đâm (tăng từ 0.25s)
                 stateTimer = ramWindupDuration;
                 lastAttackWasRam = true;
+                GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
             }
             return;
         }
@@ -337,6 +341,7 @@ public class BossTank extends TargetDummy {
             ramWindupDuration = 0.48; // 0.48s lấy đà trong Phase 2 thức tỉnh (tăng từ 0.22s)
             stateTimer = ramWindupDuration;
             lastAttackWasRam = true;
+            GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
             return;
         }
 
@@ -442,6 +447,7 @@ public class BossTank extends TargetDummy {
             state = TankState.RAM_STUN;
             stateTimer = isCannonAwakened() ? 0.38 : 0.45; // 0.38s - 0.45s Stun khựng lại
             crashEffectTimer = 0.40; // Kích hoạt hiệu ứng tóe lửa chấn động đâm trúng vật cản
+            GameSoundManager.play(SoundEffect.ENEMY_BOSS_WALLCRASH);
 
             if (playingState != null) {
                 playingState.triggerScreenShake(0.45);
@@ -517,6 +523,7 @@ public class BossTank extends TargetDummy {
                 double spread = ThreadLocalRandom.current().nextDouble(-0.06, 0.06);
                 Projectile bullet = new Projectile(mx, my, machineGunAngle + spread, 360.0, 9, 2.0, false);
                 projectileManager.spawn(bullet);
+                GameSoundManager.play(SoundEffect.ENEMY_BOSS_FIRE);
             }
         }
 
@@ -567,9 +574,9 @@ public class BossTank extends TargetDummy {
             double by = y + Math.sin(cannonLaserAngle) * barrelLen;
 
             if (projectileManager != null) {
-                // Đạn pháo bộc phá hạng nặng siêu thanh: 1350 px/s, sát thương 60 HP, nổ bán
-                // kính cực đại 165px (quét rộng 330px)
-                BossCannonShell shell = new BossCannonShell(bx, by, cannonLaserAngle, 1350.0, 60, 2.0, 165.0);
+                // [GAMEPLAY BALANCE PARAMETER] Đạn pháo bộc phá hạng nặng siêu thanh:
+                // Sơ tốc 1350 px/s, sát thương tâm nổ 40 HP (giảm dần theo khoảng cách tới rìa bán kính 165px)
+                BossCannonShell shell = new BossCannonShell(bx, by, cannonLaserAngle, 1350.0, 40, 2.0, 165.0);
                 projectileManager.spawn(shell);
             }
 

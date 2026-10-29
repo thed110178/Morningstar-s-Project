@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.projectile;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.state.PlayingState;
 import java.awt.Graphics2D;
@@ -80,6 +82,7 @@ public class ProjectileManager {
                             // Gây sát thương lên ô cover tạm thời lân cận (nếu có) trước khi đạn tắt hẳn
                             dungeonMap.damageDestructibleCoverInArea(p.getX() - 4, p.getY() - 4, 8, 8, p.getDamage());
                             p.deactivate(); // Impact absorbed by solid terrain or blast door
+                            GameSoundManager.play(SoundEffect.HIT_UNBREAKABLE_WALL);
                         } else {
                             // Chỉ va chạm vào ô cover tạm thời có thể phá hủy: xử lý đạn xuyên qua hoặc tiêu hao lượt xuyên
                             dungeonMap.handleProjectileCoverPenetration(p);

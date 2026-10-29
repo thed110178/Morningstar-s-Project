@@ -4,7 +4,6 @@ import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
 import com.groupproject.game.core.GameFontManager;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.util.ArrayList;

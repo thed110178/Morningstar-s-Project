@@ -4,7 +4,6 @@ import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameFontManager;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.util.HashMap;
@@ -190,6 +189,9 @@ public class WeaponManager {
     public void selectSlot(int slotIndex) {
         Weapon selected = weaponSlots.get(slotIndex);
         if (selected != null && selected != activeWeapon) {
+            if (activeWeapon != null) {
+                activeWeapon.cancelReload();
+            }
             previousWeapon = activeWeapon;
             activeWeapon = selected;
         }
@@ -213,6 +215,9 @@ public class WeaponManager {
         }
 
         if (previousWeapon != null && previousWeapon != activeWeapon) {
+            if (activeWeapon != null) {
+                activeWeapon.cancelReload();
+            }
             Weapon temp = activeWeapon;
             activeWeapon = previousWeapon;
             previousWeapon = temp;

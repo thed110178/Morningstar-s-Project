@@ -9,7 +9,6 @@ import com.groupproject.game.input.KeyBindings;
 import com.groupproject.game.input.KeyBindings.GameAction;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;

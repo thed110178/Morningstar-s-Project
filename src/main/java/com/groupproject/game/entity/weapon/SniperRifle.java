@@ -1,6 +1,8 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.item.AmmoType;
 import com.groupproject.game.entity.projectile.Projectile;
 import com.groupproject.game.entity.projectile.ProjectileManager;
@@ -146,6 +148,9 @@ public class SniperRifle extends Weapon {
                 getMaxPierces(), getPierceDamageFalloff()
         );
         pm.spawn(bullet);
+        // Phát tiếng nổ súng bắn tỉa và tiếng kéo chốt quy lát lên đạn (Bolt-Action) sau mỗi phát bắn
+        GameSoundManager.play(SoundEffect.GUN_SNIPER_SHOOT);
+        GameSoundManager.playChamber(SoundEffect.GUN_SNIPER_LOADING_AMMO);
 
         // Nếu bắn hết viên cuối cùng, tự động chuyển trạng thái nạp đạn
         if (currentAmmo <= 0) {
@@ -153,6 +158,11 @@ public class SniperRifle extends Weapon {
         }
 
         return true;
+    }
+
+    @Override
+    protected void onStartReload() {
+        GameSoundManager.playReload(SoundEffect.GUN_RIFLE_RELOAD);
     }
 
     @Override

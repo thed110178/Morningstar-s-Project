@@ -6,7 +6,6 @@ import com.groupproject.game.dungeon.Room;
 import com.groupproject.game.entity.player.Player;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;

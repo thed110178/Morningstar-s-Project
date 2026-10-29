@@ -1,6 +1,7 @@
 package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
+import com.groupproject.game.core.GameSoundManager;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.Graphics2D;
 import java.util.List;
@@ -130,6 +131,7 @@ public abstract class Weapon {
                 }
                 reloadTimer = 0.0;
                 reloading = false;
+                GameSoundManager.stopReload();
             }
         }
     }
@@ -146,7 +148,14 @@ public abstract class Weapon {
             }
             reloading = true;
             reloadTimer = reloadDuration;
+            onStartReload();
         }
+    }
+
+    /**
+     * Hook gọi khi vũ khí bắt đầu chu kỳ nạp đạn. Các lớp con ghi đè để phát âm thanh nạp đạn tương ứng.
+     */
+    protected void onStartReload() {
     }
 
     /**
@@ -156,6 +165,7 @@ public abstract class Weapon {
         if (reloading) {
             reloading = false;
             reloadTimer = 0.0;
+            GameSoundManager.stopReload();
         }
     }
 

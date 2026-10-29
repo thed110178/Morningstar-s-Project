@@ -39,19 +39,19 @@ public final class GameSpriteManager {
     public static final String RES_TEX_GRASS = "/textures/Grass.png";
     public static final String RES_EFFECT_SLASH = "/effects/Slash.png";
 
-    // Đường dẫn fallback trên đĩa cứng Material/
-    public static final String FILE_PLAYER_GUN = "Material/Player/PlayerGun.png";
-    public static final String FILE_PLAYER_MELEE = "Material/Player/PlayerMelee";
-    public static final String FILE_ENEMY_GUN = "Material/Enemy/Enemygun/Enemy gun.png";
-    public static final String FILE_ENEMY_MELEE = "Material/Enemy/EnemyMelee/Enemy Melee.png";
-    public static final String FILE_ENEMY_MEDIC = "Material/Enemy/Medic/EnemyMedic.png";
-    public static final String FILE_ENEMY_GRENADIER = "Material/Enemy/Grenader/EnemyGrenader.png";
-    public static final String FILE_COVER_STONE = "Material/Cover/Stone.png";
-    public static final String FILE_COVER_BARREL = "Material/Cover/Wooden barrel.png";
-    public static final String FILE_TEX_BRICK = "Material/Texture/Grey brick.png";
-    public static final String FILE_TEX_DIRT = "Material/Texture/Dirt.png";
-    public static final String FILE_TEX_GRASS = "Material/Texture/Grass.png";
-    public static final String FILE_EFFECT_SLASH = "Material/Effect/Slash.png";
+    // Đường dẫn fallback trên đĩa cứng src/main/resources/
+    public static final String FILE_PLAYER_GUN = "src/main/resources/player/PlayerGun.png";
+    public static final String FILE_PLAYER_MELEE = "src/main/resources/player/PlayerMelee.png";
+    public static final String FILE_ENEMY_GUN = "src/main/resources/enemy/Enemy gun.png";
+    public static final String FILE_ENEMY_MELEE = "src/main/resources/enemy/Enemy Melee.png";
+    public static final String FILE_ENEMY_MEDIC = "src/main/resources/enemy/EnemyMedic.png";
+    public static final String FILE_ENEMY_GRENADIER = "src/main/resources/enemy/EnemyGrenader.png";
+    public static final String FILE_COVER_STONE = "src/main/resources/cover/Stone.png";
+    public static final String FILE_COVER_BARREL = "src/main/resources/cover/Wooden barrel.png";
+    public static final String FILE_TEX_BRICK = "src/main/resources/textures/Grey brick.png";
+    public static final String FILE_TEX_DIRT = "src/main/resources/textures/Dirt.png";
+    public static final String FILE_TEX_GRASS = "src/main/resources/textures/Grass.png";
+    public static final String FILE_EFFECT_SLASH = "src/main/resources/effects/Slash.png";
 
     // Bộ đệm hình ảnh đã pre-scale sẵn kích thước chính xác và tương thích VRAM
     private static BufferedImage preScaledTextureDirt;

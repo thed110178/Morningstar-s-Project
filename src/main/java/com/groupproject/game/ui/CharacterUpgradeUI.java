@@ -1,6 +1,8 @@
 package com.groupproject.game.ui;
 
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.buff.CharacterBuff;
 import com.groupproject.game.entity.buff.PlayerBuffManager;
 import com.groupproject.game.entity.station.CharacterUpgradeStation;
@@ -74,6 +76,7 @@ public class CharacterUpgradeUI {
 
         // 1. Phím tắt thoát [ESC] hoặc [F]
         if (keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE) || keyH.isKeyPressedOnce(KeyEvent.VK_F)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             close();
             return;
         }
@@ -123,6 +126,7 @@ public class CharacterUpgradeUI {
         int curLvl = bm.getLevel(buff);
 
         if (bm.isMaxLevel(buff)) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             feedbackMessage = "BUFF NÀY ĐÃ ĐẠT CẤP ĐỘ TỐI ĐA!";
             feedbackColor = new Color(255, 180, 50);
             feedbackTimer = 2.0;
@@ -131,6 +135,7 @@ public class CharacterUpgradeUI {
 
         int cost = buff.getCostForLevel(curLvl, state.getCurrentStage());
         if (state.getPlayerCredits() < cost) {
+            GameSoundManager.play(SoundEffect.BUY_FAILED);
             feedbackMessage = "KHÔNG ĐỦ CREDITS! CẦN " + cost + " CREDITS";
             feedbackColor = new Color(255, 80, 80);
             feedbackTimer = 2.0;

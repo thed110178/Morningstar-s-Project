@@ -2,6 +2,8 @@ package com.groupproject.game.hub;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.enemy.TargetDummy;
 import com.groupproject.game.entity.item.AmmoInventory;
 import com.groupproject.game.entity.item.AmmoType;
@@ -34,7 +36,6 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
@@ -180,6 +181,7 @@ public class HubRangeState extends GameState {
         // Center camera vào người chơi
         camera.update(player.getCenterX(), player.getCenterY());
         showNotification("CHÀO MỪNG ĐẾN VỚI THE RANGE! HÃY CHỌN & THỬ NGHIỆM VŨ KHÍ.");
+        GameSoundManager.playRangeBgm();
     }
 
     /**
@@ -339,6 +341,7 @@ public class HubRangeState extends GameState {
         // Mở Menu Tạm dừng
         if (keyH != null && (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE))) {
             if (isBackpackOpen) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 isBackpackOpen = false;
                 return;
             }
@@ -349,12 +352,14 @@ public class HubRangeState extends GameState {
 
         // --- 0.5. Xử lý Balo Chiến Thuật (TAB / BACKPACK) ---
         if (keyH != null && KeyBindings.isActionPressedOnce(keyH, GameAction.BACKPACK)) {
+            GameSoundManager.play(SoundEffect.UI_INTERACT);
             isBackpackOpen = !isBackpackOpen;
             return;
         }
 
         if (isBackpackOpen) {
             if (keyH != null && (KeyBindings.isActionPressedOnce(keyH, GameAction.PAUSE_MENU) || keyH.isKeyPressedOnce(KeyEvent.VK_ESCAPE))) {
+                GameSoundManager.play(SoundEffect.UI_INTERACT);
                 isBackpackOpen = false;
                 return;
             }
@@ -423,6 +428,7 @@ public class HubRangeState extends GameState {
             if (KeyBindings.isActionPressedOnce(keyH, GameAction.INTERACT) || (keyH != null && keyH.isKeyPressedOnce(KeyEvent.VK_F))) {
                 for (HubStation station : stations) {
                     if (station.isPlayerInRange(player.getCenterX(), player.getCenterY())) {
+                        GameSoundManager.play(SoundEffect.INTERACT);
                         station.onInteract(this);
                         break;
                     }
@@ -476,6 +482,7 @@ public class HubRangeState extends GameState {
                     boolean isCrit = bullet.isCritical();
                     dummy.takeDamage(dmg, isCrit);
                     popupManager.addPopup(dummy.getX(), dummy.getY(), dmg, isCrit);
+                    GameSoundManager.play(SoundEffect.HIT_TARGET);
 
                     // Tiêu hao lượt xuyên phá của đạn (nếu là Sniper có thể xuyên qua dummy tiếp theo)
                     bullet.onHitTarget(dummy);
@@ -495,6 +502,7 @@ public class HubRangeState extends GameState {
                     boolean isCrit = bullet.isCritical();
                     dummy.takeDamage(dmg, isCrit);
                     popupManager.addPopup(dummy.getX(), dummy.getY(), dmg, isCrit);
+                    GameSoundManager.play(SoundEffect.HIT_TARGET);
 
                     // Tiêu hao lượt xuyên phá của đạn (nếu là Sniper có thể xuyên qua dummy tiếp theo)
                     bullet.onHitTarget(dummy);
