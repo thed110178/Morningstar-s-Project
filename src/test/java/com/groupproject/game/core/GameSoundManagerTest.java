@@ -143,6 +143,74 @@ public class GameSoundManagerTest {
     }
 
     @Test
+    @DisplayName("Kiểm tra tách biệt cài đặt âm lượng và tắt tiếng giữa SFX và BGM")
+    public void testSfxAndBgmVolumeSeparation() {
+        String testPath = "target/test_separated_audio_settings.properties";
+        GameSoundManager.setSettingsFilePath(testPath);
+
+        // 1. Kiểm tra độc lập giá trị âm lượng SFX và BGM
+        GameSoundManager.setSfxVolume(0.85f);
+        GameSoundManager.setBgmVolume(0.25f);
+        assertEquals(0.85f, GameSoundManager.getSfxVolume(), 0.001f, "Âm lượng SFX phải là 85%");
+        assertEquals(0.25f, GameSoundManager.getBgmVolume(), 0.001f, "Âm lượng BGM phải là 25%");
+
+        // 2. Kiểm tra kẹp ngưỡng giá trị hợp lệ [0.0 .. 1.0]
+        GameSoundManager.setSfxVolume(-0.4f);
+        assertEquals(0.0f, GameSoundManager.getSfxVolume(), 0.001f, "SFX volume kẹp cận dưới 0.0");
+        GameSoundManager.setSfxVolume(2.0f);
+        assertEquals(1.0f, GameSoundManager.getSfxVolume(), 0.001f, "SFX volume kẹp cận trên 1.0");
+
+        GameSoundManager.setBgmVolume(-0.4f);
+        assertEquals(0.0f, GameSoundManager.getBgmVolume(), 0.001f, "BGM volume kẹp cận dưới 0.0");
+        GameSoundManager.setBgmVolume(2.0f);
+        assertEquals(1.0f, GameSoundManager.getBgmVolume(), 0.001f, "BGM volume kẹp cận trên 1.0");
+
+        // 3. Kiểm tra bật/tắt tiếng độc lập (Independent Mute)
+        GameSoundManager.setSfxMuted(false);
+        GameSoundManager.setBgmMuted(false);
+        assertFalse(GameSoundManager.isSfxMuted(), "SFX ban đầu không tắt tiếng");
+        assertFalse(GameSoundManager.isBgmMuted(), "BGM ban đầu không tắt tiếng");
+
+        GameSoundManager.setSfxMuted(true);
+        assertTrue(GameSoundManager.isSfxMuted(), "SFX đã tắt tiếng");
+        assertFalse(GameSoundManager.isBgmMuted(), "BGM vẫn phát bình thường");
+
+        GameSoundManager.setSfxMuted(false);
+        GameSoundManager.setBgmMuted(true);
+        assertFalse(GameSoundManager.isSfxMuted(), "SFX vẫn phát bình thường");
+        assertTrue(GameSoundManager.isBgmMuted(), "BGM đã tắt tiếng");
+
+        // 4. Kiểm tra lưu và nạp cài đặt tách biệt từ file properties
+        GameSoundManager.setSfxVolume(0.70f);
+        GameSoundManager.setBgmVolume(0.35f);
+        GameSoundManager.setSfxMuted(true);
+        GameSoundManager.setBgmMuted(false);
+
+        // Nạp lại cài đặt từ file đã lưu
+        GameSoundManager.loadSettings();
+        assertEquals(0.70f, GameSoundManager.getSfxVolume(), 0.01f, "Nạp lại SFX Volume 70%");
+        assertEquals(0.35f, GameSoundManager.getBgmVolume(), 0.01f, "Nạp lại BGM Volume 35%");
+        assertTrue(GameSoundManager.isSfxMuted(), "Nạp lại trạng thái SFX Muted = true");
+        assertFalse(GameSoundManager.isBgmMuted(), "Nạp lại trạng thái BGM Muted = false");
+
+        // Thay đổi sang cấu hình khác: SFX 10%, BGM 90%, SFX Unmute, BGM Mute
+        GameSoundManager.setSfxVolume(0.10f);
+        GameSoundManager.setBgmVolume(0.90f);
+        GameSoundManager.setSfxMuted(false);
+        GameSoundManager.setBgmMuted(true);
+
+        GameSoundManager.loadSettings();
+        assertEquals(0.10f, GameSoundManager.getSfxVolume(), 0.01f, "Nạp lại SFX Volume 10%");
+        assertEquals(0.90f, GameSoundManager.getBgmVolume(), 0.01f, "Nạp lại BGM Volume 90%");
+        assertFalse(GameSoundManager.isSfxMuted(), "Nạp lại trạng thái SFX Muted = false");
+        assertTrue(GameSoundManager.isBgmMuted(), "Nạp lại trạng thái BGM Muted = true");
+
+        // Khôi phục đường dẫn chuẩn
+        GameSoundManager.setSettingsFilePath("save/audio_settings.properties");
+        GameSoundManager.loadSettings();
+    }
+
+    @Test
     @DisplayName("Tất cả 7 bản nhạc nền BGM và luồng chuyển đổi trạng thái (Menu, Stage 1-3, The Range, Game Over, Boss Fight) hoạt động chính xác")
     public void testAllBgmTracksAndStateTransitions() {
         assertEquals(7, BgmTrack.values().length, "Phải có đầy đủ 7 bản nhạc nền BGM");

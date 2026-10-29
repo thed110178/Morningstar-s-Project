@@ -391,7 +391,11 @@ public final class GameSoundManager {
     private static SourceDataLine mixerLine = null;
 
     private static volatile boolean muted = false;
+    private static volatile boolean sfxMuted = false;
+    private static volatile boolean bgmMuted = false;
     private static volatile float masterVolume = 0.5f; // Mặc định 50% theo yêu cầu
+    private static volatile float sfxVolume = 0.5f;    // Mặc định 50% cho hiệu ứng âm thanh (SFX)
+    private static volatile float bgmVolume = 0.5f;    // Mặc định 50% cho nhạc nền (BGM)
 
     private GameSoundManager() {
         // Lớp tiện ích tĩnh, không khởi tạo đối tượng trực tiếp
@@ -505,8 +509,11 @@ public final class GameSoundManager {
                 break;
             }
 
-            if ((ACTIVE_VOICES.isEmpty() && activeBgm == null) || muted || masterVolume <= 0.001f) {
-                if (!ACTIVE_VOICES.isEmpty() && muted) {
+            boolean sfxEffectiveMuted = muted || sfxMuted || sfxVolume <= 0.001f;
+            boolean bgmEffectiveMuted = muted || bgmMuted || bgmVolume <= 0.001f;
+
+            if ((ACTIVE_VOICES.isEmpty() && activeBgm == null) || (sfxEffectiveMuted && bgmEffectiveMuted)) {
+                if (!ACTIVE_VOICES.isEmpty() && sfxEffectiveMuted) {
                     ACTIVE_VOICES.clear();
                 }
                 Arrays.fill(outBytes, (byte) 0);
@@ -524,7 +531,7 @@ public final class GameSoundManager {
             // 1. Trộn luồng nhạc nền (BGM) nếu đang kích hoạt
             ActiveBgmStream bgm = activeBgm;
             if (bgm != null) {
-                final float baseBgmGain = masterVolume * BGM_RELATIVE_GAIN;
+                final float baseBgmGain = bgmEffectiveMuted ? 0.0f : (bgmVolume * BGM_RELATIVE_GAIN);
                 synchronized (BGM_LOCK) {
                     bgm = activeBgm;
                     for (int f = 0; f < MIX_FRAMES && bgm != null; f++) {
@@ -554,17 +561,20 @@ public final class GameSoundManager {
                                 break;
                             }
                         }
-                        float gain = baseBgmGain * bgm.currentFadeGain();
-                        accumBuffer[f * 2] += bgmPair[0] * gain;
-                        accumBuffer[f * 2 + 1] += bgmPair[1] * gain;
+                        if (baseBgmGain > 0.0001f) {
+                            float gain = baseBgmGain * bgm.currentFadeGain();
+                            accumBuffer[f * 2] += bgmPair[0] * gain;
+                            accumBuffer[f * 2 + 1] += bgmPair[1] * gain;
+                        }
                     }
                 }
             }
 
             // 2. Hệ số headroom 0.78f giúp nhiều viên đạn vang chồng lên nhau vẫn trong trẻo, dày tiếng
-            final float masterGain = masterVolume * 0.78f;
+            final float masterGain = sfxEffectiveMuted ? 0.0f : (sfxVolume * 0.78f);
 
-            for (ActiveVoice voice : ACTIVE_VOICES) {
+            if (!sfxEffectiveMuted) {
+                for (ActiveVoice voice : ACTIVE_VOICES) {
                 if (voice == null || voice.stopped) {
                     finishedVoices.add(voice);
                     continue;
@@ -589,6 +599,9 @@ public final class GameSoundManager {
                 if (cur >= totalSamples) {
                     finishedVoices.add(voice);
                 }
+                }
+            } else if (!ACTIVE_VOICES.isEmpty()) {
+                ACTIVE_VOICES.clear();
             }
 
             if (!finishedVoices.isEmpty()) {
@@ -721,7 +734,7 @@ public final class GameSoundManager {
     }
 
     private static void enqueueVoice(SoundEffect sfx, float volumeFactor, boolean reloadChannel) {
-        if (muted || sfx == null || masterVolume <= 0.001f || volumeFactor <= 0.001f) {
+        if (muted || sfxMuted || sfx == null || sfxVolume <= 0.001f || volumeFactor <= 0.001f) {
             return;
         }
 
@@ -800,14 +813,37 @@ public final class GameSoundManager {
     }
 
     public static boolean isMuted() {
-        return muted;
+        return muted || (sfxMuted && bgmMuted);
     }
 
     public static void setMuted(boolean isMuted) {
         muted = isMuted;
+        sfxMuted = isMuted;
+        bgmMuted = isMuted;
         if (muted) {
             ACTIVE_VOICES.clear();
         }
+        saveSettings();
+    }
+
+    public static boolean isSfxMuted() {
+        return muted || sfxMuted;
+    }
+
+    public static void setSfxMuted(boolean isMuted) {
+        sfxMuted = isMuted;
+        if (sfxMuted) {
+            ACTIVE_VOICES.clear();
+        }
+        saveSettings();
+    }
+
+    public static boolean isBgmMuted() {
+        return muted || bgmMuted;
+    }
+
+    public static void setBgmMuted(boolean isMuted) {
+        bgmMuted = isMuted;
         saveSettings();
     }
 
@@ -817,12 +853,33 @@ public final class GameSoundManager {
 
     public static void setMasterVolume(float volume) {
         masterVolume = Math.max(0.0f, Math.min(1.0f, volume));
+        sfxVolume = masterVolume;
+        bgmVolume = masterVolume;
+        saveSettings();
+    }
+
+    public static float getSfxVolume() {
+        return sfxVolume;
+    }
+
+    public static void setSfxVolume(float volume) {
+        sfxVolume = Math.max(0.0f, Math.min(1.0f, volume));
+        masterVolume = sfxVolume;
+        saveSettings();
+    }
+
+    public static float getBgmVolume() {
+        return bgmVolume;
+    }
+
+    public static void setBgmVolume(float volume) {
+        bgmVolume = Math.max(0.0f, Math.min(1.0f, volume));
         saveSettings();
     }
 
     /**
      * Tải cài đặt âm thanh từ tệp {@code save/audio_settings.properties}.
-     * Nếu chưa có tệp lưu, thiết lập mặc định Master Volume = 50% (0.5f) và Mute = false.
+     * Hỗ trợ tách biệt âm lượng SFX và BGM, đồng thời tương thích ngược với khóa volume cũ.
      */
     public static void loadSettings() {
         File file = new File(settingsFilePath);
@@ -832,16 +889,32 @@ public final class GameSoundManager {
                 props.load(fis);
                 String volStr = props.getProperty("volume", "0.5");
                 masterVolume = Math.max(0.0f, Math.min(1.0f, Float.parseFloat(volStr)));
+
+                String sfxStr = props.getProperty("sfxVolume", volStr);
+                sfxVolume = Math.max(0.0f, Math.min(1.0f, Float.parseFloat(sfxStr)));
+
+                String bgmStr = props.getProperty("bgmVolume", volStr);
+                bgmVolume = Math.max(0.0f, Math.min(1.0f, Float.parseFloat(bgmStr)));
+
                 muted = Boolean.parseBoolean(props.getProperty("muted", "false"));
+                sfxMuted = Boolean.parseBoolean(props.getProperty("sfxMuted", Boolean.toString(muted)));
+                bgmMuted = Boolean.parseBoolean(props.getProperty("bgmMuted", Boolean.toString(muted)));
             } catch (Exception e) {
                 LOGGER.log(Level.FINE, "Không thể đọc file audio settings, dùng mặc định 50%", e);
                 masterVolume = 0.5f;
+                sfxVolume = 0.5f;
+                bgmVolume = 0.5f;
                 muted = false;
+                sfxMuted = false;
+                bgmMuted = false;
             }
         } else {
-            // Mặc định ban đầu 50%
             masterVolume = 0.5f;
+            sfxVolume = 0.5f;
+            bgmVolume = 0.5f;
             muted = false;
+            sfxMuted = false;
+            bgmMuted = false;
         }
     }
 
@@ -857,7 +930,11 @@ public final class GameSoundManager {
             }
             Properties props = new Properties();
             props.setProperty("volume", String.format(java.util.Locale.US, "%.2f", masterVolume));
+            props.setProperty("sfxVolume", String.format(java.util.Locale.US, "%.2f", sfxVolume));
+            props.setProperty("bgmVolume", String.format(java.util.Locale.US, "%.2f", bgmVolume));
             props.setProperty("muted", Boolean.toString(muted));
+            props.setProperty("sfxMuted", Boolean.toString(sfxMuted));
+            props.setProperty("bgmMuted", Boolean.toString(bgmMuted));
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 props.store(fos, "DontKnow Audio Settings");
             }

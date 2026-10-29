@@ -56,19 +56,32 @@ public class PauseMenuUI {
     private final Rectangle backFromSettingsBtnBounds = new Rectangle();
     private final Rectangle aimGuidelineToggleBounds = new Rectangle();
     private final Rectangle fpsUpsToggleBounds = new Rectangle();
-    private final Rectangle volumeDecBtnBounds = new Rectangle();
-    private final Rectangle volumeIncBtnBounds = new Rectangle();
-    private final Rectangle volumeBarBounds = new Rectangle();
-    private final Rectangle volumeMuteBtnBounds = new Rectangle();
+    // Cài đặt Âm lượng SFX (SFX Volume Controls)
+    private final Rectangle sfxVolDecBtnBounds = new Rectangle();
+    private final Rectangle sfxVolIncBtnBounds = new Rectangle();
+    private final Rectangle sfxVolBarBounds = new Rectangle();
+    private final Rectangle sfxVolMuteBtnBounds = new Rectangle();
+
+    // Cài đặt Âm lượng BGM (BGM Volume Controls)
+    private final Rectangle bgmVolDecBtnBounds = new Rectangle();
+    private final Rectangle bgmVolIncBtnBounds = new Rectangle();
+    private final Rectangle bgmVolBarBounds = new Rectangle();
+    private final Rectangle bgmVolMuteBtnBounds = new Rectangle();
 
     private boolean isResetHovered = false;
     private boolean isBackHovered = false;
     private boolean isAimGuidelineHovered = false;
     private boolean isFpsUpsHovered = false;
-    private boolean isVolDecHovered = false;
-    private boolean isVolIncHovered = false;
-    private boolean isVolBarHovered = false;
-    private boolean isVolMuteHovered = false;
+
+    private boolean isSfxDecHovered = false;
+    private boolean isSfxIncHovered = false;
+    private boolean isSfxBarHovered = false;
+    private boolean isSfxMuteHovered = false;
+
+    private boolean isBgmDecHovered = false;
+    private boolean isBgmIncHovered = false;
+    private boolean isBgmBarHovered = false;
+    private boolean isBgmMuteHovered = false;
     private GameAction hoveredAction = null;
 
     private String feedbackMessage = "";
@@ -258,10 +271,15 @@ public class PauseMenuUI {
         isBackHovered = backFromSettingsBtnBounds.contains(mouseX, mouseY);
         isAimGuidelineHovered = aimGuidelineToggleBounds.contains(mouseX, mouseY);
         isFpsUpsHovered = fpsUpsToggleBounds.contains(mouseX, mouseY);
-        isVolDecHovered = volumeDecBtnBounds.contains(mouseX, mouseY);
-        isVolIncHovered = volumeIncBtnBounds.contains(mouseX, mouseY);
-        isVolBarHovered = volumeBarBounds.contains(mouseX, mouseY);
-        isVolMuteHovered = volumeMuteBtnBounds.contains(mouseX, mouseY);
+        isSfxDecHovered = sfxVolDecBtnBounds.contains(mouseX, mouseY);
+        isSfxIncHovered = sfxVolIncBtnBounds.contains(mouseX, mouseY);
+        isSfxBarHovered = sfxVolBarBounds.contains(mouseX, mouseY);
+        isSfxMuteHovered = sfxVolMuteBtnBounds.contains(mouseX, mouseY);
+
+        isBgmDecHovered = bgmVolDecBtnBounds.contains(mouseX, mouseY);
+        isBgmIncHovered = bgmVolIncBtnBounds.contains(mouseX, mouseY);
+        isBgmBarHovered = bgmVolBarBounds.contains(mouseX, mouseY);
+        isBgmMuteHovered = bgmVolMuteBtnBounds.contains(mouseX, mouseY);
         hoveredAction = null;
         for (Map.Entry<GameAction, Rectangle> entry : keybindBounds.entrySet()) {
             if (entry.getValue().contains(mouseX, mouseY)) {
@@ -307,46 +325,92 @@ public class PauseMenuUI {
                 return PauseAction.NONE;
             }
 
-            if (isVolDecHovered) {
-                float cur = GameSoundManager.getMasterVolume();
+            // --- ĐIỀU CHỈNH ÂM LƯỢNG HIỆU ỨNG (SFX) ---
+            if (isSfxDecHovered) {
+                float cur = GameSoundManager.getSfxVolume();
                 float next = Math.max(0.0f, Math.round((cur - 0.05f) * 100.0f) / 100.0f);
-                GameSoundManager.setMasterVolume(next);
+                GameSoundManager.setSfxVolume(next);
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
-                feedbackMessage = String.format("ÂM LƯỢNG SFX: %d%%", Math.round(next * 100));
+                feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(next * 100));
                 feedbackTimer = 1.8;
                 return PauseAction.NONE;
             }
 
-            if (isVolIncHovered) {
-                float cur = GameSoundManager.getMasterVolume();
+            if (isSfxIncHovered) {
+                float cur = GameSoundManager.getSfxVolume();
                 float next = Math.min(1.0f, Math.round((cur + 0.05f) * 100.0f) / 100.0f);
-                GameSoundManager.setMasterVolume(next);
+                GameSoundManager.setSfxVolume(next);
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
-                feedbackMessage = String.format("ÂM LƯỢNG SFX: %d%%", Math.round(next * 100));
+                feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(next * 100));
                 feedbackTimer = 1.8;
                 return PauseAction.NONE;
             }
 
-            if (isVolBarHovered && volumeBarBounds.width > 0) {
-                float ratio = (float) (mouseX - volumeBarBounds.x) / (float) volumeBarBounds.width;
+            if (isSfxBarHovered && sfxVolBarBounds.width > 0) {
+                float ratio = (float) (mouseX - sfxVolBarBounds.x) / (float) sfxVolBarBounds.width;
                 float clamped = Math.max(0.0f, Math.min(1.0f, ratio));
                 clamped = Math.round(clamped * 20.0f) / 20.0f; // Bước 5%
-                GameSoundManager.setMasterVolume(clamped);
+                GameSoundManager.setSfxVolume(clamped);
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
-                feedbackMessage = String.format("ÂM LƯỢNG SFX: %d%%", Math.round(clamped * 100));
+                feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(clamped * 100));
                 feedbackTimer = 1.8;
                 return PauseAction.NONE;
             }
 
-            if (isVolMuteHovered) {
-                boolean nextMute = !GameSoundManager.isMuted();
-                GameSoundManager.setMuted(nextMute);
+            if (isSfxMuteHovered) {
+                boolean nextMute = !GameSoundManager.isSfxMuted();
+                GameSoundManager.setSfxMuted(nextMute);
                 if (!nextMute) {
                     GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 }
                 feedbackMessage = nextMute
-                        ? "ĐÃ TẮT TIẾNG TOÀN BỘ GAME (MUTED)"
-                        : String.format("ĐÃ BẬT TIẾNG (ÂM LƯỢNG: %d%%)", Math.round(GameSoundManager.getMasterVolume() * 100));
+                        ? "ĐÃ TẮT HIỆU ỨNG ÂM THANH (SFX MUTED)"
+                        : String.format("ĐÃ BẬT HIỆU ỨNG ÂM THANH (ÂM LƯỢNG SFX: %d%%)", Math.round(GameSoundManager.getSfxVolume() * 100));
+                feedbackTimer = 2.0;
+                return PauseAction.NONE;
+            }
+
+            // --- ĐIỀU CHỈNH ÂM LƯỢNG NHẠC NỀN (BGM) ---
+            if (isBgmDecHovered) {
+                float cur = GameSoundManager.getBgmVolume();
+                float next = Math.max(0.0f, Math.round((cur - 0.05f) * 100.0f) / 100.0f);
+                GameSoundManager.setBgmVolume(next);
+                GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
+                feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(next * 100));
+                feedbackTimer = 1.8;
+                return PauseAction.NONE;
+            }
+
+            if (isBgmIncHovered) {
+                float cur = GameSoundManager.getBgmVolume();
+                float next = Math.min(1.0f, Math.round((cur + 0.05f) * 100.0f) / 100.0f);
+                GameSoundManager.setBgmVolume(next);
+                GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
+                feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(next * 100));
+                feedbackTimer = 1.8;
+                return PauseAction.NONE;
+            }
+
+            if (isBgmBarHovered && bgmVolBarBounds.width > 0) {
+                float ratio = (float) (mouseX - bgmVolBarBounds.x) / (float) bgmVolBarBounds.width;
+                float clamped = Math.max(0.0f, Math.min(1.0f, ratio));
+                clamped = Math.round(clamped * 20.0f) / 20.0f; // Bước 5%
+                GameSoundManager.setBgmVolume(clamped);
+                GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
+                feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(clamped * 100));
+                feedbackTimer = 1.8;
+                return PauseAction.NONE;
+            }
+
+            if (isBgmMuteHovered) {
+                boolean nextMute = !GameSoundManager.isBgmMuted();
+                GameSoundManager.setBgmMuted(nextMute);
+                if (!nextMute) {
+                    GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
+                }
+                feedbackMessage = nextMute
+                        ? "ĐÃ TẮT NHẠC NỀN (BGM MUTED)"
+                        : String.format("ĐÃ BẬT NHẠC NỀN (ÂM LƯỢNG BGM: %d%%)", Math.round(GameSoundManager.getBgmVolume() * 100));
                 feedbackTimer = 2.0;
                 return PauseAction.NONE;
             }
@@ -617,117 +681,201 @@ public class PauseMenuUI {
             }
         }
 
-        // Tùy chọn giao diện, Hiệu năng & Âm thanh: 3 Hàng Cài Đặt
+        // Tùy chọn giao diện, Hiệu năng & Âm thanh: 4 Hàng Cài Đặt (SFX, BGM, Aim Guideline, FPS/UPS)
         int botBtnW = 220;
         int botBtnH = 38;
         int botBtnY = panelY + panelH - botBtnH - 18;
 
         int toggleBoxW = panelW - 60;
-        int toggleBoxH = 32;
+        int toggleBoxH = 30;
         int toggleBoxX = panelX + 30;
 
-        int toggle2Y = botBtnY - toggleBoxH - 8;
-        int toggle1Y = toggle2Y - toggleBoxH - 6;
-        int toggleVolY = toggle1Y - toggleBoxH - 6;
+        int toggleFpsY = botBtnY - toggleBoxH - 6;      // Hàng 4: FPS & UPS
+        int toggleAimY = toggleFpsY - toggleBoxH - 6;     // Hàng 3: Đường ngắm chuột
+        int toggleBgmY = toggleAimY - toggleBoxH - 6;     // Hàng 2: Nhạc nền BGM
+        int toggleSfxY = toggleBgmY - toggleBoxH - 6;     // Hàng 1: Hiệu ứng SFX
 
-        aimGuidelineToggleBounds.setBounds(toggleBoxX, toggle1Y, toggleBoxW, toggleBoxH);
-        fpsUpsToggleBounds.setBounds(toggleBoxX, toggle2Y, toggleBoxW, toggleBoxH);
+        int toggle1Y = toggleAimY;
+        int toggle2Y = toggleFpsY;
+
+        aimGuidelineToggleBounds.setBounds(toggleBoxX, toggleAimY, toggleBoxW, toggleBoxH);
+        fpsUpsToggleBounds.setBounds(toggleBoxX, toggleFpsY, toggleBoxW, toggleBoxH);
+
+        int statusBtnH = 22;
+        int statusSfxBtnY = toggleSfxY + (toggleBoxH - statusBtnH) / 2;
+        int statusBgmBtnY = toggleBgmY + (toggleBoxH - statusBtnH) / 2;
+
+        int muteBtnW = 75;
+        int incBtnW = 26;
+        int barW = 100;
+        int barH = 20;
+        int decBtnW = 26;
+
+        int muteBtnX = toggleBoxX + toggleBoxW - muteBtnW - 8;
+        int incBtnX = muteBtnX - incBtnW - 6;
+        int barX = incBtnX - barW - 6;
+        int decBtnX = barX - decBtnW - 6;
+
+        sfxVolMuteBtnBounds.setBounds(muteBtnX, statusSfxBtnY, muteBtnW, statusBtnH);
+        sfxVolIncBtnBounds.setBounds(incBtnX, statusSfxBtnY, incBtnW, statusBtnH);
+        sfxVolBarBounds.setBounds(barX, statusSfxBtnY + 1, barW, barH);
+        sfxVolDecBtnBounds.setBounds(decBtnX, statusSfxBtnY, decBtnW, statusBtnH);
+
+        bgmVolMuteBtnBounds.setBounds(muteBtnX, statusBgmBtnY, muteBtnW, statusBtnH);
+        bgmVolIncBtnBounds.setBounds(incBtnX, statusBgmBtnY, incBtnW, statusBtnH);
+        bgmVolBarBounds.setBounds(barX, statusBgmBtnY + 1, barW, barH);
+        bgmVolDecBtnBounds.setBounds(decBtnX, statusBgmBtnY, decBtnW, statusBtnH);
 
         // --- HÀNG 1: ÂM LƯỢNG HIỆU ỨNG (SFX VOLUME) ---
-        Color toggleVolBg = (isVolDecHovered || isVolIncHovered || isVolBarHovered || isVolMuteHovered)
+        Color toggleSfxBg = (isSfxDecHovered || isSfxIncHovered || isSfxBarHovered || isSfxMuteHovered)
                 ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
-        g.setColor(toggleVolBg);
-        g.fillRoundRect(toggleBoxX, toggleVolY, toggleBoxW, toggleBoxH, 6, 6);
+        g.setColor(toggleSfxBg);
+        g.fillRoundRect(toggleBoxX, toggleSfxY, toggleBoxW, toggleBoxH, 6, 6);
         g.setColor(new Color(45, 65, 95));
-        g.drawRoundRect(toggleBoxX, toggleVolY, toggleBoxW, toggleBoxH, 6, 6);
+        g.drawRoundRect(toggleBoxX, toggleSfxY, toggleBoxW, toggleBoxH, 6, 6);
 
         g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
         g.setColor(new Color(230, 245, 255));
-        g.drawString("[VOL] ÂM LƯỢNG (BGM & SFX)", toggleBoxX + 14, toggleVolY + 21);
+        g.drawString("[SFX] ÂM LƯỢNG HIỆU ỨNG (SFX)", toggleBoxX + 14, toggleSfxY + 20);
 
         g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
         g.setColor(new Color(145, 175, 205));
-        g.drawString("Điều chỉnh âm lượng nhạc nền (BGM) và hiệu ứng âm thanh (SFX) (Mặc định 50%)", toggleBoxX + 225, toggleVolY + 21);
+        g.drawString("Tiếng nổ súng, nạp đạn, lướt né, trúng đạn và tiếng quái vật", toggleBoxX + 230, toggleSfxY + 20);
 
-        // Các nút điều khiển âm lượng bên phải
-        int statusBtnH = 22;
-        int statusVolBtnY = toggleVolY + (toggleBoxH - statusBtnH) / 2;
-
-        int muteBtnW = 75;
-        int muteBtnX = toggleBoxX + toggleBoxW - muteBtnW - 8;
-        volumeMuteBtnBounds.setBounds(muteBtnX, statusVolBtnY, muteBtnW, statusBtnH);
-
-        int incBtnW = 26;
-        int incBtnX = muteBtnX - incBtnW - 6;
-        volumeIncBtnBounds.setBounds(incBtnX, statusVolBtnY, incBtnW, statusBtnH);
-
-        int barW = 100;
-        int barH = 20;
-        int barX = incBtnX - barW - 6;
-        volumeBarBounds.setBounds(barX, statusVolBtnY + 1, barW, barH);
-
-        int decBtnW = 26;
-        int decBtnX = barX - decBtnW - 6;
-        volumeDecBtnBounds.setBounds(decBtnX, statusVolBtnY, decBtnW, statusBtnH);
-
-        // Nút Giảm [-]
-        g.setColor(isVolDecHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
-        g.fillRoundRect(decBtnX, statusVolBtnY, decBtnW, statusBtnH, 4, 4);
-        g.setColor(isVolDecHovered ? new Color(0, 220, 255) : new Color(65, 90, 125));
-        g.drawRoundRect(decBtnX, statusVolBtnY, decBtnW, statusBtnH, 4, 4);
+        // Nút Giảm [-] SFX
+        g.setColor(isSfxDecHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
+        g.fillRoundRect(decBtnX, statusSfxBtnY, decBtnW, statusBtnH, 4, 4);
+        g.setColor(isSfxDecHovered ? new Color(0, 220, 255) : new Color(65, 90, 125));
+        g.drawRoundRect(decBtnX, statusSfxBtnY, decBtnW, statusBtnH, 4, 4);
         g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(12.0f));
         g.setColor(Color.WHITE);
-        g.drawString("-", decBtnX + 10, statusVolBtnY + 16);
+        g.drawString("-", decBtnX + 10, statusSfxBtnY + 16);
 
-        // Thanh đo Volume Bar
-        float vol = GameSoundManager.getMasterVolume();
-        boolean isMuted = GameSoundManager.isMuted();
+        // Thanh đo SFX Volume Bar
+        float sfxVol = GameSoundManager.getSfxVolume();
+        boolean isSfxMuted = GameSoundManager.isSfxMuted();
         g.setColor(new Color(10, 14, 22));
-        g.fillRoundRect(barX, statusVolBtnY + 1, barW, barH, 4, 4);
-        if (!isMuted && vol > 0.001f) {
-            int fillW = Math.max(4, (int) (barW * vol));
+        g.fillRoundRect(barX, statusSfxBtnY + 1, barW, barH, 4, 4);
+        if (!isSfxMuted && sfxVol > 0.001f) {
+            int fillW = Math.max(4, (int) (barW * sfxVol));
             g.setColor(new Color(0, 170, 220, 210));
-            g.fillRoundRect(barX, statusVolBtnY + 1, fillW, barH, 4, 4);
+            g.fillRoundRect(barX, statusSfxBtnY + 1, fillW, barH, 4, 4);
         }
-        g.setColor(isVolBarHovered ? new Color(0, 220, 255) : new Color(60, 85, 120));
-        g.drawRoundRect(barX, statusVolBtnY + 1, barW, barH, 4, 4);
+        g.setColor(isSfxBarHovered ? new Color(0, 220, 255) : new Color(60, 85, 120));
+        g.drawRoundRect(barX, statusSfxBtnY + 1, barW, barH, 4, 4);
 
         g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
-        String volPercentStr = isMuted ? "0% (MUTE)" : String.format("%d%%", Math.round(vol * 100));
-        int vpw = g.getFontMetrics().stringWidth(volPercentStr);
+        String sfxPercentStr = isSfxMuted ? "0% (MUTE)" : String.format("%d%%", Math.round(sfxVol * 100));
+        int sfxVpw = g.getFontMetrics().stringWidth(sfxPercentStr);
         g.setColor(Color.WHITE);
-        g.drawString(volPercentStr, barX + (barW - vpw) / 2, statusVolBtnY + 15);
+        g.drawString(sfxPercentStr, barX + (barW - sfxVpw) / 2, statusSfxBtnY + 15);
 
-        // Nút Tăng [+]
-        g.setColor(isVolIncHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
-        g.fillRoundRect(incBtnX, statusVolBtnY, incBtnW, statusBtnH, 4, 4);
-        g.setColor(isVolIncHovered ? new Color(0, 220, 255) : new Color(65, 90, 125));
-        g.drawRoundRect(incBtnX, statusVolBtnY, incBtnW, statusBtnH, 4, 4);
+        // Nút Tăng [+] SFX
+        g.setColor(isSfxIncHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
+        g.fillRoundRect(incBtnX, statusSfxBtnY, incBtnW, statusBtnH, 4, 4);
+        g.setColor(isSfxIncHovered ? new Color(0, 220, 255) : new Color(65, 90, 125));
+        g.drawRoundRect(incBtnX, statusSfxBtnY, incBtnW, statusBtnH, 4, 4);
         g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(12.0f));
         g.setColor(Color.WHITE);
-        g.drawString("+", incBtnX + 8, statusVolBtnY + 16);
+        g.drawString("+", incBtnX + 8, statusSfxBtnY + 16);
 
-        // Nút Mute
-        if (isMuted) {
+        // Nút Mute SFX
+        if (isSfxMuted) {
             g.setColor(new Color(120, 40, 30));
-            g.fillRoundRect(muteBtnX, statusVolBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.fillRoundRect(muteBtnX, statusSfxBtnY, muteBtnW, statusBtnH, 4, 4);
             g.setColor(new Color(255, 90, 70));
-            g.drawRoundRect(muteBtnX, statusVolBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.drawRoundRect(muteBtnX, statusSfxBtnY, muteBtnW, statusBtnH, 4, 4);
             g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
             String mStr = "[ MUTED ]";
             int mw = g.getFontMetrics().stringWidth(mStr);
             g.setColor(Color.WHITE);
-            g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusVolBtnY + 15);
+            g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusSfxBtnY + 15);
         } else {
-            g.setColor(isVolMuteHovered ? new Color(30, 80, 55) : new Color(20, 45, 35));
-            g.fillRoundRect(muteBtnX, statusVolBtnY, muteBtnW, statusBtnH, 4, 4);
-            g.setColor(isVolMuteHovered ? new Color(80, 250, 150) : new Color(50, 130, 90));
-            g.drawRoundRect(muteBtnX, statusVolBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.setColor(isSfxMuteHovered ? new Color(30, 80, 55) : new Color(20, 45, 35));
+            g.fillRoundRect(muteBtnX, statusSfxBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.setColor(isSfxMuteHovered ? new Color(80, 250, 150) : new Color(50, 130, 90));
+            g.drawRoundRect(muteBtnX, statusSfxBtnY, muteBtnW, statusBtnH, 4, 4);
             g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
             String mStr = "[ BẬT ]";
             int mw = g.getFontMetrics().stringWidth(mStr);
             g.setColor(new Color(160, 255, 190));
-            g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusVolBtnY + 15);
+            g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusSfxBtnY + 15);
+        }
+
+        // --- HÀNG 2: ÂM LƯỢNG NHẠC NỀN (BGM VOLUME) ---
+        Color toggleBgmBg = (isBgmDecHovered || isBgmIncHovered || isBgmBarHovered || isBgmMuteHovered)
+                ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
+        g.setColor(toggleBgmBg);
+        g.fillRoundRect(toggleBoxX, toggleBgmY, toggleBoxW, toggleBoxH, 6, 6);
+        g.setColor(new Color(45, 65, 95));
+        g.drawRoundRect(toggleBoxX, toggleBgmY, toggleBoxW, toggleBoxH, 6, 6);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
+        g.setColor(new Color(230, 245, 255));
+        g.drawString("[BGM] ÂM LƯỢNG NHẠC NỀN (BGM)", toggleBoxX + 14, toggleBgmY + 20);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
+        g.setColor(new Color(145, 175, 205));
+        g.drawString("Nhạc nền căn cứ The Range, các tầng ngục và trận đánh Trùm", toggleBoxX + 230, toggleBgmY + 20);
+
+        // Nút Giảm [-] BGM
+        g.setColor(isBgmDecHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
+        g.fillRoundRect(decBtnX, statusBgmBtnY, decBtnW, statusBtnH, 4, 4);
+        g.setColor(isBgmDecHovered ? new Color(0, 220, 255) : new Color(65, 90, 125));
+        g.drawRoundRect(decBtnX, statusBgmBtnY, decBtnW, statusBtnH, 4, 4);
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(12.0f));
+        g.setColor(Color.WHITE);
+        g.drawString("-", decBtnX + 10, statusBgmBtnY + 16);
+
+        // Thanh đo BGM Volume Bar
+        float bgmVol = GameSoundManager.getBgmVolume();
+        boolean isBgmMuted = GameSoundManager.isBgmMuted();
+        g.setColor(new Color(10, 14, 22));
+        g.fillRoundRect(barX, statusBgmBtnY + 1, barW, barH, 4, 4);
+        if (!isBgmMuted && bgmVol > 0.001f) {
+            int fillW = Math.max(4, (int) (barW * bgmVol));
+            g.setColor(new Color(180, 130, 255, 210)); // Màu tím thanh lịch riêng cho BGM
+            g.fillRoundRect(barX, statusBgmBtnY + 1, fillW, barH, 4, 4);
+        }
+        g.setColor(isBgmBarHovered ? new Color(200, 160, 255) : new Color(60, 85, 120));
+        g.drawRoundRect(barX, statusBgmBtnY + 1, barW, barH, 4, 4);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+        String bgmPercentStr = isBgmMuted ? "0% (MUTE)" : String.format("%d%%", Math.round(bgmVol * 100));
+        int bgmVpw = g.getFontMetrics().stringWidth(bgmPercentStr);
+        g.setColor(Color.WHITE);
+        g.drawString(bgmPercentStr, barX + (barW - bgmVpw) / 2, statusBgmBtnY + 15);
+
+        // Nút Tăng [+] BGM
+        g.setColor(isBgmIncHovered ? new Color(0, 140, 200, 220) : new Color(25, 35, 50));
+        g.fillRoundRect(incBtnX, statusBgmBtnY, incBtnW, statusBtnH, 4, 4);
+        g.setColor(isBgmIncHovered ? new Color(0, 220, 255) : new Color(65, 90, 125));
+        g.drawRoundRect(incBtnX, statusBgmBtnY, incBtnW, statusBtnH, 4, 4);
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(12.0f));
+        g.setColor(Color.WHITE);
+        g.drawString("+", incBtnX + 8, statusBgmBtnY + 16);
+
+        // Nút Mute BGM
+        if (isBgmMuted) {
+            g.setColor(new Color(120, 40, 30));
+            g.fillRoundRect(muteBtnX, statusBgmBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(255, 90, 70));
+            g.drawRoundRect(muteBtnX, statusBgmBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String mStr = "[ MUTED ]";
+            int mw = g.getFontMetrics().stringWidth(mStr);
+            g.setColor(Color.WHITE);
+            g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusBgmBtnY + 15);
+        } else {
+            g.setColor(isBgmMuteHovered ? new Color(50, 40, 85) : new Color(30, 25, 55));
+            g.fillRoundRect(muteBtnX, statusBgmBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.setColor(isBgmMuteHovered ? new Color(190, 150, 255) : new Color(130, 95, 190));
+            g.drawRoundRect(muteBtnX, statusBgmBtnY, muteBtnW, statusBtnH, 4, 4);
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String mStr = "[ BẬT ]";
+            int mw = g.getFontMetrics().stringWidth(mStr);
+            g.setColor(new Color(215, 195, 255));
+            g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusBgmBtnY + 15);
         }
 
         // --- HÀNG 2: ĐƯỜNG NGẮM CHUỘT ---
@@ -889,5 +1037,54 @@ public class PauseMenuUI {
 
     public Rectangle getFpsUpsToggleBounds() {
         return fpsUpsToggleBounds;
+    }
+
+    public Rectangle getSfxVolDecBtnBounds() {
+        return sfxVolDecBtnBounds;
+    }
+
+    public Rectangle getSfxVolIncBtnBounds() {
+        return sfxVolIncBtnBounds;
+    }
+
+    public Rectangle getSfxVolBarBounds() {
+        return sfxVolBarBounds;
+    }
+
+    public Rectangle getSfxVolMuteBtnBounds() {
+        return sfxVolMuteBtnBounds;
+    }
+
+    public Rectangle getBgmVolDecBtnBounds() {
+        return bgmVolDecBtnBounds;
+    }
+
+    public Rectangle getBgmVolIncBtnBounds() {
+        return bgmVolIncBtnBounds;
+    }
+
+    public Rectangle getBgmVolBarBounds() {
+        return bgmVolBarBounds;
+    }
+
+    public Rectangle getBgmVolMuteBtnBounds() {
+        return bgmVolMuteBtnBounds;
+    }
+
+    // Getters tương thích ngược
+    public Rectangle getVolumeDecBtnBounds() {
+        return sfxVolDecBtnBounds;
+    }
+
+    public Rectangle getVolumeIncBtnBounds() {
+        return sfxVolIncBtnBounds;
+    }
+
+    public Rectangle getVolumeBarBounds() {
+        return sfxVolBarBounds;
+    }
+
+    public Rectangle getVolumeMuteBtnBounds() {
+        return sfxVolMuteBtnBounds;
     }
 }

@@ -430,4 +430,67 @@ public class KeyBindingsAndPauseMenuTest {
         gPanel.dispose();
         com.groupproject.game.state.PlayingState.setSpawnDirectlyInBossRoom(false);
     }
+
+    @Test
+    @DisplayName("Kiểm tra điều khiển âm lượng SFX và BGM tách biệt trong giao diện Cài đặt (PauseMenuUI)")
+    void testSfxAndBgmVolumeControlsInSettings() {
+        PauseMenuUI menu = new PauseMenuUI();
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        // Khởi tạo trạng thái âm lượng chuẩn
+        com.groupproject.game.core.GameSoundManager.setSfxVolume(0.50f);
+        com.groupproject.game.core.GameSoundManager.setBgmVolume(0.50f);
+        com.groupproject.game.core.GameSoundManager.setSfxMuted(false);
+        com.groupproject.game.core.GameSoundManager.setBgmMuted(false);
+
+        // Chuyển sang menu SETTINGS và render 1 frame để khởi tạo bounds
+        menu.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+        menu.render(g, 1280, 720);
+        g.dispose();
+
+        // 1. Kiểm tra các bounding box của SFX và BGM được khởi tạo hợp lệ
+        assertNotNull(menu.getSfxVolDecBtnBounds());
+        assertNotNull(menu.getSfxVolIncBtnBounds());
+        assertNotNull(menu.getSfxVolBarBounds());
+        assertNotNull(menu.getSfxVolMuteBtnBounds());
+
+        assertNotNull(menu.getBgmVolDecBtnBounds());
+        assertNotNull(menu.getBgmVolIncBtnBounds());
+        assertNotNull(menu.getBgmVolBarBounds());
+        assertNotNull(menu.getBgmVolMuteBtnBounds());
+
+        assertTrue(menu.getSfxVolBarBounds().width > 0);
+        assertTrue(menu.getBgmVolBarBounds().width > 0);
+
+        // 2. Click nút Giảm SFX [-]
+        clickMouse(MouseEvent.BUTTON1, (int) menu.getSfxVolDecBtnBounds().getCenterX(), (int) menu.getSfxVolDecBtnBounds().getCenterY());
+        menu.update(keyH, mouseH, 0.016);
+        assertEquals(0.45f, com.groupproject.game.core.GameSoundManager.getSfxVolume(), 0.01f, "Giảm SFX 5% -> 45%");
+        assertEquals(0.50f, com.groupproject.game.core.GameSoundManager.getBgmVolume(), 0.01f, "BGM không bị ảnh hưởng");
+
+        // 3. Click nút Tăng BGM [+]
+        clickMouse(MouseEvent.BUTTON1, (int) menu.getBgmVolIncBtnBounds().getCenterX(), (int) menu.getBgmVolIncBtnBounds().getCenterY());
+        menu.update(keyH, mouseH, 0.016);
+        assertEquals(0.55f, com.groupproject.game.core.GameSoundManager.getBgmVolume(), 0.01f, "Tăng BGM 5% -> 55%");
+        assertEquals(0.45f, com.groupproject.game.core.GameSoundManager.getSfxVolume(), 0.01f, "SFX không bị ảnh hưởng");
+
+        // 4. Click nút Tắt tiếng SFX [MUTE]
+        clickMouse(MouseEvent.BUTTON1, (int) menu.getSfxVolMuteBtnBounds().getCenterX(), (int) menu.getSfxVolMuteBtnBounds().getCenterY());
+        menu.update(keyH, mouseH, 0.016);
+        assertTrue(com.groupproject.game.core.GameSoundManager.isSfxMuted(), "SFX phải bị tắt tiếng");
+        assertFalse(com.groupproject.game.core.GameSoundManager.isBgmMuted(), "BGM vẫn phải bật tiếng");
+
+        // 5. Click nút Tắt tiếng BGM [MUTE]
+        clickMouse(MouseEvent.BUTTON1, (int) menu.getBgmVolMuteBtnBounds().getCenterX(), (int) menu.getBgmVolMuteBtnBounds().getCenterY());
+        menu.update(keyH, mouseH, 0.016);
+        assertTrue(com.groupproject.game.core.GameSoundManager.isBgmMuted(), "BGM phải bị tắt tiếng");
+
+        // Khôi phục lại
+        com.groupproject.game.core.GameSoundManager.setSfxMuted(false);
+        com.groupproject.game.core.GameSoundManager.setBgmMuted(false);
+        com.groupproject.game.core.GameSoundManager.setSfxVolume(0.50f);
+        com.groupproject.game.core.GameSoundManager.setBgmVolume(0.50f);
+    }
 }
+
