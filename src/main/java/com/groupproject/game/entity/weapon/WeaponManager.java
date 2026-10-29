@@ -2,6 +2,8 @@ package com.groupproject.game.entity.weapon;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameFontManager;
+import com.groupproject.game.core.GameSoundManager;
+import com.groupproject.game.core.GameSoundManager.SoundEffect;
 import com.groupproject.game.entity.projectile.ProjectileManager;
 import java.awt.Color;
 import java.awt.FontMetrics;
@@ -26,6 +28,26 @@ public class WeaponManager {
 
     private Weapon activeWeapon;
     private Weapon previousWeapon;
+
+    private static void playWeaponDraw(Weapon weapon) {
+        if (weapon == null) {
+            return;
+        }
+
+        SoundEffect drawEffect;
+        if (weapon instanceof Pistol) {
+            drawEffect = SoundEffect.GUN_PISTOL_DRAW;
+        } else if (weapon instanceof AssaultRifle) {
+            drawEffect = SoundEffect.GUN_RIFLE_DRAW;
+        } else if (weapon instanceof SemiCarbineRifle) {
+            drawEffect = SoundEffect.GUN_SC_DRAW;
+        } else if (weapon instanceof SniperRifle) {
+            drawEffect = SoundEffect.GUN_SNIPER_DRAW;
+        } else {
+            return;
+        }
+        GameSoundManager.play(drawEffect);
+    }
 
     public WeaponManager() {
         // Khởi đầu người chơi chỉ có súng lục phụ (Slot 3) và dao găm (Slot 4)
@@ -117,6 +139,7 @@ public class WeaponManager {
         }
 
         activeWeapon = weapon;
+        playWeaponDraw(activeWeapon);
         return replacedWeapon;
     }
 
@@ -194,6 +217,7 @@ public class WeaponManager {
             }
             previousWeapon = activeWeapon;
             activeWeapon = selected;
+            playWeaponDraw(activeWeapon);
         }
     }
 
@@ -221,6 +245,7 @@ public class WeaponManager {
             Weapon temp = activeWeapon;
             activeWeapon = previousWeapon;
             previousWeapon = temp;
+            playWeaponDraw(activeWeapon);
         } else {
             // 2. Cơ chế phục hồi thông minh: Nếu previousWeapon không còn hợp lệ,
             // ưu tiên đổi giữa Slot 1 và Slot 2 (hoặc súng lục Slot 3)

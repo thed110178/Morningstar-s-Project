@@ -30,9 +30,9 @@ public class GameSoundManagerTest {
     }
 
     @Test
-    @DisplayName("Tất cả 30 hiệu ứng âm thanh SFX (bao gồm Interact, Healing, Coin, GameOver, BuyComplete, BuyFailed, UI_Interact) đều được nạp thành công")
+    @DisplayName("Tất cả hiệu ứng âm thanh SFX đều được nạp thành công")
     public void testAllSoundEffectsLoaded() {
-        assertEquals(30, SoundEffect.values().length, "Phải có đúng 30 loại âm thanh SoundEffect");
+        assertEquals(37, SoundEffect.values().length, "Phải có đúng 37 loại âm thanh SoundEffect");
 
         for (SoundEffect sfx : SoundEffect.values()) {
             assertNotNull(sfx.getFilename(), "Tên file âm thanh không được null: " + sfx.name());

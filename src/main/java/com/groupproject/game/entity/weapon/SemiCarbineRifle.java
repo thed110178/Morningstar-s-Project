@@ -205,7 +205,7 @@ public class SemiCarbineRifle extends Weapon {
         Projectile bullet = new Projectile(muzzleX, muzzleY, firedAngle, BULLET_SPEED,
                 shotDamage, BULLET_LIFETIME, true, isCrit);
         pm.spawn(bullet);
-        GameSoundManager.play(SoundEffect.GUN_RIFLE_SHOOT);
+        GameSoundManager.play(SoundEffect.GUN_SC_SHOOT);
 
         // Tiêu hao đạn và hồi cooldown
         currentAmmo--;
@@ -220,7 +220,7 @@ public class SemiCarbineRifle extends Weapon {
 
     @Override
     protected void onStartReload() {
-        GameSoundManager.playReload(SoundEffect.GUN_RIFLE_RELOAD);
+        GameSoundManager.playReload(SoundEffect.GUN_SC_RELOAD);
     }
 
     @Override

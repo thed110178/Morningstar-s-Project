@@ -162,7 +162,7 @@ public class SniperRifle extends Weapon {
 
     @Override
     protected void onStartReload() {
-        GameSoundManager.playReload(SoundEffect.GUN_RIFLE_RELOAD);
+        GameSoundManager.playReload(SoundEffect.GUN_SNIPER_RELOAD);
     }
 
     @Override

@@ -77,16 +77,23 @@ public final class GameSoundManager {
         ENEMY_UNIVERSAL_FIRE("enemy_universal_fire.wav", 10),
         GAME_OVER("gameover.wav", 2),
         GUN_MELEE("gun_melee.wav", 6),
+        GUN_PISTOL_DRAW("gun_pistol_draw.wav", 2),
         GUN_PISTOL_RELOAD("gun_pistol_reload.wav", 2),
         GUN_PISTOL_SHOOT("gun_pistol_shoot.wav", 10),
+        GUN_RIFLE_DRAW("gun_rifle_draw.wav", 2),
         GUN_RIFLE_RELOAD("gun_rifle_reload.wav", 2),
         GUN_RIFLE_SHOOT("gun_rifle_shoot.wav", 20), // Súng trường sấy auto + đuôi vọng dài: 20 kênh trộn đồng thời
+        GUN_SC_DRAW("gun_sc_draw.wav", 2),
+        GUN_SC_RELOAD("gun_sc_reload.wav", 2),
+        GUN_SC_SHOOT("gun_sc_shoot.wav", 8),
         GUN_SHOTGUN_LOADING_AMMO("gun_shotgun_loadingAmmo.wav", 6), // Tiếng bơm tay lên đạn sau mỗi phát bắn của Shotgun (0.75s)
         GUN_SHOTGUN_RELOAD("gun_shotgun_reload.wav", 8), // Súng shotgun nạp từng viên: 8 kênh độc lập
         GUN_SHOTGUN_SHOOT("gun_shotgun_shoot.wav", 8),
         GUN_SMG_RELOAD("gun_smg_reload.wav", 2),
         GUN_SMG_SHOOT("gun_smg_shoot.wav", 24),     // Súng tiểu liên sấy siêu tốc + đuôi vọng dài: 24 kênh trộn đồng thời
+        GUN_SNIPER_DRAW("gun_sniper_draw.wav", 2),
         GUN_SNIPER_LOADING_AMMO("gun_sniper_loadingAmmo.wav", 6), // Tiếng kéo quy lát lên đạn sau mỗi lần bắn của Sniper
+        GUN_SNIPER_RELOAD("gun_sniper_reload.wav", 2),
         GUN_SNIPER_SHOOT("gun_sniper_shoot.wav", 8), // Tiếng nổ súng bắn tỉa Sniper
         HEALING("healing.wav", 6),
         HIT_BOSS("hit_boss.wav", 8),
