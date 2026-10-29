@@ -39,6 +39,7 @@ public class EnemyGrenade extends Projectile {
 
     // Visual blinking timer for floor danger warning
     private double animTimer = 0.0;
+    private boolean beepPlayed = false;
 
     /**
      * Constructs a hostile timed grenade thrown towards designated coordinates.
@@ -86,6 +87,10 @@ public class EnemyGrenade extends Projectile {
                 landed = true;
                 setX(targetX);
                 setY(targetY);
+                if (!beepPlayed) {
+                    beepPlayed = true;
+                    com.groupproject.game.core.GameSoundManager.play(com.groupproject.game.core.GameSoundManager.SoundEffect.BOMB_BEEP);
+                }
             }
         }
 
@@ -109,6 +114,9 @@ public class EnemyGrenade extends Projectile {
         hasExploded = true;
         deactivate();
 
+        com.groupproject.game.core.GameSoundManager.stopEffect(com.groupproject.game.core.GameSoundManager.SoundEffect.BOMB_BEEP);
+        com.groupproject.game.core.GameSoundManager.play(com.groupproject.game.core.GameSoundManager.SoundEffect.GRENADIER_EXPLOSION);
+
         double blastX = getX();
         double blastY = getY();
 
@@ -130,6 +138,16 @@ public class EnemyGrenade extends Projectile {
     public void handleWallCollision(DungeonMap dungeonMap) {
         // If it collides with a wall during throw, drop it down at current point immediately
         landed = true;
+        if (!beepPlayed) {
+            beepPlayed = true;
+            com.groupproject.game.core.GameSoundManager.play(com.groupproject.game.core.GameSoundManager.SoundEffect.BOMB_BEEP);
+        }
+    }
+
+    @Override
+    public void deactivate() {
+        super.deactivate();
+        com.groupproject.game.core.GameSoundManager.stopEffect(com.groupproject.game.core.GameSoundManager.SoundEffect.BOMB_BEEP);
     }
 
     public boolean hasExploded() {

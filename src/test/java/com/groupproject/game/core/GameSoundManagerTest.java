@@ -32,7 +32,7 @@ public class GameSoundManagerTest {
     @Test
     @DisplayName("Tất cả hiệu ứng âm thanh SFX đều được nạp thành công")
     public void testAllSoundEffectsLoaded() {
-        assertEquals(39, SoundEffect.values().length, "Phải có đúng 39 loại âm thanh SoundEffect");
+        assertEquals(44, SoundEffect.values().length, "Phải có đúng 44 loại âm thanh SoundEffect");
 
         for (SoundEffect sfx : SoundEffect.values()) {
             assertNotNull(sfx.getFilename(), "Tên file âm thanh không được null: " + sfx.name());
@@ -58,7 +58,12 @@ public class GameSoundManagerTest {
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GAME_OVER), "Tiếng kết thúc trận Game Over phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.BUY_COMPLETE), "Tiếng mua hàng Buy Complete phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.BUY_FAILED), "Tiếng mua thất bại Buy Failed phải nạp thành công");
-        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.UI_INTERACT), "Tiếng tương tác giao diện UI Interact phải nạp thành công");
+                assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.UI_INTERACT), "Tiếng tương tác giao diện UI Interact phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.ENEMY_DEAD_1), "Tiếng chết kẻ địch 1 phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.ENEMY_DEAD_2), "Tiếng chết kẻ địch 2 phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.ENEMY_DEAD_3), "Tiếng chết kẻ địch 3 phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.BOMB_BEEP), "Tiếng đếm ngược bom Grenadier phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GRENADIER_EXPLOSION), "Tiếng nổ bom Grenadier phải nạp thành công");
 
         // Kiểm tra kích thước pool riêng cho súng auto và shotgun nạp từng shell
         assertTrue(SoundEffect.GUN_SMG_SHOOT.getPoolSize() >= 10, "SMG auto sấy liên thanh phải có pool lớn >= 10");
@@ -82,6 +87,8 @@ public class GameSoundManagerTest {
         GameSoundManager.playChamber(SoundEffect.GUN_SNIPER_LOADING_AMMO);
         GameSoundManager.playChamber(SoundEffect.GUN_SHOTGUN_LOADING_AMMO);
         GameSoundManager.stopReload();
+        GameSoundManager.playRandomEnemyDead();
+        GameSoundManager.stopEffect(SoundEffect.BOMB_BEEP);
     }
 
     @Test

@@ -1799,6 +1799,7 @@ public class PlayingState extends GameState {
             ammoPickups.add(new AmmoPickup(dummy.getX() - 25, dummy.getY() + 25, AmmoType.SR, 5));
             healthPickups.add(new HealthPickup(dummy.getX(), dummy.getY() - 36, HealthPickup.HealthSize.LARGE));
         } else {
+            com.groupproject.game.core.GameSoundManager.playRandomEnemyDead();
             tryDropEnemyCredits(); // Tỉ lệ nhỏ rơi tiền khi tiêu diệt mục tiêu
             tryDropEnemyAmmo(dummy.getX(), dummy.getY()); // Tỉ lệ nhỏ rơi hộp đạn khi tiêu diệt mục tiêu
         }

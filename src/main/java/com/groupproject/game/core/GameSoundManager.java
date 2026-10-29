@@ -74,6 +74,11 @@ public final class GameSoundManager {
         ENEMY_BOSS_EXPLOSION("enemy_boss_explosion.wav", 6),
         ENEMY_BOSS_FIRE("enemy_boss_fire.wav", 10),
         ENEMY_BOSS_WALLCRASH("enemy_boss_wallcrash.wav", 4),
+        BOMB_BEEP("bomb-beep.wav", 6),
+        ENEMY_DEAD_1("enemy_dead_1.wav", 8),
+        ENEMY_DEAD_2("enemy_dead_2.wav", 8),
+        ENEMY_DEAD_3("enemy_dead_3.wav", 8),
+        GRENADIER_EXPLOSION("grenader_explosion.wav", 8),
         ENEMY_UNIVERSAL_FIRE("enemy_universal_fire.wav", 10),
         GAME_OVER("gameover.wav", 2),
         GUN_MELEE("gun_melee.wav", 6),
@@ -804,6 +809,30 @@ public final class GameSoundManager {
     /**
      * Dừng ngay lập tức âm thanh nạp đạn đang phát (khi nạp xong súng thông thường hoặc khi người chơi hủy nạp đạn).
      */
+    /**
+     * Dừng ngay lập tức một hiệu ứng âm thanh cụ thể (ví dụ: dừng tiếng đếm ngược quả bom BOMB_BEEP khi bom nổ).
+     */
+    public static synchronized void stopEffect(SoundEffect sfx) {
+        if (sfx == null) return;
+        for (ActiveVoice voice : ACTIVE_VOICES) {
+            if (voice != null && voice.effect == sfx) {
+                voice.stopped = true;
+            }
+        }
+    }
+
+    /**
+     * Phát ngẫu nhiên 1 trong 3 tiếng tử trận của kẻ địch (enemy_dead_1, enemy_dead_2, enemy_dead_3).
+     */
+    public static void playRandomEnemyDead() {
+        int r = java.util.concurrent.ThreadLocalRandom.current().nextInt(3);
+        switch (r) {
+            case 0 -> play(SoundEffect.ENEMY_DEAD_1);
+            case 1 -> play(SoundEffect.ENEMY_DEAD_2);
+            default -> play(SoundEffect.ENEMY_DEAD_3);
+        }
+    }
+
     public static synchronized void stopReload() {
         for (ActiveVoice voice : ACTIVE_VOICES) {
             if (voice != null && (voice.reloadChannel || voice.effect == SoundEffect.GUN_SHOTGUN_RELOAD)) {
