@@ -567,4 +567,35 @@ class HubRangeTest {
         assertTrue(com.groupproject.game.core.GameSoundManager.isSoundLoaded(com.groupproject.game.core.GameSoundManager.SoundEffect.CRITICAL_HIT),
                 "CRITICAL_HIT sound must be loaded and ready");
     }
+
+    @Test
+    @DisplayName("Kiem tra duong dan tracer ket thuc tai dung toa do thuc te cua vien dan thay vi bi hut ve tam dummy")
+    void testBulletTracerEndsAtExactBulletHitCoordinatesInsteadOfDummyCenter() {
+        TargetDummy dummy = hub.getRightRangeDummies().get(0);
+        double dummyCenterY = dummy.getY();
+        assertEquals(620.0, dummyCenterY, 0.01);
+
+        double bulletOriginX = 1500.0;
+        double bulletOriginY = 605.0;
+        com.groupproject.game.entity.projectile.Projectile bullet =
+                new com.groupproject.game.entity.projectile.Projectile(
+                        bulletOriginX, bulletOriginY, 0.0, 2000.0, 25, 1.0, true, false, 0, 0.0
+                );
+
+        hub.getTracerManager().clear();
+        hub.getProjectileManager().spawn(bullet);
+
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        hub.update(0.08, keyH, mouseH);
+
+        assertFalse(bullet.isActive(), "Dan phai dung lai khi va cham dummy");
+        assertEquals(1, hub.getTracerManager().getActiveCount(), "Phai ghi nhan dung 1 vet tracer");
+
+        RecoilTracerManager.RecoilTracer tracer = hub.getTracerManager().getActiveTracers().get(0);
+        assertEquals(bulletOriginY, tracer.getEndY(), 0.1,
+                "Diem ket thuc Y cua tracer phai bang Y cua vien dan, khong bi hut ve tam dummy (620.0)");
+        assertNotEquals(dummyCenterY, tracer.getEndY(),
+                "Diem ket thuc Y cua tracer khong duoc la tam dummy");
+    }
 }

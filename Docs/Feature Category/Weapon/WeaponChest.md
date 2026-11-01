@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 16/10/2026
+Cập nhật mới nhất vào ngày: 01/11/2026
 
 # Hòm Tiếp Tế Chiến Lợi Phẩm (Reward Chest / Weapon Chest)
 
@@ -95,6 +95,11 @@ Khi căn phòng được giải phóng khỏi trạng thái phong tỏa (Combat 
 ---
 
 ## 6. Sửa đổi / Cập nhật
+* **01/11/2026 (Thu hồi Đạn Băng Vũ Khí Cũ & Rơi Đạn Thừa Khi Hoán Đổi Vũ Khí Vào Hòm)**:
+  - Khi người chơi mở hòm và đổi vũ khí chính (thay thế khẩu súng đang có), toàn bộ số đạn còn lại trong băng của súng cũ (`replaced.getCurrentAmmo()`) được rút về kho balô dự trữ (`state.reclaimReplacedWeaponAmmo(replaced, x, y)`).
+  - Nếu kho balô bị đầy, số đạn dư thừa sẽ tự động rơi ra sàn cạnh hòm dưới dạng `AmmoPickup`.
+  - Khẩu súng cũ hoán đổi vào hòm được rút đạn băng về 0 (`currentAmmo = 0`), tránh việc nhặt lại để nhân bản đạn.
+  - Banner chiến thuật thông báo chi tiết số đạn băng đã về balô và số đạn thừa rơi ra sàn.
 * **16/10/2026 (Thống nhất Cấp độ Súng Rơi Phụ Thuộc Vào Số Stage)**:
   - **Quy tắc Stage = Level**: Stage nào thì cho súng free khi clear room ở Level như thế:
     - Stage 1: Rơi súng Level 1 (phòng combat đầu tiên chắc chắn 100% rơi súng free).

@@ -5,14 +5,18 @@
 1. CÁCH CHƠI NHANH:
 -------------------
 - Cách 1 (Khuyên dùng): Nhấp đúp chuột vào file "RunGame.bat" hoặc "RunAloneInTheZone.bat" để chơi ngay lập tức.
-- Cách 2: Nhấp đúp trực tiếp vào file "AloneInTheZone.jar".
-- Cách 3: Mở Command Prompt (cmd) hoặc PowerShell tại thư mục này và gõ:
+- Cách 2 (Tạo phím tắt Desktop): Nhấp đúp vào file "TaoShortcutDesktop.bat" để tạo ngay Shortcut ra màn hình Desktop kèm biểu tượng Icon Player!
+- Cách 3: Nhấp đúp trực tiếp vào file "AloneInTheZone.jar".
+- Cách 4: Mở Command Prompt (cmd) hoặc PowerShell tại thư mục này và gõ:
     java -jar AloneInTheZone.jar
 
-* Yêu cầu hệ thống:
-  + Đối với bản Trọn gói (All-In-One có kèm thư mục "runtime"): KHÔNG CẦN CÀI ĐẶT BẤT CỨ THỨ GÌ! Máy tính trắng chưa từng cài Java vẫn bấm chơi được ngay.
-  + Đối với bản Siêu nhẹ (chỉ có file AloneInTheZone.jar): Máy tính cần có Java 21 LTS trở lên.
-    Tải Java 21 tại: https://adoptium.net/temurin/releases/?version=21
+* Tự đổi biểu tượng Shortcut thủ công (nếu muốn):
+  Chuột phải vào Shortcut trên Desktop -> Properties -> Bấm "Change Icon..." -> Chọn tệp "icon.ico" trong thư mục game -> OK.
+
+* Phân phối 2 gói phát hành chính thức:
+  + Bản "AloneInTheZone-ChuaCoJava21.zip" (Trọn gói kèm sẵn thư mục runtime OpenJDK 21): KHÔNG CẦN CÀI ĐẶT BẤT CỨ THỨ GÌ! Máy tính chưa từng cài Java vẫn giải nén bấm chơi được ngay.
+  + Bản "AloneInTheZone-DaCoJava21.zip" (Bản siêu nhẹ dành cho máy tính đã cài sẵn Java 21 LTS trở lên).
+    Tải Java 21 (nếu cần) tại: https://adoptium.net/temurin/releases/?version=21
 
 
 2. BẢNG PHÍM ĐIỀU KHIỂN (CONTROLS):

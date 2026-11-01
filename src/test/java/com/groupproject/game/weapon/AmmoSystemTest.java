@@ -392,4 +392,101 @@ public class AmmoSystemTest {
         assertEquals(15, wm.getAmmoInventory().getAmmo(AmmoType.SR));
         assertFalse(sr.isReloading());
     }
+
+    @Test
+    @DisplayName("Verify AmmoPickup leaves surplus ammo on ground when backpack reaches capacity")
+    void testAmmoPickupLeavesSurplusWhenInventoryFull() {
+        // Player backpack có sức chứa AR tối đa là 150
+        // Set ammo inventory gần đầy: 140/150 (chỉ còn chỗ chứa 10 viên)
+        inventory.setAmmo(AmmoType.AR, 140);
+
+        // Tạo hộp đạn AR 30 viên ở vị trí người chơi
+        AmmoPickup pickup = new AmmoPickup(100, 100, AmmoType.AR, 30);
+        assertFalse(pickup.isCollected());
+        assertEquals(30, pickup.getAmount());
+
+        // Cập nhật pickup với vị trí player trùng khớp
+        pickup.update(0.016, 100.0, 100.0, 32.0, inventory, null);
+
+        // Kho balô nhận 10 viên để đạt tối đa 150
+        assertEquals(150, inventory.getAmmo(AmmoType.AR));
+        assertTrue(inventory.isFull(AmmoType.AR));
+
+        // Hộp đạn KHÔNG biến mất (collected = false), và số lượng còn lại là 20 viên
+        assertFalse(pickup.isCollected(), "Hộp đạn thừa không được biến mất");
+        assertEquals(20, pickup.getAmount(), "Hộp đạn phải giữ lại 20 viên thừa trên mặt đất");
+
+        // Khi người chơi quay lại chạm vào hộp đạn một lần nữa khi kho vẫn đầy 150/150:
+        pickup.update(0.016, 100.0, 100.0, 32.0, inventory, null);
+        assertFalse(pickup.isCollected());
+        assertEquals(20, pickup.getAmount());
+        assertEquals(150, inventory.getAmmo(AmmoType.AR));
+
+        // Nếu người chơi tiêu thụ bớt 15 viên (còn 135/150) rồi chạm lại:
+        inventory.consumeAmmo(AmmoType.AR, 15);
+        assertEquals(135, inventory.getAmmo(AmmoType.AR));
+        pickup.update(0.016, 100.0, 100.0, 32.0, inventory, null);
+
+        // Kho balô nhận 15 viên (đạt 150/150), hộp đạn còn lại 5 viên thừa trên mặt đất
+        assertEquals(150, inventory.getAmmo(AmmoType.AR));
+        assertFalse(pickup.isCollected());
+        assertEquals(5, pickup.getAmount());
+
+        // Tiêu thụ tiếp 10 viên (còn 140/150) rồi nhặt:
+        inventory.consumeAmmo(AmmoType.AR, 10);
+        pickup.update(0.016, 100.0, 100.0, 32.0, inventory, null);
+
+        // Hộp đạn 5 viên được thu nạp toàn bộ, hộp đạn biến mất (collected = true)
+        assertEquals(145, inventory.getAmmo(AmmoType.AR));
+        assertTrue(pickup.isCollected(), "Khi nhặt hết sạch đạn thừa thì hộp đạn mới biến mất");
+    }
+
+    @Test
+    @DisplayName("Verify weapon replacement reclaims magazine ammo into backpack and drops surplus onto ground")
+    void testReplacedWeaponAmmoReturnedToBackpackAndSurplusDropped() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+
+        // Ban đầu người chơi trang bị Slot 1 (AR) và Slot 2 (Shotgun)
+        WeaponManager wm = state.getWeaponManager();
+        AssaultRifle ar = new AssaultRifle();
+        Shotgun sg = new Shotgun();
+        wm.equipWeapon(ar); // slot 1
+        wm.equipWeapon(sg); // slot 2
+        wm.selectSlot(1);
+
+        // Băng đạn của AR có 30 viên.
+        assertEquals(30, ar.getCurrentAmmo());
+
+        // Đặt kho dự trữ AR gần đầy: 140/150 viên (chỉ còn chỗ chứa 10 viên)
+        wm.getAmmoInventory().setAmmo(AmmoType.AR, 140);
+        int initialPickupsCount = state.getAmmoPickups().size();
+
+        // Thu hồi đạn khi AR bị thay thế
+        PlayingState.ReclaimedAmmoResult result =
+                state.reclaimReplacedWeaponAmmo(ar, 300.0, 400.0);
+
+        assertEquals(AmmoType.AR, result.type);
+        assertEquals(10, result.addedToBackpack, "Kho balô chỉ nhận được 10 viên để đạt 150/150");
+        assertEquals(20, result.droppedSurplus, "20 viên đạn thừa trong băng phải rơi xuống đất");
+
+        assertEquals(150, wm.getAmmoInventory().getAmmo(AmmoType.AR));
+        assertEquals(0, ar.getCurrentAmmo(), "Băng đạn súng cũ phải bị rút về 0 để tránh nhân bản đạn");
+
+        // Kiểm tra xem hộp đạn thừa đã được sinh ra dưới đất đúng tọa độ và số lượng không
+        assertEquals(initialPickupsCount + 1, state.getAmmoPickups().size());
+        AmmoPickup droppedPickup = state.getAmmoPickups().get(state.getAmmoPickups().size() - 1);
+        assertEquals(300.0, droppedPickup.getX(), 0.001);
+        assertEquals(400.0, droppedPickup.getY(), 0.001);
+        assertEquals(AmmoType.AR, droppedPickup.getType());
+        assertEquals(20, droppedPickup.getAmount(), "Hộp đạn rơi dưới đất phải chứa đúng 20 viên thừa");
+        assertFalse(droppedPickup.isCollected());
+
+        // Kiểm tra tính Idempotent: gọi lại không được rơi thêm
+        PlayingState.ReclaimedAmmoResult secondCall =
+                state.reclaimReplacedWeaponAmmo(ar, 300.0, 400.0);
+        assertEquals(0, secondCall.addedToBackpack);
+        assertEquals(0, secondCall.droppedSurplus);
+        assertEquals(initialPickupsCount + 1, state.getAmmoPickups().size());
+    }
 }

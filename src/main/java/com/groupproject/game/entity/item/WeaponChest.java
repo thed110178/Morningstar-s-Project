@@ -174,12 +174,23 @@ public class WeaponChest {
                 Weapon toEquip = droppedWeapon;
                 Weapon replaced = state.getWeaponManager().equipWeapon(toEquip);
                 if (replaced != null) {
+                    // Thu hồi đạn trong băng của súng cũ về ba lô dự trữ; đạn thừa rơi xuống đất
+                    PlayingState.ReclaimedAmmoResult reclaim = state.reclaimReplacedWeaponAmmo(replaced, x, y);
                     // Cả 2 slot chính đã đầy: hoán đổi vũ khí bị thay thế vào hòm dưới đất để người chơi nhặt lại nếu bấm nhầm
                     this.droppedWeapon = replaced;
                     this.collected = false;
-                    state.showTacticalBanner("★ ĐÃ TRANG BỊ: " + toEquip.getShortDisplayName()
-                            + " | VŨ KHÍ CŨ (" + replaced.getShortDisplayName() + ") ĐÃ ĐẶT VÀO HÒM DƯỚI ĐẤT ★",
-                            new Color(255, 215, 60), 3.5);
+
+                    StringBuilder banner = new StringBuilder();
+                    banner.append("★ ĐÃ TRANG BỊ: ").append(toEquip.getShortDisplayName())
+                            .append(" | VŨ KHÍ CŨ (").append(replaced.getShortDisplayName()).append(") ĐÃ ĐẶT VÀO HÒM");
+                    if (reclaim.addedToBackpack > 0) {
+                        banner.append(" [+").append(reclaim.addedToBackpack).append(" ĐẠN BĂNG VỀ BALÔ]");
+                    }
+                    if (reclaim.droppedSurplus > 0) {
+                        banner.append(" [RƠI ").append(reclaim.droppedSurplus).append(" ĐẠN THỪA]");
+                    }
+                    banner.append(" ★");
+                    state.showTacticalBanner(banner.toString(), new Color(255, 215, 60), 3.5);
                 } else {
                     this.collected = true;
                     this.droppedWeapon = null;

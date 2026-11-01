@@ -183,10 +183,21 @@ public class ShopItem {
             Weapon replaced = state.getWeaponManager().equipWeapon(weapon);
             purchased = true;
             if (replaced != null) {
+                PlayingState.ReclaimedAmmoResult reclaim =
+                        state.reclaimReplacedWeaponAmmo(replaced, state.getPlayerX(), state.getPlayerY());
                 state.dropWeaponOnGround(replaced, state.getPlayerX(), state.getPlayerY());
-                state.showTacticalBanner("★ ĐÃ MUA: " + weapon.getShortDisplayName()
-                        + " | VŨ KHÍ CŨ (" + replaced.getShortDisplayName() + ") ĐÃ RƠI XUỐNG ĐẤT (-" + price + "C) ★",
-                        new Color(60, 220, 160), 3.5);
+
+                StringBuilder banner = new StringBuilder();
+                banner.append("★ ĐÃ MUA: ").append(weapon.getShortDisplayName())
+                      .append(" | VŨ KHÍ CŨ (").append(replaced.getShortDisplayName()).append(") ĐÃ RƠI XUỐNG ĐẤT (-").append(price).append("C)");
+                if (reclaim.addedToBackpack > 0) {
+                    banner.append(" [+").append(reclaim.addedToBackpack).append(" ĐẠN BĂNG VỀ BALÔ]");
+                }
+                if (reclaim.droppedSurplus > 0) {
+                    banner.append(" [RƠI ").append(reclaim.droppedSurplus).append(" ĐẠN THỪA]");
+                }
+                banner.append(" ★");
+                state.showTacticalBanner(banner.toString(), new Color(60, 220, 160), 3.5);
             } else {
                 state.showTacticalBanner("MUA THÀNH CÔNG: " + weapon.getShortDisplayName().toUpperCase() + " (-" + price + " CREDITS)",
                         new Color(60, 220, 160), 2.5);

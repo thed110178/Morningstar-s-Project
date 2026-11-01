@@ -22,7 +22,7 @@ public class AmmoPickup {
     private final double x;
     private final double y;
     private final AmmoType type;
-    private final int amount;
+    private int amount; // Không để final: cho phép trừ bớt khi nhặt một phần và lưu đạn thừa dưới đất
     private boolean collected = false;
 
     // Hiệu ứng chuyển động lơ lửng và ánh sáng nhấp nháy
@@ -66,13 +66,18 @@ public class AmmoPickup {
             if (inventory != null && !inventory.isFull(type)) {
                 int added = inventory.addAmmo(type, amount);
                 if (added > 0) {
-                    this.collected = true;
                     GameSoundManager.play(SoundEffect.AMMO_PICKUP);
                     if (state != null) {
                         state.showTacticalBanner(String.format("ĐÃ NHẶT +%d %s [%d/%d]",
                                 added, type.getDisplayName().toUpperCase(),
                                 inventory.getAmmo(type), type.getMaxCapacity()),
                                 getGlowColor(), 2.0);
+                    }
+                    if (added >= amount) {
+                        this.collected = true;
+                    } else {
+                        // Ba lô không đủ sức chứa toàn bộ hộp đạn: Chỉ nhận phần vừa đủ, để lại số đạn thừa dưới đất
+                        this.amount -= added;
                     }
                 }
             }

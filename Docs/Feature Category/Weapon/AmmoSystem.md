@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 21/10/2026
+Cập nhật mới nhất vào ngày: 01/11/2026
 
 # Hệ thống Đạn Dược Dự Trữ (Reserve Ammo System)
 
@@ -46,11 +46,22 @@ Hệ thống Đạn Dược Dự Trữ quản lý việc phân loại, tích tr�
   - **Bố cục đối xứng hoàn hảo**: Hòm tiếp tế `WeaponChest` nằm ở chính giữa trung tâm phòng (`centerX, centerY`). Hai stack đạn rơi đối xứng 2 bên tại `centerX - 58px` (Trái) và `centerX + 58px` (Phải) trên cùng đường ngang, tạo bố cục cân đối và dễ quan sát.
   - Số lượng chuẩn theo stack: Súng trường: 30 viên; SMG: 35 viên; Shotgun: 10 viên; Bắn tỉa SR: 5 viên.
 
-### 3.3 Cơ chế Hút/Nhặt đạn tự động (Proximity Collection)
+### 3.3 Cơ chế Hút/Nhặt đạn tự động & Giữ lại đạn thừa dưới đất (Partial Ammo Collection & Ground Retention)
 * Hộp đạn trên mặt đất hiển thị dưới dạng crate quân sự 2D với vạch sơn đặc trưng, hào quang neon nhấp nhô lơ lửng (bobbing effect) và nhãn số lượng bên trên (VD: `+30 AR`, `+5 SR`).
 * Khi người chơi di chuyển lại gần (bán kính tiếp cận $\le 38$ pixel):
-  - Nếu kho đạn của loại tương ứng chưa đầy: Tự động hút đạn vào kho dự trữ (tối đa tới giới hạn cất trữ) và biến mất khỏi mặt sàn.
+  - Nếu kho đạn của loại tương ứng chưa đầy:
+    * Hệ thống kiểm tra khoảng trống còn lại trong balô: `added = inventory.addAmmo(type, amount)`.
+    * **Nếu ba lô đủ chỗ chứa toàn bộ (`added >= amount`)**: Nhận trọn vẹn số đạn, đánh dấu `collected = true` và hộp đạn biến mất.
+    * **Nếu ba lô bị đầy một phần (`added < amount`)**: Ba lô chỉ nạp số đạn vừa đủ để đạt trần tối đa, hộp đạn **KHÔNG bị biến mất** (`collected = false`), số lượng trên hộp đạn được trừ bớt (`amount -= added`) và giữ lại số đạn dư thừa nguyên vẹn trên mặt đất. Nhãn số lượng trên hộp đạn tự động cập nhật động theo số dư còn lại (VD: từ `+30 AR` còn `+20 AR`).
+    * Khi người chơi xả bớt đạn và quay lại nhặt, phần đạn thừa sẽ tiếp tục được thu gom.
   - Hiển thị thông báo chiến thuật: `★ ĐÃ NHẶT +X ĐẠN [Y/MAX] ★`.
+
+### 3.4 Thu hồi đạn khi hoán đổi vũ khí & Rơi đạn thừa ra sàn (Weapon Swap Ammo Reclaim)
+* Khi người chơi hoán đổi hoặc mua súng chính mới làm thay thế khẩu súng cũ trong túi đồ:
+  - **Thu hồi đạn trong băng về balô**: Toàn bộ số đạn còn lại trong băng của súng cũ (`currentAmmo`) được chuyển thẳng về kho đạn dự trữ trong balô (`AmmoInventory`) của người chơi (`reclaimAmmoFromWeapon`).
+  - **Rơi đạn thừa ra sàn đấu**: Nếu kho dự trữ của loại đạn đó đã đạt trần sức chứa (Max Capacity), số đạn dôi dư (`surplus`) sẽ tự động rơi xuống mặt đất ngay tại vị trí hoán đổi dưới dạng một hộp tiếp đạn `AmmoPickup`.
+  - **Chống gian lận nhân bản đạn (Duplication Exploit Prevention)**: Khẩu súng cũ rơi ra sàn/đặt vào hòm sẽ được rút đạn trong băng về 0 (`currentAmmo = 0`), ngăn chặn việc hoán đổi qua lại liên tục để farm đạn vô tận.
+  - Hiển thị thông báo chi tiết trên Banner chiến thuật (VD: `★ ĐÃ TRANG BỊ: VIPER AR | VŨ KHÍ CŨ (BULLPUP SHOTGUN) ĐÃ ĐẶT VÀO HÒM [+6 ĐẠN BĂNG VỀ BALÔ] [RƠI 2 ĐẠN THỪA] ★`).
 
 ---
 
@@ -78,6 +89,9 @@ Hệ thống Đạn Dược Dự Trữ quản lý việc phân loại, tích tr�
 ---
 
 ## 6. Sửa đổi / Cập nhật
+* **Ngày 01/11/2026**:
+  - **Khắc phục lỗi đạn thừa biến mất khi nhặt đạn lúc balô đầy**: Khi nhặt đạn mà balô đạt tối đa sức chứa, đạn thừa không còn bị biến mất mà được giữ lại nguyên vẹn trên mặt đất (`AmmoPickup.amount -= added`, `collected = false`).
+  - **Cơ chế thu hồi đạn băng súng cũ khi thay súng**: Rút toàn bộ số đạn còn lại trong băng súng cũ về kho dự trữ balô. Nếu kho đầy, số đạn thừa tự động rơi xuống sàn dưới dạng `AmmoPickup`. Rút đạn băng súng cũ về 0 để triệt tiêu nhân bản đạn.
 * **Ngày 18/10/2026**:
   - Khởi tạo `AmmoType.java`, `AmmoInventory.java`, `AmmoPickup.java`.
   - Cập nhật cơ chế nạp đạn trong `Weapon.java`, `AssaultRifle.java`, `SMG.java`, `Shotgun.java` tiêu hao từ kho dự trữ.

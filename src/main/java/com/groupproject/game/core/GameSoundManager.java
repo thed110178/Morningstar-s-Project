@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -44,7 +42,6 @@ import javazoom.jl.decoder.SampleBuffer;
  */
 public final class GameSoundManager {
 
-    private static final Logger LOGGER = Logger.getLogger(GameSoundManager.class.getName());
 
     /** Định dạng âm thanh chuẩn thống nhất: 44.1kHz, 16-bit signed, Stereo, Little-Endian. */
     private static final AudioFormat MIXER_FORMAT = new AudioFormat(44100.0f, 16, 2, true, false);
@@ -433,7 +430,7 @@ public final class GameSoundManager {
                     PCM_SAMPLES.put(effect, pcm);
                 }
             } else {
-                LOGGER.log(Level.FINE, "Không tìm thấy file âm thanh: {0}", effect.getFilename());
+                // Logger omitted to avoid java.logging module dependency in custom runtime
             }
         }
 
@@ -495,7 +492,7 @@ public final class GameSoundManager {
             mixerThread.setPriority(Thread.MAX_PRIORITY);
             mixerThread.start();
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Không thể mở SourceDataLine (môi trường Headless/CI)", e);
+            // Logger omitted to avoid java.logging module dependency in custom runtime
             mixerRunning = false;
             mixerLine = null;
         }
@@ -704,9 +701,6 @@ public final class GameSoundManager {
                     return data;
                 }
             }
-            if (data != null) {
-                return data;
-            }
         }
         return null;
     }
@@ -719,7 +713,7 @@ public final class GameSoundManager {
                 return is.readAllBytes();
             }
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Lỗi đọc resource classpath: " + resourcePath, e);
+            // Logger omitted to avoid java.logging module dependency in custom runtime
         }
 
         // 2. Thử nạp từ thư mục sfx/ trên ổ đĩa
@@ -728,7 +722,7 @@ public final class GameSoundManager {
             try (InputStream is = new FileInputStream(file)) {
                 return is.readAllBytes();
             } catch (Exception e) {
-                LOGGER.log(Level.FINE, "Lỗi đọc file đĩa: " + file.getAbsolutePath(), e);
+                // Logger omitted to avoid java.logging module dependency in custom runtime
             }
         }
 
@@ -738,7 +732,7 @@ public final class GameSoundManager {
             try (InputStream is = new FileInputStream(srcFile)) {
                 return is.readAllBytes();
             } catch (Exception e) {
-                LOGGER.log(Level.FINE, "Lỗi đọc file src: " + srcFile.getAbsolutePath(), e);
+                // Logger omitted to avoid java.logging module dependency in custom runtime
             }
         }
 
@@ -965,7 +959,7 @@ public final class GameSoundManager {
                 sfxMuted = Boolean.parseBoolean(props.getProperty("sfxMuted", Boolean.toString(muted)));
                 bgmMuted = Boolean.parseBoolean(props.getProperty("bgmMuted", Boolean.toString(muted)));
             } catch (Exception e) {
-                LOGGER.log(Level.FINE, "Không thể đọc file audio settings, dùng mặc định 50%", e);
+                // Logger omitted to avoid java.logging module dependency in custom runtime
                 masterVolume = 0.5f;
                 sfxVolume = 0.5f;
                 bgmVolume = 0.5f;
@@ -1004,7 +998,7 @@ public final class GameSoundManager {
                 props.store(fos, "Alone in the zone Audio Settings");
             }
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Không thể lưu audio settings", e);
+            // Logger omitted to avoid java.logging module dependency in custom runtime
         }
     }
 
@@ -1031,7 +1025,7 @@ public final class GameSoundManager {
                 }
             }
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Lỗi đọc BGM classpath: " + resPath, e);
+            // Logger omitted to avoid java.logging module dependency in custom runtime
         }
 
         // 2. Thử nạp từ src/main/resources/BGM/...
@@ -1044,7 +1038,7 @@ public final class GameSoundManager {
                     return bytes;
                 }
             } catch (Exception e) {
-                LOGGER.log(Level.FINE, "Lỗi đọc BGM file: " + srcFile.getAbsolutePath(), e);
+                // Logger omitted to avoid java.logging module dependency in custom runtime
             }
         }
 

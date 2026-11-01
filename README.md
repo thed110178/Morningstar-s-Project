@@ -308,9 +308,8 @@ GroupProject/
 ├── README.md                              // Master project report & technical instructions
 ├── AloneInTheZone.jar                     // Official standalone executable Fat JAR (~58 MB)
 ├── RunAloneInTheZone.bat                  // Instant one-click launcher for Windows
-├── AloneInTheZone-Playtest.zip            // Lightweight playtest distribution (~58 MB)
-├── Alone In The Zone.zip                  // Official distribution zip archive (~58 MB)
-├── AloneInTheZone-Portable-AllInOne.zip   // Portable bundle with embedded JRE 21 (~89 MB)
+├── AloneInTheZone-ChuaCoJava21.zip        // Portable bundle with embedded JRE 21 (~87 MB, no Java required)
+├── AloneInTheZone-DaCoJava21.zip          // Lightweight distribution for systems with Java 21+ (~57 MB)
 ├── .agents/                               // Workspace rules and development guidelines
 ├── Docs/                                  // Comprehensive system documentation
 │   ├── Project_Report.md                  // Detailed course submission report
@@ -416,16 +415,11 @@ java -jar AloneInTheZone.jar
 ```
 *(Hoặc `java -jar release/AloneInTheZone.jar`)*
 
-## Run Portable All-in-One Distribution (No Java Pre-installed Required)
-For computers without Java 21 installed, extract either:
-* **`AloneInTheZone-Portable-AllInOne.zip`** or
-* **`AloneInTheZone-Playtest.zip`**
-
-and run:
-```cmd
-RunAloneInTheZone.bat
-```
-*(Hoặc `RunGame.bat`. The bundled lightweight OpenJDK 21 runtime will execute the game autonomously without any system environment changes).*
+## Run Portable Distribution
+* **For computers WITHOUT Java 21 installed**:
+  Extract **`AloneInTheZone-ChuaCoJava21.zip`** and run **`RunGame.bat`** (or `RunAloneInTheZone.bat`). The bundled lightweight OpenJDK 21 runtime will execute the game autonomously without any system environment setup.
+* **For computers WITH Java 21 pre-installed**:
+  Extract **`AloneInTheZone-DaCoJava21.zip`** and run **`RunGame.bat`** (or `RunAloneInTheZone.bat` / `java -jar AloneInTheZone.jar`).
 
 ## Controls & Keybindings
 

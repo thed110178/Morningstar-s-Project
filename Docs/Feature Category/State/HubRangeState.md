@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 21/10/2026
+Cập nhật mới nhất vào ngày: 01/11/2026
 
 # The Range - Căn Cứ & Trường Bắn Thử Nghiệm (HubRangeState)
 
@@ -124,3 +124,5 @@ Cập nhật mới nhất vào ngày: 21/10/2026
   - **Khắc phục lỗi không hiển thị súng trên tay nhân vật**: Do `HubRangeState.render()` trước đó thiếu lời gọi `weaponManager.render(...)`. Đã bổ sung đầy đủ và liên kết biến `aimAngle` để vẽ súng xoay 360 độ theo hướng chuột.
   - **Khắc phục lỗi mất thanh tiến độ nạp đạn ở chân người chơi**: Bổ sung lời gọi `player.renderReloadIndicator(...)` và `player.renderOutOfAmmoWarning(...)` để hiển thị thanh đếm ngược nạp đạn (1.2s, 0.6s) và cảnh báo hết đạn ngay dưới chân Operative.
   - **Khắc phục lỗi đạn Sniper Rifle mất tính năng xuyên phá Dummy**: Do vòng lặp va chạm đạn trước đó gọi cưỡng chế `bullet.deactivate(); break;` khi chạm trúng bia đầu tiên. Đã khắc phục bằng cách sử dụng `bullet.canHit(dummy)` và `bullet.onHitTarget(dummy); if (!bullet.isActive()) break;`, khôi phục trọn vẹn khả năng xuyên qua nhiều Dummy liên tiếp của Sniper Rifle.
+- **01/11/2026:**
+  - **Khắc phục lỗi vệt đạn tracer bị bẻ góc hướng về tâm Dummy**: Khi đạn súng lục, AR, SMG, Shotgun va chạm vào bia TargetDummy hoặc StrafingTargetDummy, hệ thống trước đó truyền `dummy.getX(), dummy.getY()` vào `tracerManager.addTracer(...)`. Vì đây là tọa độ tâm của bia nên mọi đường đạn đều bị tụ lại vào chấm vàng ở giữa Dummy. Đã sửa thành truyền `bullet.getX(), bullet.getY()`, giúp tia tracer laser kết thúc tại đúng điểm va chạm thực tế của viên đạn, phản ánh trung thực mẫu giật súng (Recoil pattern) và góc tản đạn.

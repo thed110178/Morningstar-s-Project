@@ -2232,11 +2232,53 @@ public class PlayingState extends GameState implements TileExplosionListener {
         return pauseMenuUI;
     }
 
+    public static class ReclaimedAmmoResult {
+        public final com.groupproject.game.entity.item.AmmoType type;
+        public final int addedToBackpack;
+        public final int droppedSurplus;
+
+        public ReclaimedAmmoResult(com.groupproject.game.entity.item.AmmoType type, int addedToBackpack, int droppedSurplus) {
+            this.type = type;
+            this.addedToBackpack = addedToBackpack;
+            this.droppedSurplus = droppedSurplus;
+        }
+    }
+
+    /**
+     * Thu hồi toàn bộ đạn trong băng của vũ khí cũ bị thay thế về kho ba lô (AmmoInventory).
+     * Nếu kho ba lô đầy, số đạn thừa (surplus) sẽ rơi ra đất dưới dạng hộp tiếp đạn (AmmoPickup).
+     *
+     * @param replaced Khẩu súng cũ bị thay thế.
+     * @param dropX    Tọa độ rơi đạn thừa X nếu ba lô bị đầy.
+     * @param dropY    Tọa độ rơi đạn thừa Y nếu ba lô bị đầy.
+     * @return Kết quả thu hồi đạn (chủng loại, số lượng đã về ba lô, số lượng rơi dưới đất).
+     */
+    public ReclaimedAmmoResult reclaimReplacedWeaponAmmo(Weapon replaced, double dropX, double dropY) {
+        if (replaced == null) {
+            return new ReclaimedAmmoResult(null, 0, 0);
+        }
+        com.groupproject.game.entity.item.AmmoType type = replaced.getAmmoType();
+        int magAmmo = replaced.getCurrentAmmo();
+        if (type == null || magAmmo <= 0) {
+            return new ReclaimedAmmoResult(type, 0, 0);
+        }
+
+        int surplus = weaponManager.reclaimAmmoFromWeapon(replaced);
+        int added = magAmmo - surplus;
+
+        if (surplus > 0) {
+            ammoPickups.add(new com.groupproject.game.entity.item.AmmoPickup(dropX, dropY, type, surplus));
+        }
+
+        return new ReclaimedAmmoResult(type, added, surplus);
+    }
+
     /**
      * Thả vũ khí xuống mặt đất dưới dạng hòm tiếp tế đã mở sẵn (phục vụ việc thay thế vũ khí phòng bấm nhầm).
      */
     public void dropWeaponOnGround(Weapon weapon, double x, double y) {
         if (weapon == null) return;
+        reclaimReplacedWeaponAmmo(weapon, x, y);
         WeaponChest chest = WeaponChest.createWeaponChest(x, y, weapon);
         chest.open();
         weaponChests.add(chest);

@@ -640,6 +640,25 @@ public class WeaponManager {
     }
 
     /**
+     * Thu hồi toàn bộ số đạn còn lại trong băng của vũ khí về kho ba lô dự trữ (AmmoInventory).
+     * Hủy bỏ trạng thái nạp đạn nếu đang dở dang và rút đạn trong băng về 0 để tránh nhân bản đạn.
+     *
+     * @param weapon Vũ khí cần thu hồi đạn trong băng.
+     * @return Số lượng đạn dư thừa không thể chứa trong kho ba lô (surplus >= 0).
+     */
+    public int reclaimAmmoFromWeapon(Weapon weapon) {
+        if (weapon == null) return 0;
+        weapon.cancelReload();
+        com.groupproject.game.entity.item.AmmoType type = weapon.getAmmoType();
+        int current = weapon.getCurrentAmmo();
+        if (type == null || current <= 0) return 0;
+
+        weapon.setCurrentAmmo(0);
+        int added = ammoInventory.addAmmo(type, current);
+        return current - added;
+    }
+
+    /**
      * Tiếp tế 2 stack đạn cho toàn bộ các chủng loại đạn dự trữ (AR: +60, SMG: +70, Shotgun: +20)
      * và nạp đầy băng đạn cho tất cả súng hiện có trong túi đồ.
      */

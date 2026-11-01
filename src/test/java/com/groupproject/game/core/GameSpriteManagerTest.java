@@ -192,4 +192,17 @@ public class GameSpriteManagerTest {
 
         g2d.dispose();
     }
+
+    @Test
+    @DisplayName("Verify window icon resource PlayerGun.png exists and is loaded into GameWindow")
+    void testWindowIconResourceAndFrameSetup() {
+        java.net.URL url = getClass().getResource("/player/PlayerGun.png");
+        assertNotNull(url, "PlayerGun.png must exist in classpath resources");
+
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            GameWindow window = new GameWindow();
+            assertFalse(window.getIconImages().isEmpty(), "GameWindow must have icon images configured");
+            window.dispose();
+        }
+    }
 }

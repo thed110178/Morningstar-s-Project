@@ -493,7 +493,7 @@ public class HubRangeState extends GameState {
                     if (!bullet.isActive()) {
                         // Đạn kết thúc tại đây (hết lượt xuyên phá) -> Ghi nhận 1 vệt tracer duy nhất từ nòng súng đến mục tiêu cuối
                         Color tracerColor = isCrit ? new Color(255, 100, 80) : new Color(255, 215, 60);
-                        tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), dummy.getX(), dummy.getY(), tracerColor);
+                        tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), bullet.getX(), bullet.getY(), tracerColor);
                         break;
                     }
                 }
@@ -516,7 +516,7 @@ public class HubRangeState extends GameState {
                     bullet.onHitTarget(dummy);
                     if (!bullet.isActive()) {
                         Color tracerColor = isCrit ? new Color(255, 100, 80) : new Color(255, 215, 60);
-                        tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), dummy.getX(), dummy.getY(), tracerColor);
+                        tracerManager.addTracer(bullet.getOriginX(), bullet.getOriginY(), bullet.getX(), bullet.getY(), tracerColor);
                         break;
                     }
                 }
