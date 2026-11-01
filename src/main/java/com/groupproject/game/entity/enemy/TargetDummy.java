@@ -156,6 +156,60 @@ public class TargetDummy {
     }
 
     /**
+     * Nhận sát thương từ đạn của người chơi (Player Bullet). Mặc định chuyển tiếp đến takeDamage().
+     * Các lớp con (như BossTank với vỏ giáp chiến xa hạng nặng) có thể ghi đè để áp dụng hệ số giảm trừ sát thương đạn.
+     *
+     * @param damage         Lượng sát thương đạn ban đầu.
+     * @param knockbackAngle Hướng va chạm (radian).
+     * @param knockbackForce Lực đẩy lùi (px/s).
+     * @param critical       Có phải đòn đánh chí mạng không.
+     * @return Lượng sát thương thực tế mục tiêu phải nhận.
+     */
+    public int takeBulletDamage(int damage, double knockbackAngle, double knockbackForce, boolean critical) {
+        if (!alive || isSpawning() || damage <= 0) return 0;
+        takeDamage(damage, knockbackAngle, knockbackForce, critical);
+        return damage;
+    }
+
+    /**
+     * Nhận sát thương từ đạn của người chơi (dạng đơn giản không có góc đẩy lùi).
+     *
+     * @param damage   Lượng sát thương đạn ban đầu.
+     * @param critical Có phải đòn đánh chí mạng không.
+     * @return Lượng sát thương thực tế mục tiêu phải nhận.
+     */
+    public int takeBulletDamage(int damage, boolean critical) {
+        return takeBulletDamage(damage, 0.0, 0.0, critical);
+    }
+
+    /**
+     * Nhận sát thương từ nhát chém dao cận chiến (Melee Knife). Mặc định chuyển tiếp đến takeDamage().
+     * Các lớp con (như BossTank) có thể ghi đè để kích hoạt tính năng miễn nhiễm hoàn toàn sát thương từ dao.
+     *
+     * @param damage         Lượng sát thương dao ban đầu.
+     * @param knockbackAngle Hướng vung dao (radian).
+     * @param knockbackForce Lực đẩy lùi (px/s).
+     * @param critical       Có phải đòn đánh chí mạng không.
+     * @return Lượng sát thương thực tế mục tiêu phải nhận (trả về 0 nếu mục tiêu miễn nhiễm dao).
+     */
+    public int takeMeleeDamage(int damage, double knockbackAngle, double knockbackForce, boolean critical) {
+        if (!alive || isSpawning() || damage <= 0) return 0;
+        takeDamage(damage, knockbackAngle, knockbackForce, critical);
+        return damage;
+    }
+
+    /**
+     * Nhận sát thương từ nhát chém dao cận chiến (dạng đơn giản không có góc đẩy lùi).
+     *
+     * @param damage   Lượng sát thương dao ban đầu.
+     * @param critical Có phải đòn đánh chí mạng không.
+     * @return Lượng sát thương thực tế mục tiêu phải nhận.
+     */
+    public int takeMeleeDamage(int damage, boolean critical) {
+        return takeMeleeDamage(damage, 0.0, 0.0, critical);
+    }
+
+    /**
      * Imparts directional knockback velocity onto this enemy entity.
      * Boss units have high poise armor, absorbing 85% of knockback impulse.
      *

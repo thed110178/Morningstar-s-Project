@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 27/10/2026
+Cập nhật mới nhất vào ngày: 01/11/2026
 
 # Chiến Xa Bọc Thép Titan (BossTank - Titan Battle Tank)
 
@@ -145,4 +145,20 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
         - **Hiện diện thực tế**: Cỗ xe tăng `BossTank` được tiền sản sinh sẵn tại tâm phòng đấu Stage 4, loại bỏ cổng xoáy portal để cỗ xe tăng hiện diện sẵn sàng ngay từ đầu.
         - **Kiểm soát thanh máu**: Mặc dù xe tăng đã sinh ra trước, thanh máu Boss ở đỉnh màn hình (`renderBossHealthBar`) **hoàn toàn được giấu đi** khi người chơi còn ở Spawn Room hoặc ngoài hành lang (`isBossHealthBarRevealed == false`).
         - **Thời điểm hiển thị**: Thanh máu Boss chỉ xuất hiện khi người chơi thực sự bước qua cửa phòng Boss làm kích hoạt lockdown phòng, phát cắt cảnh giới thiệu Boss (`BossIntroCinematic`), hoặc khi Boss bị trúng đạn.
-  - Toàn bộ test tự động trong test suite đạt 100% Passed (243 bài test).
+    13. **Buff Nhẹ Sức Chống Chịu Của Boss Tank (01/11/2026)**:
+        - **Giảm 30% sát thương từ đạn (`BULLET_DAMAGE_REDUCTION = 0.30`)**: Mọi loại đạn của người chơi (Pistol, AR, SMG, Shotgun, Sniper) khi bắn trúng Boss Tank đều bị lớp giáp thép phức hợp (Composite Titan Armor) hấp thụ 30% chấn động, Boss chỉ chịu $70\%$ lượng sát thương cơ bản (tối thiểu 1 HP). Điều này giúp kéo dài thời lượng trận đấu trùm cuối, buộc người chơi phải giữ vị trí và căn thời điểm xả đạn thông minh.
+        - **Miễn nhiễm hoàn toàn sát thương từ dao cận chiến (`IMMUNE_TO_KNIFE = true`)**: Lưỡi dao găm chiến thuật (Combat Knife) không thể xuyên thủng lớp giáp xe tăng hạng nặng 50 tấn. Khi chém dao trúng Boss, Boss nhận $0	ext{ DMG}$, phát ra âm thanh leng keng dội giáp kim loại (`HIT_UNBREAKABLE_WALL`) và kích hoạt hiển thị thanh máu Boss, ngăn chặn hoàn toàn chiến thuật áp sát chém liên hoàn (knife spam) gây lỗi nhịp độ trận đấu trùm.
+    14. **Nâng Cấp Cơ Chế Tử Trận & Xác Xe Tăng Thiêu Cháy Vĩnh Viễn (01/11/2026)**:
+        - **Loại bỏ tiếng chết quái thường**: Boss Tank là cỗ chiến xa bọc thép khổng lồ, khi bị tiêu diệt không phát ra tiếng la hét tử trận của quái người (`ENEMY_DEAD_1..3`).
+        - **Vụ nổ nhỏ khi tử trận (Non-damaging Explosion)**: Khi Boss Tank bị tiêu diệt, lập tức tạo một vụ nổ nhỏ chấn động (`ExplosionVisual` bán kính $85.0	ext{px}$, âm thanh `ENEMY_BOSS_EXPLOSION`, rung chấn màn hình $0.38	ext{s}$) thuần hiệu ứng thị giác và âm thanh, hoàn toàn **không gây sát thương** lên Operative hay địa hình xung quanh.
+        - **Xác xe tăng thiêu cháy tồn tại vĩnh viễn (`EnemyCorpse.isBoss == true`)**:
+          * Thay vì biến thành đầu lâu nhỏ trôi dạt và mờ dần biến mất như quái thường, Boss Tank để lại xác cỗ xe bọc thép bị thiêu cháy rụi (Charred Tank Wreckage) giữ nguyên kích thước thân xe đồ sộ ($96	ext{px}$).
+          * Xác xe đứng bất động tuyệt đối trên sàn đấu, không trôi văng, alpha đạt $1.0	ext{f}$ và **tồn tại vĩnh viễn** (`isFinished() == false`, không bao giờ biến mất), trở thành một tượng đài chiến tích uy dũng trong đấu trường Boss Arena.
+          * Đồ họa chi tiết: vệt cháy sém loang lổ trên mặt sàn, hai dải xích đứt gãy ám muội than, khung gầm bọc thép xám đen chì có vết nứt xé toạc, tháp pháo lục giác nứt vỡ lệch góc, nắp hầm bật tung để lộ tàn lửa đỏ cam âm ỉ nhấp nháy theo thời gian thực.
+          * **Cột khói đen & xám tro cuồn cuộn bốc lên cao (Billowing Dense Smoke Plume)**:
+            - Chuyển sang vẽ theo hệ tọa độ thế giới/màn hình thẳng đứng không bị xoay theo thân xe (`unrotated space`), giúp các luồng khói luôn bay thẳng lên trời (`-Y`) kèm độ lượn sóng tự nhiên theo gió.
+            - Phối hợp 3 tầng màu khói tương phản rõ rệt: Khói xám tro đậm dày đặc ở biên ngoài (`Color(50, 52, 58)`), lõi khói sáng tương phản ở giữa (`Color(125, 130, 140)`), và tán khói trắng xám nhạt bốc lên cao nhất (`Color(185, 190, 200)`).
+            - Độ mờ dâng cao tối đa lên đến $175$ (thay vì $65 - 75$ mờ nhạt như trước), kích thước nở rộng từ $18	ext{px}$ lên $48	ext{px}$ và bốc cao $68	ext{px}$ lên không trung.
+            - Kèm theo các đốm tàn lửa đỏ cam phát sáng (`Color(255, 140, 30)`) cuốn theo luồng khói bay lên từ buồng máy, giúp người chơi quan sát thấy rõ rệt xác xe tăng đang bốc cháy từ xa.
+        - **Khắc phục triệt để autotiling ranh giới cỏ (`grassPattern` 1-30)**: Khôi phục logic vẽ pattern cỏ - đất chuyển tiếp trong `Tile.java` và mở rộng nhận diện cover/thùng phi trong `DungeonMap.java`, mang lại đường viền cỏ mượt mà, chân thực trên toàn bộ đấu trường Boss Stage.
+  - Toàn bộ test tự động trong test suite đạt 100% Passed (277 bài test).

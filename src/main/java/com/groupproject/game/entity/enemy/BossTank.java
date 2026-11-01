@@ -97,6 +97,61 @@ public class BossTank extends TargetDummy {
         this(x, y, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
     }
 
+    // =========================================================================
+    // --- Combat Buff Parameters (Thông số cân bằng sức mạnh Boss Tank) ---
+    // =========================================================================
+
+    /// <summary>
+    /// Hệ số giảm sát thương nhận vào từ đạn của người chơi: 30% (Boss chỉ nhận 70% sát thương đạn).
+    /// WHY: Boss Tank là cỗ máy thiết giáp bọc thép composite đa tầng kiên cố bậc nhất.
+    /// Giảm 30% sát thương từ đạn giúp kéo dài thời lượng trận đấu trùm cuối,
+    /// tránh việc Boss bị tiêu diệt quá nhanh bởi các vũ khí sấy liên thanh DPS cao.
+    /// </summary>
+    public static final double BULLET_DAMAGE_REDUCTION = 0.30;
+
+    /// <summary>
+    /// Cờ kiểm soát khả năng miễn nhiễm sát thương từ dao găm cận chiến (Combat Knife).
+    /// WHY: Thân xe bọc thép nặng 50 tấn không thể bị tổn hại bởi một lưỡi dao găm cá nhân.
+    /// Miễn nhiễm hoàn toàn sát thương dao buộc người chơi phải dùng hỏa lực súng đạn tầm xa
+    /// và ngăn chặn chiến thuật áp sát chém liên tục để hạ gục Boss phi thực tế.
+    /// </summary>
+    public static final boolean IMMUNE_TO_KNIFE = true;
+
+    /**
+     * Nhận sát thương từ đạn của người chơi với hiệu ứng giảm 30% sát thương do vỏ giáp hấp thụ.
+     *
+     * @param damage         Lượng sát thương đạn ban đầu.
+     * @param knockbackAngle Hướng va chạm (radian).
+     * @param knockbackForce Lực đẩy lùi (px/s).
+     * @param critical       Có phải đòn đánh chí mạng không.
+     * @return Lượng sát thương thực tế Boss Tank phải chịu (70% sát thương ban đầu, tối thiểu 1 HP nếu damage > 0).
+     */
+    @Override
+    public int takeBulletDamage(int damage, double knockbackAngle, double knockbackForce, boolean critical) {
+        if (!alive || isSpawning() || damage <= 0) return 0;
+
+        // Giảm 30% sát thương đạn nhận vào: Boss chỉ nhận 70% sát thương
+        int reducedDamage = Math.max(1, (int) Math.round(damage * (1.0 - BULLET_DAMAGE_REDUCTION)));
+        super.takeDamage(reducedDamage, knockbackAngle, knockbackForce, critical);
+        return reducedDamage;
+    }
+
+    /**
+     * Nhận sát thương từ nhát chém dao cận chiến.
+     * Boss Tank miễn nhiễm hoàn toàn sát thương từ dao găm (0 HP bị trừ).
+     *
+     * @param damage         Lượng sát thương dao ban đầu.
+     * @param knockbackAngle Hướng vung dao (radian).
+     * @param knockbackForce Lực đẩy lùi (px/s).
+     * @param critical       Có phải đòn đánh chí mạng không.
+     * @return 0 vì Boss Tank miễn nhiễm hoàn toàn với dao.
+     */
+    @Override
+    public int takeMeleeDamage(int damage, double knockbackAngle, double knockbackForce, boolean critical) {
+        // Miễn nhiễm hoàn toàn: dao chém vào vỏ thép kiên cố không gây suy giảm HP
+        return 0;
+    }
+
     public TankState getState() {
         return state;
     }

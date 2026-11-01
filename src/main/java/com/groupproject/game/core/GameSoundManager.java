@@ -66,9 +66,11 @@ public final class GameSoundManager {
     }
 
     public enum SoundEffect {
+        AMMO_PICKUP("ammo_pickup.wav", 8),
         BUY_COMPLETE("buy_complete.wav", 6),
         BUY_FAILED("buy_failed.wav", 6),
         COIN_PICK_UP("coin_pick_up.wav", 8),
+        CRITICAL_HIT("critcal_hit.wav", 10),
         DODGE("dodge.wav", 6),
         ENEMY_BOSS_CHARGE_WARNING("enemy_boss_charge_warning.wav", 4),
         ENEMY_BOSS_EXPLOSION("enemy_boss_explosion.wav", 6),
@@ -81,6 +83,7 @@ public final class GameSoundManager {
         GRENADIER_EXPLOSION("grenader_explosion.wav", 8),
         ENEMY_UNIVERSAL_FIRE("enemy_universal_fire.wav", 10),
         GAME_OVER("gameover.wav", 2),
+        GUN_EMPTY_SHOT("gun_empty_shot.wav", 8), // Tiếng bóp cò cạch cạch khi hết đạn hoặc đang nạp đạn (dry-fire click)
         GUN_MELEE("gun_melee.wav", 6),
         GUN_PISTOL_DRAW("gun_pistol_draw.wav", 2),
         GUN_PISTOL_RELOAD("gun_pistol_reload.wav", 2),
@@ -109,6 +112,7 @@ public final class GameSoundManager {
         HIT_TARGET("hit_target.wav", 12),
         HIT_UNBREAKABLE_WALL("hit_unbreakable_wall.wav", 8),
         INTERACT("interact.wav", 8),
+        PLAYER_GOT_HIT("player_got_hit.wav", 8),
         UI_INTERACT("ui_interact.wav", 8);
 
         private final String filename;
@@ -676,6 +680,30 @@ public final class GameSoundManager {
             }
         } else if ("ui_interact.wav".equalsIgnoreCase(filename)) {
             data = loadSingleSoundFile("UI_interact.wav");
+            if (data != null) {
+                return data;
+            }
+        } else if ("ammo_pickup.wav".equalsIgnoreCase(filename)) {
+            data = loadSingleSoundFile("Ammo_pickup.wav");
+            if (data != null) {
+                return data;
+            }
+        } else if ("critcal_hit.wav".equalsIgnoreCase(filename) || "critical_hit.wav".equalsIgnoreCase(filename)) {
+            String[] aliases = {"CritcalHit.wav", "critical_hit.wav", "critcal_hit.wav", "CritcalHit.m4a"};
+            for (String alias : aliases) {
+                data = loadSingleSoundFile(alias);
+                if (data != null) {
+                    return data;
+                }
+            }
+        } else if ("player_got_hit.wav".equalsIgnoreCase(filename)) {
+            String[] aliases = {"Player_GotHit.wav", "player_gothit.wav", "player_got_hit.wav"};
+            for (String alias : aliases) {
+                data = loadSingleSoundFile(alias);
+                if (data != null) {
+                    return data;
+                }
+            }
             if (data != null) {
                 return data;
             }

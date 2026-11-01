@@ -34,9 +34,11 @@ public final class GameSpriteManager {
     public static final String RES_ENEMY_GRENADIER = "/enemy/EnemyGrenader.png";
     public static final String RES_COVER_STONE = "/cover/Stone.png";
     public static final String RES_COVER_BARREL = "/cover/Wooden barrel.png";
+    public static final String RES_COVER_RED_BARREL = "/cover/Red Barrel.png";
     public static final String RES_TEX_BRICK = "/textures/Grey brick.png";
     public static final String RES_TEX_DIRT = "/textures/Dirt.png";
     public static final String RES_TEX_GRASS = "/textures/Grass.png";
+    public static final String RES_GRASS_PATTERN_PREFIX = "/textures/Grass_pattern/Grass_";
     public static final String RES_EFFECT_SLASH = "/effects/Slash.png";
 
     // Đường dẫn fallback trên đĩa cứng src/main/resources/
@@ -48,9 +50,11 @@ public final class GameSpriteManager {
     public static final String FILE_ENEMY_GRENADIER = "src/main/resources/enemy/EnemyGrenader.png";
     public static final String FILE_COVER_STONE = "src/main/resources/cover/Stone.png";
     public static final String FILE_COVER_BARREL = "src/main/resources/cover/Wooden barrel.png";
+    public static final String FILE_COVER_RED_BARREL = "src/main/resources/cover/Red Barrel.png";
     public static final String FILE_TEX_BRICK = "src/main/resources/textures/Grey brick.png";
     public static final String FILE_TEX_DIRT = "src/main/resources/textures/Dirt.png";
     public static final String FILE_TEX_GRASS = "src/main/resources/textures/Grass.png";
+    public static final String FILE_GRASS_PATTERN_PREFIX = "src/main/resources/textures/Grass_pattern/Grass_";
     public static final String FILE_EFFECT_SLASH = "src/main/resources/effects/Slash.png";
 
     // Bộ đệm hình ảnh đã pre-scale sẵn kích thước chính xác và tương thích VRAM
@@ -59,6 +63,8 @@ public final class GameSpriteManager {
     private static BufferedImage preScaledTextureGreyBrick;
     private static BufferedImage preScaledCoverStone;
     private static BufferedImage preScaledCoverBarrel;
+    private static BufferedImage preScaledCoverRedBarrel;
+    private static final BufferedImage[] preScaledGrassPatterns = new BufferedImage[31];
 
     static {
         loadAll();
@@ -91,6 +97,15 @@ public final class GameSpriteManager {
         preScaledTextureGreyBrick = createPreScaledImage(getTextureGreyBrick(), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
         preScaledCoverStone = createPreScaledImage(getCoverStoneSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
         preScaledCoverBarrel = createPreScaledImage(getCoverBarrelSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+        preScaledCoverRedBarrel = createPreScaledImage(getCoverRedBarrelSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+
+        // Nạp và pre-scale sẵn 30 biến thể autotiling cỏ - đất (Grass_1 đến Grass_30)
+        for (int i = 1; i <= 30; i++) {
+            String res = RES_GRASS_PATTERN_PREFIX + i + ".png";
+            String file = FILE_GRASS_PATTERN_PREFIX + i + ".png";
+            BufferedImage img = loadSprite(res, file);
+            preScaledGrassPatterns[i] = createPreScaledImage(img, GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        }
     }
 
     /**
@@ -274,6 +289,10 @@ public final class GameSpriteManager {
         return loadSprite(RES_COVER_BARREL, FILE_COVER_BARREL);
     }
 
+    public static BufferedImage getCoverRedBarrelSprite() {
+        return loadSprite(RES_COVER_RED_BARREL, FILE_COVER_RED_BARREL);
+    }
+
     public static BufferedImage getTextureGreyBrick() {
         return loadSprite(RES_TEX_BRICK, FILE_TEX_BRICK);
     }
@@ -323,6 +342,45 @@ public final class GameSpriteManager {
             preScaledCoverBarrel = createPreScaledImage(getCoverBarrelSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
         }
         return preScaledCoverBarrel;
+    }
+
+    public static BufferedImage getPreScaledCoverRedBarrel() {
+        if (preScaledCoverRedBarrel == null) {
+            preScaledCoverRedBarrel = createPreScaledImage(getCoverRedBarrelSprite(), GameConfig.TILE_SIZE, GameConfig.TILE_SIZE);
+        }
+        return preScaledCoverRedBarrel;
+    }
+
+    /**
+     * Lấy hình ảnh mẫu hoa văn chuyển tiếp giữa cỏ và đất (Grass Pattern 1 - 30).
+     *
+     * @param index Chỉ số mẫu hoa văn từ 1 đến 30.
+     * @return BufferedImage gốc tương thích phần cứng, hoặc null nếu chỉ số không hợp lệ.
+     */
+    public static BufferedImage getGrassPattern(int index) {
+        if (index < 1 || index > 30) {
+            return null;
+        }
+        return loadSprite(RES_GRASS_PATTERN_PREFIX + index + ".png", FILE_GRASS_PATTERN_PREFIX + index + ".png");
+    }
+
+    /**
+     * Lấy hình ảnh mẫu hoa văn chuyển tiếp đã được co giãn sẵn (Pre-scaled) khớp với kích thước ô gạch TILE_SIZE + 1.
+     *
+     * <p>WHY: Giúp việc vẽ autotile 26 biến thể cỏ đạt hiệu năng O(1) tối đa trong vòng lặp dựng hình 60 FPS,
+     * loại bỏ hoàn toàn chi phí co giãn runtime và triệt tiêu khe hở subpixel giữa các ô gạch.
+     *
+     * @param index Chỉ số mẫu hoa văn từ 1 đến 30.
+     * @return BufferedImage đã co giãn sẵn tương thích phần cứng, hoặc null nếu không hợp lệ.
+     */
+    public static BufferedImage getPreScaledGrassPattern(int index) {
+        if (index < 1 || index > 30) {
+            return null;
+        }
+        if (preScaledGrassPatterns[index] == null) {
+            preScaledGrassPatterns[index] = createPreScaledImage(getGrassPattern(index), GameConfig.TILE_SIZE + 1, GameConfig.TILE_SIZE + 1);
+        }
+        return preScaledGrassPatterns[index];
     }
 
     /**

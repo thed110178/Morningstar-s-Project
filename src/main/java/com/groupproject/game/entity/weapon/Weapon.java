@@ -57,6 +57,7 @@ public abstract class Weapon {
     protected double reloadTimer = 0.0;
     protected boolean reloading = false;
     protected boolean reloadPaused = false;
+    protected double emptyShotCooldownTimer = 0.0;
 
     /**
      * Constructs a base weapon configuration with spread angle.
@@ -117,6 +118,15 @@ public abstract class Weapon {
     public void update(double deltaTime) {
         if (cooldownTimer > 0) {
             cooldownTimer -= deltaTime;
+            if (cooldownTimer < 0) {
+                cooldownTimer = 0.0;
+            }
+        }
+        if (emptyShotCooldownTimer > 0) {
+            emptyShotCooldownTimer -= deltaTime;
+            if (emptyShotCooldownTimer < 0) {
+                emptyShotCooldownTimer = 0.0;
+            }
         }
 
         if (reloading) {
@@ -261,6 +271,47 @@ public abstract class Weapon {
             return false;
         }
         return currentAmmo <= 0 && getReserveAmmo() <= 0;
+    }
+
+    /**
+     * Kiểm tra xem vũ khí có thể phát âm thanh bóp cò hụt (empty dry-fire click) hay không.
+     * Áp dụng khi người chơi bấm bắn mà súng hết sạch đạn trong băng (currentAmmo <= 0)
+     * hoặc đang trong tiến trình nạp đạn (reloading || reloadPaused).
+     * Ngoại trừ Shotgun (cơ chế nạp từng viên đặc thù) và vũ khí cận chiến (Combat Knife).
+     *
+     * @return true nếu thỏa mãn điều kiện phát tiếng cạch khi bóp cò.
+     */
+    public boolean canPlayEmptyShot() {
+        if (this instanceof CombatKnife || this.slotIndex == 4 || this.magazineSize <= 0) {
+            return false;
+        }
+        // Shotgun chỉ ngoại lệ khi đang nạp đạn (không phát dry-fire do nạp từng shell);
+        // còn khi hết sạch đạn (currentAmmo <= 0) thì Shotgun vẫn phát dry-fire bình thường.
+        if (this instanceof Shotgun && (reloading || reloadPaused)) {
+            return false;
+        }
+        boolean isReloadingState = reloading || reloadPaused;
+        boolean isEmptyAmmoState = currentAmmo <= 0 && cooldownTimer <= 0;
+        return (isReloadingState || isEmptyAmmoState) && emptyShotCooldownTimer <= 0;
+    }
+
+    /**
+     * Kích hoạt âm thanh bóp cò hụt (cạch!) khi hết đạn hoặc đang nạp đạn.
+     * Thiết lập thời gian hồi 0.22s giữa các tiếng click để tạo nhịp gõ chân thực khi giữ phím sấy.
+     */
+    public void playEmptyShot() {
+        if (canPlayEmptyShot()) {
+            GameSoundManager.play(GameSoundManager.SoundEffect.GUN_EMPTY_SHOT);
+            this.emptyShotCooldownTimer = 0.22;
+        }
+    }
+
+    public double getEmptyShotCooldownTimer() {
+        return emptyShotCooldownTimer;
+    }
+
+    public void setEmptyShotCooldownTimer(double emptyShotCooldownTimer) {
+        this.emptyShotCooldownTimer = emptyShotCooldownTimer;
     }
 
     /**

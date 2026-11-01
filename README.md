@@ -309,9 +309,8 @@ GroupProject/
 ├── AloneInTheZone.jar                     // Official standalone executable Fat JAR (~58 MB)
 ├── RunAloneInTheZone.bat                  // Instant one-click launcher for Windows
 ├── AloneInTheZone-Playtest.zip            // Lightweight playtest distribution (~58 MB)
+├── Alone In The Zone.zip                  // Official distribution zip archive (~58 MB)
 ├── AloneInTheZone-Portable-AllInOne.zip   // Portable bundle with embedded JRE 21 (~89 MB)
-├── DontKnow.jar                           // Backward-compatible executable JAR
-├── RunGame.bat                            // Backward-compatible launcher script
 ├── .agents/                               // Workspace rules and development guidelines
 ├── Docs/                                  // Comprehensive system documentation
 │   ├── Project_Report.md                  // Detailed course submission report
@@ -325,7 +324,9 @@ GroupProject/
 │   └── Update/                            // Daily change logs (yy-mm-dd_xx.md)
 ├── release/                               // Official distribution release outputs
 │   ├── AloneInTheZone.jar                 // Packaged production executable JAR
-│   └── DontKnow.jar                       // Packaged fallback executable JAR
+│   ├── RunGame.bat                        // Production launcher script
+│   ├── RunAloneInTheZone.bat              // One-click launcher script
+│   └── HuongDanChoi.txt                   // Player instruction manual
 ├── save/                                  // User local save data & settings
 │   ├── audio_settings.properties          // Persisted SFX / BGM volume configurations
 │   └── run_checkpoint.dat                 // Persisted roguelite run checkpoint state
@@ -413,7 +414,7 @@ mvn exec:java
 mvn clean package -DskipTests
 java -jar AloneInTheZone.jar
 ```
-*(Hoặc `java -jar release/AloneInTheZone.jar` / `java -jar DontKnow.jar`)*
+*(Hoặc `java -jar release/AloneInTheZone.jar`)*
 
 ## Run Portable All-in-One Distribution (No Java Pre-installed Required)
 For computers without Java 21 installed, extract either:

@@ -316,6 +316,9 @@ public class WeaponManager {
      */
     public boolean attack(double originX, double originY, double aimAngle, ProjectileManager pm) {
         if (activeWeapon != null) {
+            if (activeWeapon.canPlayEmptyShot()) {
+                activeWeapon.playEmptyShot();
+            }
             return activeWeapon.attack(originX, originY, aimAngle, pm, activeSlashes);
         }
         return false;

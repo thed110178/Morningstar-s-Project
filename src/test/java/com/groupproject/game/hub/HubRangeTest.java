@@ -529,4 +529,42 @@ class HubRangeTest {
         com.groupproject.game.core.GameConfig.showAimGuideline = true;
         g.dispose();
     }
+    @Test
+    @DisplayName("Kiểm tra thảm cỏ và hệ thống autotiling 30 biến thể hoa văn ranh giới trong The Range")
+    void testHubGrassAutotilingAndPatterns() {
+        com.groupproject.game.dungeon.Tile[][] tiles = hub.getHubTiles();
+        assertNotNull(tiles);
+
+        int coreGrass = 0;
+        int transitionGrass = 0;
+        int pureDirt = 0;
+
+        for (int x = 0; x < tiles.length; x++) {
+            for (int y = 0; y < tiles[0].length; y++) {
+                com.groupproject.game.dungeon.Tile t = tiles[x][y];
+                if (t != null && t.getType() == com.groupproject.game.dungeon.TileType.FLOOR) {
+                    int p = t.getGrassPattern();
+                    assertTrue(p >= 0 && p <= 30, "Mẫu hoa văn ranh giới The Range phải nằm trong khoảng [0..30], thực tế: " + p);
+                    if (t.hasGrass() && p == 0) {
+                        coreGrass++;
+                    } else if (p >= 1 && p <= 30) {
+                        transitionGrass++;
+                    } else {
+                        pureDirt++;
+                    }
+                }
+            }
+        }
+
+        assertTrue(coreGrass > 0, "The Range phải có thảm cỏ lõi dày (Grass.png)");
+        assertTrue(transitionGrass > 0, "The Range phải có các ô ranh giới hoa văn autotiling (Grass_pattern 1-30)");
+        assertTrue(pureDirt > 0, "The Range phải có nền đất thuần (Dirt.png)");
+    }
+
+    @Test
+    @DisplayName("Kiểm tra âm thanh Critical Hit đã sẵn sàng và được nạp thành công")
+    void testCriticalHitSoundEffectLoaded() {
+        assertTrue(com.groupproject.game.core.GameSoundManager.isSoundLoaded(com.groupproject.game.core.GameSoundManager.SoundEffect.CRITICAL_HIT),
+                "CRITICAL_HIT sound must be loaded and ready");
+    }
 }

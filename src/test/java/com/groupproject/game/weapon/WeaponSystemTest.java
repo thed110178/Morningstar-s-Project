@@ -1751,4 +1751,89 @@ public class WeaponSystemTest {
         assertFalse(ar.isReloading(), "Nạp đạn đã hoàn tất");
         assertEquals(30, ar.getCurrentAmmo(), "Băng đạn đã được nạp đầy 30 viên thành công!");
     }
+
+    @Test
+    @DisplayName("Verify gun empty dry-fire click audio triggers on empty/reloading guns and excludes Shotgun and Knife")
+    void testGunEmptyShotAudioTriggeringAndShotgunKnifeExclusion() {
+        WeaponManager wm = new WeaponManager();
+        Pistol testPistol = new Pistol();
+        Shotgun testShotgun = new Shotgun();
+        CombatKnife testKnife = new CombatKnife();
+        AssaultRifle testAr = new AssaultRifle();
+        SniperRifle testSniper = new SniperRifle();
+
+        // 1. Súng còn đạn đầy đủ (currentAmmo > 0, không nạp đạn) -> canPlayEmptyShot() == false
+        assertEquals(7, testPistol.getCurrentAmmo());
+        assertFalse(testPistol.isReloading());
+        assertFalse(testPistol.canPlayEmptyShot(), "Súng còn đạn không được phát tiếng bóp cò hụt");
+
+        // 2. Súng lục hết sạch đạn (currentAmmo == 0) -> canPlayEmptyShot() == true
+        testPistol.setCurrentAmmo(0);
+        assertTrue(testPistol.canPlayEmptyShot(), "Súng lục hết đạn phải cho phép phát tiếng bóp cò hụt");
+
+        // Phát tiếng empty shot -> cooldown 0.22s được kích hoạt
+        testPistol.playEmptyShot();
+        assertEquals(0.22, testPistol.getEmptyShotCooldownTimer(), 0.001);
+        assertFalse(testPistol.canPlayEmptyShot(), "Trong thời gian hồi 0.22s không được phát tiếng liên tục gây chói tai");
+
+        // Cập nhật 0.25s -> cooldown hết -> canPlayEmptyShot() lại trở về true
+        testPistol.update(0.25);
+        assertEquals(0.0, testPistol.getEmptyShotCooldownTimer(), 0.001);
+        assertTrue(testPistol.canPlayEmptyShot());
+
+        // 3. Súng đang trong tiến trình nạp đạn (reloading == true) -> canPlayEmptyShot() == true
+        testPistol.reload();
+        assertTrue(testPistol.isReloading());
+        assertTrue(testPistol.canPlayEmptyShot(), "Khi đang nạp đạn, bấm bắn phải phát tiếng bóp cò cạch cạch");
+
+        // Kiểm tra tương tự với AR và Sniper
+        testAr.setCurrentAmmo(0);
+        assertTrue(testAr.canPlayEmptyShot(), "AR hết đạn phải phát tiếng empty shot");
+        testSniper.setCurrentAmmo(0);
+        assertTrue(testSniper.canPlayEmptyShot(), "Sniper hết đạn phải phát tiếng empty shot");
+
+        // 4. KIỂM TRA QUY TẮC SHOTGUN:
+        // - Khi hết sạch đạn (currentAmmo == 0): Vẫn phát tiếng dry-fire click bình thường!
+        testShotgun.setCurrentAmmo(0);
+        assertTrue(testShotgun.canPlayEmptyShot(), "Shotgun khi hết sạch đạn vẫn phát tiếng dry-fire click");
+        // - Khi đang nạp đạn (reloading == true): Ngoại lệ đặc thù của Shotgun (nạp từng shell), KHÔNG phát tiếng dry-fire!
+        wm.getAmmoInventory().addAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN, 20);
+        testShotgun.reload();
+        assertTrue(testShotgun.isReloading(), "Shotgun phải bắt đầu tiến trình nạp đạn");
+        assertTrue(testShotgun.isReloading());
+        assertFalse(testShotgun.canPlayEmptyShot(), "Shotgun đang nạp đạn ngoại lệ không phát tiếng empty shot");
+        testShotgun.cancelReload();
+
+        // 5. KIỂM TRA VŨ KHÍ CẬN CHIẾN (CombatKnife): Không phát tiếng empty shot
+        assertFalse(testKnife.canPlayEmptyShot(), "Dao găm cận chiến không phát tiếng empty shot");
+
+        // 6. Kiểm tra luồng gọi qua WeaponManager.attack(...)
+        wm.addWeapon(testShotgun);
+
+        // Đang cầm Pistol hết đạn -> gọi wm.attack() phải kích hoạt empty shot
+        wm.selectSlot(3); // Pistol
+        Weapon activePistol = wm.getActiveWeapon();
+        activePistol.setCurrentAmmo(0);
+        activePistol.setEmptyShotCooldownTimer(0.0);
+        boolean firedPistol = wm.attack(0, 0, 0, projectileManager);
+        assertFalse(firedPistol, "Không thể bắn khi hết đạn");
+        assertEquals(0.22, activePistol.getEmptyShotCooldownTimer(), 0.001, "wm.attack() đã kích hoạt tiếng empty click");
+
+        // Đổi sang Slot 2 (Shotgun) hết đạn -> gọi wm.attack() PHẢI kích hoạt dry-fire click
+        wm.selectSlot(2); // Shotgun
+        assertSame(testShotgun, wm.getActiveWeapon(), "Slot 2 phải trang bị testShotgun");
+        testShotgun.cancelReload();
+        testShotgun.setCurrentAmmo(0);
+        testShotgun.setEmptyShotCooldownTimer(0.0);
+        boolean firedShotgun = wm.attack(0, 0, 0, projectileManager);
+        assertFalse(firedShotgun);
+        assertEquals(0.22, testShotgun.getEmptyShotCooldownTimer(), 0.001, "Shotgun hết đạn kích hoạt empty dry-fire click");
+
+        // Khi Shotgun đang nạp đạn -> gọi wm.attack() KHÔNG kích hoạt dry-fire click
+        wm.getAmmoInventory().addAmmo(com.groupproject.game.entity.item.AmmoType.SHOTGUN, 20);
+        testShotgun.reload();
+        assertTrue(testShotgun.isReloading(), "Shotgun phải bắt đầu tiến trình nạp đạn");
+        testShotgun.setEmptyShotCooldownTimer(0.0);
+        assertFalse(testShotgun.canPlayEmptyShot(), "Shotgun đang nạp đạn không kích hoạt dry-fire click");
+    }
 }

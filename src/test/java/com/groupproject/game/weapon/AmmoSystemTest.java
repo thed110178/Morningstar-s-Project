@@ -223,6 +223,8 @@ public class AmmoSystemTest {
         pickup.update(0.016, 105.0, 105.0, 28.0, inventory, null);
         assertTrue(pickup.isCollected());
         assertEquals(35, inventory.getAmmo(AmmoType.SMG));
+        assertTrue(com.groupproject.game.core.GameSoundManager.isSoundLoaded(com.groupproject.game.core.GameSoundManager.SoundEffect.AMMO_PICKUP),
+                "AMMO_PICKUP sound must be loaded and ready");
     }
 
     @Test

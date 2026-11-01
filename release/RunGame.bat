@@ -1,17 +1,17 @@
 @echo off
-title DontKnow
+title Alone in the zone
 cls
 echo ========================================================
-echo         DONTKNOW - TOP-DOWN ROGUELITE SHOOTER
+echo     ALONE IN THE ZONE - TOP-DOWN ROGUELITE SHOOTER
 echo ========================================================
 echo.
 echo Dang khoi dong tro choi...
 echo.
 
 if exist "runtime\bin\java.exe" (
-    "runtime\bin\java.exe" -Dsun.java2d.d3d=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.accthreshold=0 -jar DontKnow.jar
+    "runtime\bin\java.exe" -Dsun.java2d.d3d=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.accthreshold=0 -jar AloneInTheZone.jar
 ) else (
-    java -Dsun.java2d.d3d=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.accthreshold=0 -jar DontKnow.jar
+    java -Dsun.java2d.d3d=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.accthreshold=0 -jar AloneInTheZone.jar
 )
 
 if %ERRORLEVEL% NEQ 0 (

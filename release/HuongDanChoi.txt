@@ -1,17 +1,17 @@
 ====================================================================
-           DONTKNOW - TOP-DOWN ROGUELITE SHOOTER (JAVA 21)
+      ALONE IN THE ZONE - TOP-DOWN ROGUELITE SHOOTER (JAVA 21)
 ====================================================================
 
 1. CÁCH CHƠI NHANH:
 -------------------
-- Cách 1 (Khuyên dùng): Nhấp đúp chuột vào file "RunGame.bat" để chơi ngay lập tức.
-- Cách 2: Nhấp đúp trực tiếp vào file "DontKnow.jar".
+- Cách 1 (Khuyên dùng): Nhấp đúp chuột vào file "RunGame.bat" hoặc "RunAloneInTheZone.bat" để chơi ngay lập tức.
+- Cách 2: Nhấp đúp trực tiếp vào file "AloneInTheZone.jar".
 - Cách 3: Mở Command Prompt (cmd) hoặc PowerShell tại thư mục này và gõ:
-    java -jar DontKnow.jar
+    java -jar AloneInTheZone.jar
 
 * Yêu cầu hệ thống:
   + Đối với bản Trọn gói (All-In-One có kèm thư mục "runtime"): KHÔNG CẦN CÀI ĐẶT BẤT CỨ THỨ GÌ! Máy tính trắng chưa từng cài Java vẫn bấm chơi được ngay.
-  + Đối với bản Siêu nhẹ (chỉ có file DontKnow.jar): Máy tính cần có Java 21 LTS trở lên.
+  + Đối với bản Siêu nhẹ (chỉ có file AloneInTheZone.jar): Máy tính cần có Java 21 LTS trở lên.
     Tải Java 21 tại: https://adoptium.net/temurin/releases/?version=21
 
 

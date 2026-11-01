@@ -551,6 +551,8 @@ public class DungeonMap {
                 spawnSolidCovers(cr);
                 int coverCount = ThreadLocalRandom.current().nextInt(3, 6);
                 spawnRandomDestructibleCovers(cr, coverCount);
+                int barrelCount = ThreadLocalRandom.current().nextInt(1, 3);
+                spawnRandomExplosiveBarrels(cr, barrelCount);
             }
 
             this.combatRoom = combatRooms.get(0);
@@ -560,6 +562,7 @@ public class DungeonMap {
                 this.spawnRoom.setDiscovered(true);
             }
             decorateGrass();
+            updateGrassPatterns();
             computeWallExposure();
             success = true;
         }
@@ -1183,6 +1186,7 @@ public class DungeonMap {
 
         // Sinh thêm 16 ô cover tạm thời ngẫu nhiên rải đều trong Grand Boss Arena (tổng cộng ~36 cover)
         spawnRandomDestructibleCovers(bossRoom, 16);
+        spawnRandomExplosiveBarrels(bossRoom, 3);
 
         // 4. Nối hành lang thẳng từ Spawn Room sang Boss Arena (hướng EAST)
         int exitCol = spawnCol + spawnW - 1;
@@ -1223,53 +1227,257 @@ public class DungeonMap {
             this.spawnRoom.setDiscovered(true);
         }
         decorateGrass();
+        updateGrassPatterns();
         computeWallExposure();
     }
 
     /**
-     * Tự động trang trí thảm cỏ ở các ô sàn (FLOOR) sát rìa tường nhằm tăng tính sinh động, dã chiến.
-     * Cỏ thường mọc tự nhiên ở mép tường, bờ bao và các góc phòng.
+     * Tự động trang trí các mảng cỏ dày (Core Grass) ở các góc phòng và ven chân tường.
+     * Cỏ mọc tự nhiên thành từng vạt, cụm liên tục (thay vì các ô chấm lác đác đơn lẻ)
+     * làm nền tảng cho hệ thống autotiling ranh giới cỏ - đất chuyển tiếp mềm mại.
      */
     private void decorateGrass() {
         for (int c = 0; c < COLS; c++) {
             for (int r = 0; r < ROWS; r++) {
-                Tile tile = tiles[c][r];
-                if (tile == null || tile.getType() != TileType.FLOOR) {
-                    continue;
+                Tile t = tiles[c][r];
+                if (t != null) {
+                    t.setHasGrass(false);
+                    t.setGrassPattern(0);
                 }
-                // Kiểm tra xem ô sàn này có kề cạnh bất kỳ ô tường (WALL) nào không (8 hướng lân cận)
-                boolean adjacentToWall = false;
-                for (int dc = -1; dc <= 1 && !adjacentToWall; dc++) {
-                    for (int dr = -1; dr <= 1; dr++) {
-                        if (dc == 0 && dr == 0) continue;
-                        int nc = c + dc;
-                        int nr = r + dr;
-                        if (isValidGrid(nc, nr)) {
-                            Tile neighbor = tiles[nc][nr];
-                            if (neighbor != null && neighbor.getType() == TileType.WALL) {
-                                adjacentToWall = true;
-                                break;
-                            }
-                        }
-                    }
-                }
+            }
+        }
 
-                if (adjacentToWall) {
-                    // Dùng hàm băm ngẫu nhiên theo tọa độ cố định để vạt cỏ mọc tự nhiên (~70% ô sát tường)
-                    // vừa sinh động, vừa không bị thay đổi mỗi frame
-                    int hash = (c * 31 + r * 17 + (c ^ r) * 7) & 0x7FFFFFFF;
-                    if (hash % 100 < 70) {
-                        tile.setHasGrass(true);
-                    }
-                } else {
-                    // Ngoài ra, có một tỷ lệ rất nhỏ (~3%) cỏ mọc lác đác giữa phòng cho thêm tự nhiên
-                    int hash = (c * 43 + r * 19 + (c * r)) & 0x7FFFFFFF;
-                    if (hash % 100 < 3) {
-                        tile.setHasGrass(true);
+        for (Room room : rooms) {
+            if (room == null) continue;
+            int rx = room.getGridX();
+            int ry = room.getGridY();
+            int rw = room.getWidthInTiles();
+            int rh = room.getHeightInTiles();
+
+            // 1. Vạt cỏ dày ở 4 góc phòng (Corner Grass Clumps)
+            placeCornerClump(rx + 1, ry + 1, 1, 1, 2, 2);
+            placeCornerClump(rx + rw - 2, ry + 1, -1, 1, 2, 2);
+            placeCornerClump(rx + 1, ry + rh - 2, 1, -1, 2, 2);
+            placeCornerClump(rx + rw - 2, ry + rh - 2, -1, -1, 2, 2);
+
+            // 2. Dải cỏ ven tường (Wall Perimeter Strips) giữa góc và cửa
+            placeWallStrip(room, rx + 3, rx + rw - 4, ry + 1, true);
+            placeWallStrip(room, rx + 3, rx + rw - 4, ry + rh - 2, true);
+            placeWallStrip(room, ry + 3, ry + rh - 4, rx + 1, false);
+            placeWallStrip(room, ry + 3, ry + rh - 4, rx + rw - 2, false);
+        }
+
+        // 3. Cụm cỏ dã chiến tự nhiên trong lòng các phòng chiến đấu
+        for (Room room : rooms) {
+            if (room == null || room == spawnRoom || room == extractRoom) continue;
+            int rx = room.getGridX();
+            int ry = room.getGridY();
+            int rw = room.getWidthInTiles();
+            int rh = room.getHeightInTiles();
+            int hash = (rx * 43 + ry * 19) & 0x7FFFFFFF;
+            if (hash % 100 < 50) {
+                int cx = rx + 3 + (hash % Math.max(1, rw - 6));
+                int cy = ry + 3 + ((hash / 7) % Math.max(1, rh - 6));
+                if (isValidGrid(cx, cy) && tiles[cx][cy].getType() == TileType.FLOOR && !isNearDoorway(room, cx, cy)) {
+                    tiles[cx][cy].setHasGrass(true);
+                }
+            }
+        }
+
+        // 4. Thảm cỏ 2 bên sườn hành lang kết nối giữa các phòng (Corridor Flank Grass)
+        decorateCorridorGrass();
+    }
+
+    /**
+     * Tự động trang trí các mảng cỏ dày ở 2 bên mép dọc sườn các hành lang kết nối.
+     * Người chơi di chuyển ở làn giữa (dirt floor), hai bên mép sát chân tường hành lang mọc cỏ tự nhiên.
+     */
+    private void decorateCorridorGrass() {
+        for (RoomConnection conn : activeConnections) {
+            if (conn == null) continue;
+            java.awt.Rectangle bounds = conn.getCorridorTileBounds();
+            if (bounds == null) continue;
+
+            if (conn.dir == Direction.EAST || conn.dir == Direction.WEST) {
+                int topRow = bounds.y;
+                int botRow = bounds.y + bounds.height - 1;
+                int startCol = bounds.x + 1;
+                int endCol = bounds.x + bounds.width - 2;
+                for (int c = startCol; c <= endCol; c++) {
+                    setCoreGrassIfFloor(c, topRow);
+                    setCoreGrassIfFloor(c, botRow);
+                }
+            } else { // NORTH || SOUTH
+                int leftCol = bounds.x;
+                int rightCol = bounds.x + bounds.width - 1;
+                int startRow = bounds.y + 1;
+                int endRow = bounds.y + bounds.height - 2;
+                for (int r = startRow; r <= endRow; r++) {
+                    setCoreGrassIfFloor(leftCol, r);
+                    setCoreGrassIfFloor(rightCol, r);
+                }
+            }
+        }
+    }
+
+    private void setCoreGrassIfFloor(int c, int r) {
+        if (isValidGrid(c, r)) {
+            Tile t = tiles[c][r];
+            if (t != null && t.getType() == TileType.FLOOR) {
+                t.setHasGrass(true);
+            }
+        }
+    }
+
+    private void placeCornerClump(int startC, int startR, int dirC, int dirR, int sizeC, int sizeR) {
+        for (int dc = 0; dc < sizeC; dc++) {
+            for (int dr = 0; dr < sizeR; dr++) {
+                int c = startC + dc * dirC;
+                int r = startR + dr * dirR;
+                if (isValidGrid(c, r)) {
+                    Tile t = tiles[c][r];
+                    if (t != null && t.getType() == TileType.FLOOR) {
+                        t.setHasGrass(true);
                     }
                 }
             }
         }
+    }
+
+    private void placeWallStrip(Room room, int from, int to, int fixedCoord, boolean isHorizontal) {
+        for (int coord = from; coord <= to; coord++) {
+            int c = isHorizontal ? coord : fixedCoord;
+            int r = isHorizontal ? fixedCoord : coord;
+            if (isValidGrid(c, r)) {
+                Tile t = tiles[c][r];
+                if (t != null && t.getType() == TileType.FLOOR && !isNearDoorway(room, c, r)) {
+                    t.setHasGrass(true);
+                }
+            }
+        }
+    }
+
+    /**
+     * Tự động tính toán ranh giới chuyển tiếp (Autotiling Grass Pattern 1 đến 30) cho các ô sàn.
+     *
+     * <p>MÔ HÌNH THIẾT KẾ:
+     * 1. Ô CỎ LÕI (Core Grass): Những ô sàn được đánh dấu hasGrass == true từ decorateGrass().
+     *    -> Giữ nguyên grassPattern = 0 để dựng hình thảm cỏ dày nguyên bản Grass.png.
+     * 2. Ô RANH GIỚI (Border Transition): Những ô sàn xung quanh (8 hướng lân cận) tiếp giáp với Core Grass.
+     *    -> Tính toán hướng tiếp giáp với Core Grass để gán mã hoa văn chuyển tiếp (Grass_1 đến Grass_30)
+     *       từ bộ Grass_pattern, giúp màu xanh của cỏ thưa dần và hòa lẫn vào nền đất.
+     * 3. Ô ĐẤT THUẦN (Pure Dirt): Những ô sàn không tiếp xúc với bất kỳ ô cỏ lõi nào.
+     *    -> Dựng hình nền đất Dirt.png.
+     */
+    private boolean isFloorOrCoverTile(Tile t) {
+        if (t == null) return false;
+        TileType type = t.getType();
+        return type == TileType.FLOOR || type == TileType.DESTRUCTIBLE_COVER || type == TileType.EXPLOSIVE_BARREL || type == TileType.COVER;
+    }
+
+    public void updateGrassPatterns() {
+        boolean[][] isCore = new boolean[COLS][ROWS];
+        for (int c = 0; c < COLS; c++) {
+            for (int r = 0; r < ROWS; r++) {
+                Tile t = tiles[c][r];
+                if (t != null && isFloorOrCoverTile(t) && t.hasGrass()) {
+                    isCore[c][r] = true;
+                }
+            }
+        }
+
+        for (int c = 0; c < COLS; c++) {
+            for (int r = 0; r < ROWS; r++) {
+                Tile tile = tiles[c][r];
+                if (tile == null || !isFloorOrCoverTile(tile)) {
+                    continue;
+                }
+
+                if (isCore[c][r]) {
+                    // Ô cỏ lõi: Giữ nguyên hasGrass = true và grassPattern = 0 để vẽ Grass.png
+                    tile.setGrassPattern(0);
+                } else {
+                    // Ô không phải cỏ lõi: Kiểm tra các hướng tiếp giáp cỏ lõi
+                    boolean n = isCoreTile(isCore, c, r - 1);
+                    boolean s = isCoreTile(isCore, c, r + 1);
+                    boolean w = isCoreTile(isCore, c - 1, r);
+                    boolean e = isCoreTile(isCore, c + 1, r);
+
+                    int cardCount = (n ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0) + (e ? 1 : 0);
+                    if (cardCount > 0) {
+                        int p = getCardinalBorderPattern(n, s, w, e);
+                        tile.setGrassPattern(p);
+                    } else {
+                        boolean nw = isCoreTile(isCore, c - 1, r - 1);
+                        boolean ne = isCoreTile(isCore, c + 1, r - 1);
+                        boolean sw = isCoreTile(isCore, c - 1, r + 1);
+                        boolean se = isCoreTile(isCore, c + 1, r + 1);
+                        int cornerP = getCornerBorderPattern(nw, ne, sw, se);
+                        tile.setGrassPattern(cornerP);
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isCoreTile(boolean[][] isCore, int c, int r) {
+        if (!isValidGrid(c, r)) return false;
+        return isCore[c][r];
+    }
+
+    private int getCardinalBorderPattern(boolean n, boolean s, boolean w, boolean e) {
+        int count = (n ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0) + (e ? 1 : 0);
+        if (count == 4) return 15;
+        if (count == 3) {
+            if (n && s && e) return 11;
+            if (s && w && e) return 12;
+            if (n && s && w) return 13;
+            if (n && w && e) return 14;
+        }
+        if (count == 2) {
+            if (w && e) return 5;
+            if (n && s) return 6;
+            if (s && w) return 7;
+            if (n && w) return 8;
+            if (n && e) return 9;
+            if (s && e) return 10;
+        }
+        if (count == 1) {
+            if (s) return 1;
+            if (n) return 2;
+            if (w) return 3;
+            if (e) return 4;
+        }
+        return 0;
+    }
+
+    private int getCornerBorderPattern(boolean nw, boolean ne, boolean sw, boolean se) {
+        int count = (nw ? 1 : 0) + (ne ? 1 : 0) + (sw ? 1 : 0) + (se ? 1 : 0);
+        if (count == 0) return 0;
+        if (count == 4) return 16;
+        if (count == 3) {
+            if (!nw) return 17;
+            if (!ne) return 18;
+            if (!se) return 19;
+            if (!sw) return 20;
+        }
+        if (count == 2) {
+            // Hai góc đối diện cắt chéo nhau (Diagonal crossings)
+            if (nw && se) return 26;
+            if (ne && sw) return 25;
+            // Hai góc kề nhau cùng một cạnh
+            if (sw && se) return 21;
+            if (nw && sw) return 22;
+            if (nw && ne) return 23;
+            if (ne && se) return 24;
+        }
+        // count == 1: 4 hình ranh giới góc đơn cho từng vị trí (Single corners: 27-30)
+        // Khi ô sàn tiếp giáp với duy nhất 1 góc cỏ lõi theo đường chéo:
+        if (nw) return 29; // Cỏ lõi ở Tây Bắc -> Ô ranh giới có cỏ ở góc Tây Bắc (Grass_29)
+        if (ne) return 27; // Cỏ lõi ở Đông Bắc -> Ô ranh giới có cỏ ở góc Đông Bắc (Grass_27)
+        if (sw) return 28; // Cỏ lõi ở Tây Nam  -> Ô ranh giới có cỏ ở góc Tây Nam (Grass_28)
+        if (se) return 30; // Cỏ lõi ở Đông Nam -> Ô ranh giới có cỏ ở góc Đông Nam (Grass_30)
+        return 0;
     }
 
     /**
@@ -1499,6 +1707,41 @@ public class DungeonMap {
         for (int[] pos : candidates) {
             if (spawned >= count) break;
             tiles[pos[0]][pos[1]].setType(TileType.DESTRUCTIBLE_COVER);
+            spawned++;
+        }
+    }
+
+    /**
+     * Sinh cac thung phi no (Explosive Barrel) ngau nhien rai rac ben trong phong voi so luong nho.
+     * Tuong tu nhu thung go che chan, cac thung phi no chi duoc dat tren o san (FLOOR) va
+     * tranh xa cac loi ra vao (doorway) de khong gay can tro di chuyen giua cac phong.
+     *
+     * @param room  Phong tac chien can sinh thung phi no.
+     * @param count So luong thung phi no can sinh.
+     */
+    public void spawnRandomExplosiveBarrels(Room room, int count) {
+        if (room == null || count <= 0) return;
+        List<int[]> candidates = new ArrayList<>();
+        int rx = room.getGridX();
+        int ry = room.getGridY();
+        int rw = room.getWidthInTiles();
+        int rh = room.getHeightInTiles();
+
+        for (int c = rx + 1; c < rx + rw - 1; c++) {
+            for (int r = ry + 1; r < ry + rh - 1; r++) {
+                if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
+                    if (!isNearDoorway(room, c, r)) {
+                        candidates.add(new int[]{c, r});
+                    }
+                }
+            }
+        }
+
+        java.util.Collections.shuffle(candidates);
+        int spawned = 0;
+        for (int[] pos : candidates) {
+            if (spawned >= count) break;
+            tiles[pos[0]][pos[1]].setType(TileType.EXPLOSIVE_BARREL);
             spawned++;
         }
     }

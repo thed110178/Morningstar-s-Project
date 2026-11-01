@@ -32,7 +32,7 @@ public class GameSoundManagerTest {
     @Test
     @DisplayName("Tất cả hiệu ứng âm thanh SFX đều được nạp thành công")
     public void testAllSoundEffectsLoaded() {
-        assertEquals(44, SoundEffect.values().length, "Phải có đúng 44 loại âm thanh SoundEffect");
+        assertEquals(48, SoundEffect.values().length, "Phải có đúng 48 loại âm thanh SoundEffect");
 
         for (SoundEffect sfx : SoundEffect.values()) {
             assertNotNull(sfx.getFilename(), "Tên file âm thanh không được null: " + sfx.name());
@@ -47,7 +47,11 @@ public class GameSoundManagerTest {
 
         // Xác thực các hiệu ứng mới của Sniper, Shotgun và 7 hiệu ứng tương tác / gameplay / UI mới
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SCR_SHOOT), "Tiếng bắn Semi-Carbine SCR phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.AMMO_PICKUP), "Tiếng nhặt hộp đạn Ammo Pickup phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.CRITICAL_HIT), "Tiếng sát thương chí mạng Critical Hit phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.PLAYER_GOT_HIT), "Tiếng nhân vật bị trúng đạn Player Got Hit phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SCR_RELOAD), "Tiếng nạp đạn Semi-Carbine SCR phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_EMPTY_SHOT), "Tiếng bắn khi hết đạn/đang nạp đạn (GUN_EMPTY_SHOT) phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SCR_DRAW), "Tiếng rút súng Semi-Carbine SCR phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SNIPER_SHOOT), "Tiếng bắn Sniper phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SNIPER_LOADING_AMMO), "Tiếng lên đạn Sniper phải nạp thành công");

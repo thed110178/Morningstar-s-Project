@@ -32,6 +32,12 @@ public enum TileType {
     DESTRUCTIBLE_COVER(true, new Color(130, 95, 55), "Destructible Cover"),
 
     /**
+     * Thùng phi xăng dầu phát nổ khi nhận sát thương (Explosive Red Barrel).
+     * Bộc phá diện rộng gây sát thương lên cả người chơi lẫn mọi kẻ địch trong tầm nổ.
+     */
+    EXPLOSIVE_BARREL(true, new Color(220, 35, 35), "Explosive Barrel"),
+
+    /**
      * Combat room blast door in locked state (impassable solid barrier).
      * Engaged when hostiles are active inside the combat arena.
      */

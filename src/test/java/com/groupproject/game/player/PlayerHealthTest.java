@@ -464,4 +464,15 @@ public class PlayerHealthTest {
         assertEquals(GameStateManager.StateType.MENU, gsm.getCurrentStateType(),
                 "Standalone boss fight loss must return to MENU");
     }
+
+    @Test
+    @DisplayName("Verify damagePlayer triggers PLAYER_GOT_HIT sound effect and screen shake")
+    void testPlayerDamageTriggersGotHitSfxAndScreenShake() {
+        assertEquals(100, state.getPlayerCurrentHealth());
+        state.damagePlayer(25);
+        assertEquals(75, state.getPlayerCurrentHealth());
+        assertTrue(state.getScreenShakeTimer() > 0.0, "Screen shake should be active upon taking damage");
+        assertTrue(com.groupproject.game.core.GameSoundManager.isSoundLoaded(com.groupproject.game.core.GameSoundManager.SoundEffect.PLAYER_GOT_HIT),
+                "PLAYER_GOT_HIT sound must be loaded and ready");
+    }
 }

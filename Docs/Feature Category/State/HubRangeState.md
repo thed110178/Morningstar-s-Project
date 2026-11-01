@@ -91,6 +91,12 @@ Cập nhật mới nhất vào ngày: 21/10/2026
 ---
 
 ## 6. Sửa đổi / Cập nhật
+* **31/10/2026 (Cập nhật thảm cỏ & Tích hợp Autotiling 30 biến thể ranh giới)**:
+  - Tái cấu trúc toàn diện hệ thống hiển thị cỏ của The Range theo mô hình 3 lớp đồng bộ với DungeonMap.
+  - Phân bổ cỏ lõi dày liên tục ở 4 góc sân Hub ($2 \times 2$), ven chân tường bờ Bắc/Nam, dọc theo 2 mép rào chắn năng lượng và các cụm dã chiến giữa sân.
+  - Tự động tính toán hoa văn ranh giới chuyển tiếp `Grass_1` đến `Grass_30` cho các ô sàn tiếp giáp cỏ (`updateHubGrassPatterns`).
+  - Nướng hoàn toàn nền cỏ và hoa văn vào bộ đệm VRAM Surface Baking `bakedHubSurface`, duy trì 60.0 FPS mượt mà tuyệt đối.
+
 - **21/10/2026:**
   - Khởi tạo mới hệ thống The Range theo yêu cầu thiết kế Hub tiền chiến dịch.
   - Tích hợp 2 trường bắn độc lập (Trường bắn phải vệt đạn 3 giây và Trường bắn trái bia di động đổi HP).

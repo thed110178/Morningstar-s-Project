@@ -67,7 +67,7 @@ public class AmmoPickup {
                 int added = inventory.addAmmo(type, amount);
                 if (added > 0) {
                     this.collected = true;
-                    GameSoundManager.play(SoundEffect.INTERACT, 0.85f);
+                    GameSoundManager.play(SoundEffect.AMMO_PICKUP);
                     if (state != null) {
                         state.showTacticalBanner(String.format("ĐÃ NHẶT +%d %s [%d/%d]",
                                 added, type.getDisplayName().toUpperCase(),

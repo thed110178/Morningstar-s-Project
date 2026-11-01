@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 03/10/2026
+Cập nhật mới nhất vào ngày: 01/11/2026
 
 # Pistol.java - Súng Lục Chiến Thuật 7 Viên (Slot 3)
 
@@ -23,17 +23,23 @@ Cập nhật mới nhất vào ngày: 03/10/2026
 * Tốc độ bắn (`fireRateCooldown`): 0.22 giây giữa các phát bắn bán tự động.
 * Thời gian nạp đạn (`reloadDuration`): 1.2 giây.
 * Vận tốc đạn: 700 px/giây.
+* Hiệu ứng âm thanh khai hỏa: `SoundEffect.GUN_PISTOL_SHOOT` (`gun_pistol_shoot.wav`).
 
 ---
 
 ## 4. Quan hệ với hệ thống khác
 * Sinh đạn vào: `ProjectileManager`.
 * Được quản lý bởi: `WeaponManager`.
+* Hệ thống âm thanh: `GameSoundManager` (quản lý pool phát đồng thời tối đa 10 kênh tiếng súng lục).
 
 ---
 
 ## 5. Sửa đổi / Cập nhật
 * **03/10/2026**: Khởi tạo ban đầu với băng đạn 7 viên và tự động nạp đạn.
+* **01/11/2026**:
+  - Nâng cấp tệp âm thanh tiếng bắn súng lục từ tệp tài nguyên mới `gun_pistol_shoot.mp3`.
+  - Tệp âm thanh được giải mã và tiền xử lý cắt bỏ hoàn toàn $168.4\text{ms}$ khoảng lặng ở phần đầu (Leading Silence Trim), đảm bảo tiếng bắn súng nổ vang tức thời không trễ nhịp (Zero Trigger Latency) ngay khi người chơi nhấp chuột.
+  - Chuẩn hóa đầu ra thành tệp âm thanh chất lượng cao chuẩn PCM 16-bit 44,100 Hz Stereo WAV (`gun_pistol_shoot.wav`), âm lượng tối đa 100% không vỡ tiếng, tích hợp trơn tru vào bộ trộn âm thanh phần mềm đa luồng `GameSoundManager`.
 
 ---
 

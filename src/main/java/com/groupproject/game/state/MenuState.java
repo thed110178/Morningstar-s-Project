@@ -19,10 +19,13 @@ import java.awt.event.KeyEvent;
 
 /**
  * Main Menu State providing an interactive entry screen with dual Keyboard and
- * Mouse navigation, dynamic Save Checkpoint detection, and New Game confirmation dialog.
+ * Mouse navigation, dynamic Save Checkpoint detection, and New Game
+ * confirmation dialog.
  *
- * <p>WHY: Allows players to resume a previously saved campaign run, start fresh,
- * challenge the standalone Titan Tank boss, adjust keybindings, or exit cleanly.
+ * <p>
+ * WHY: Allows players to resume a previously saved campaign run, start fresh,
+ * challenge the standalone Titan Tank boss, adjust keybindings, or exit
+ * cleanly.
  */
 public class MenuState extends GameState {
 
@@ -66,7 +69,8 @@ public class MenuState extends GameState {
     }
 
     /**
-     * Tự động quét và cập nhật danh sách tùy chọn Menu dựa trên sự hiện diện của bản lưu checkpoint.
+     * Tự động quét và cập nhật danh sách tùy chọn Menu dựa trên sự hiện diện của
+     * bản lưu checkpoint.
      */
     public void refreshMenuOptions() {
         this.hasSave = RunSaveManager.hasValidSave();
@@ -327,7 +331,7 @@ public class MenuState extends GameState {
         // --- 2. Title & Glowing Subtitle ---
         g.setFont(titleFont);
         FontMetrics fmTitle = g.getFontMetrics();
-        String title = "Alone in the zone";
+        String title = "Alone in the Zone";
         int titleX = (GameConfig.SCREEN_WIDTH - fmTitle.stringWidth(title)) / 2;
         int titleY = 160;
 
@@ -341,7 +345,7 @@ public class MenuState extends GameState {
         // Subtitle
         g.setFont(subtitleFont);
         FontMetrics fmSub = g.getFontMetrics();
-        String subtitle = "Top-Down Tactical Roguelite Shooter";
+        String subtitle = "Top-Down Roguelite Shooter";
         g.setColor(new Color(160, 180, 210));
         g.drawString(subtitle, (GameConfig.SCREEN_WIDTH - fmSub.stringWidth(subtitle)) / 2, titleY + 36);
 
@@ -499,7 +503,8 @@ public class MenuState extends GameState {
     }
 
     /**
-     * Renders a translucent briefing popup explaining controls and roguelite progression.
+     * Renders a translucent briefing popup explaining controls and roguelite
+     * progression.
      */
     private void renderHowToPlay(Graphics2D g) {
         int boxW = 800;

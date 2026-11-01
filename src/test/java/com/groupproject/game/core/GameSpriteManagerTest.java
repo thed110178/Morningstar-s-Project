@@ -31,6 +31,7 @@ public class GameSpriteManagerTest {
         assertNotNull(GameSpriteManager.getEnemyGrenadierSprite(), "Enemy Grenadier sprite must be loaded");
         assertNotNull(GameSpriteManager.getCoverStoneSprite(), "Stone cover sprite must be loaded");
         assertNotNull(GameSpriteManager.getCoverBarrelSprite(), "Wooden barrel cover sprite must be loaded");
+        assertNotNull(GameSpriteManager.getCoverRedBarrelSprite(), "Red explosive barrel cover sprite must be loaded");
         assertNotNull(GameSpriteManager.getTextureGreyBrick(), "Grey brick wall texture must be loaded");
         assertNotNull(GameSpriteManager.getTextureDirt(), "Dirt floor texture must be loaded");
         assertNotNull(GameSpriteManager.getTextureGrass(), "Grass texture must be loaded");
@@ -59,6 +60,10 @@ public class GameSpriteManagerTest {
         assertNotNull(GameSpriteManager.getPreScaledCoverBarrel(), "Pre-scaled barrel cover must be loaded");
         assertEquals(48, GameSpriteManager.getPreScaledCoverBarrel().getWidth());
         assertEquals(48, GameSpriteManager.getPreScaledCoverBarrel().getHeight());
+
+        assertNotNull(GameSpriteManager.getPreScaledCoverRedBarrel(), "Pre-scaled red barrel cover must be loaded");
+        assertEquals(48, GameSpriteManager.getPreScaledCoverRedBarrel().getWidth());
+        assertEquals(48, GameSpriteManager.getPreScaledCoverRedBarrel().getHeight());
 
         BufferedImage testImg = new BufferedImage(10, 10, BufferedImage.TYPE_4BYTE_ABGR);
         BufferedImage compatible = GameSpriteManager.toCompatibleImage(testImg);
@@ -124,6 +129,22 @@ public class GameSpriteManagerTest {
     }
 
     @Test
+    @DisplayName("Verify that all 30 grass pattern textures are properly loaded and pre-scaled to 49x49")
+    void testGrassPatternTexturesLoaded() {
+        for (int i = 1; i <= 30; i++) {
+            assertNotNull(GameSpriteManager.getGrassPattern(i), "Grass pattern " + i + " must be loaded");
+            BufferedImage preScaled = GameSpriteManager.getPreScaledGrassPattern(i);
+            assertNotNull(preScaled, "Pre-scaled grass pattern " + i + " must be loaded");
+            assertEquals(49, preScaled.getWidth(), "Pre-scaled width for pattern " + i + " must be 49");
+            assertEquals(49, preScaled.getHeight(), "Pre-scaled height for pattern " + i + " must be 49");
+        }
+        assertNull(GameSpriteManager.getGrassPattern(0), "Grass pattern 0 is invalid and must return null");
+        assertNull(GameSpriteManager.getGrassPattern(31), "Grass pattern 31 is out of range and must return null");
+        assertNull(GameSpriteManager.getPreScaledGrassPattern(0), "Pre-scaled grass pattern 0 must return null");
+        assertNull(GameSpriteManager.getPreScaledGrassPattern(31), "Pre-scaled grass pattern 31 must return null");
+    }
+
+    @Test
     @DisplayName("Verify Tiles render with textures and grass safely")
     void testTilesRenderWithTextures() {
         BufferedImage canvas = new BufferedImage(200, 200, BufferedImage.TYPE_INT_ARGB);
@@ -143,6 +164,14 @@ public class GameSpriteManagerTest {
             barrel.render(g2d, 96, 0);
             floor.render(g2d, 144, 0);
             grassFloor.render(g2d, 192, 0);
+
+            // Verify rendering with all 30 grass transition patterns
+            for (int i = 1; i <= 30; i++) {
+                Tile patternTile = new Tile(i, 1, TileType.FLOOR);
+                patternTile.setGrassPattern(i);
+                assertEquals(i, patternTile.getGrassPattern());
+                patternTile.render(g2d, (i % 5) * 48, (i / 5) * 48);
+            }
         });
 
         g2d.dispose();

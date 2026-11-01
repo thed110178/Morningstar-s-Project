@@ -48,6 +48,7 @@ import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
 import com.groupproject.game.dungeon.Tile;
+import com.groupproject.game.dungeon.TileExplosionListener;
 import com.groupproject.game.dungeon.TileType;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -62,7 +63,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * When the operative enters the central combat arena, blast doors seal shut (DOOR_CLOSED) until
  * all hostiles are eradicated, unlocking passage to the extraction zone (DOOR_OPEN).
  */
-public class PlayingState extends GameState {
+public class PlayingState extends GameState implements TileExplosionListener {
 
     private final Camera camera;
     private final DungeonMap dungeonMap;
@@ -160,6 +161,7 @@ public class PlayingState extends GameState {
         this.weaponManager = new WeaponManager();
         this.player = new Player(0, 0);
         this.weaponManager.bindPlayerBuffManager(this.player.getBuffManager());
+        Tile.setExplosionListener(this);
     }
 
     /**
@@ -207,6 +209,7 @@ public class PlayingState extends GameState {
 
     @Override
     public void init() {
+        Tile.setExplosionListener(this);
         if (pendingResumeData != null) {
             this.isStandaloneBossFight = false;
             spawnDirectlyInBossRoom = false;
@@ -285,6 +288,8 @@ public class PlayingState extends GameState {
         ammoPickups.clear();
         healthPickups.clear();
         activeCombatRoom = null;
+        pendingBarrelExplosions.clear();
+        isProcessingExplosion = false;
     }
 
     /**
@@ -1673,8 +1678,8 @@ public class PlayingState extends GameState {
         for (TargetDummy dummy : combatTargets) {
             if (dummy.isAlive() && !dummy.isSpawning() && p.canHit(dummy) && p.getBounds().intersects(dummy.getBounds())) {
                 double impulse = p.isCritical() ? 190.0 : 130.0;
-                int damageDealt = p.getDamage();
-                dummy.takeDamage(damageDealt, p.getAngle(), impulse, p.isCritical());
+                int baseDamage = p.getDamage();
+                int damageDealt = dummy.takeBulletDamage(baseDamage, p.getAngle(), impulse, p.isCritical());
 
                 // Nếu bắn trúng Boss, ngay lập tức hiển thị thanh máu Boss
                 if (dummy == bossDummy) {
@@ -1684,8 +1689,9 @@ public class PlayingState extends GameState {
                     GameSoundManager.play(SoundEffect.HIT_TARGET);
                 }
 
-                if (p.isCritical()) {
+                if (p.isCritical() && damageDealt > 0) {
                     activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), damageDealt));
+                    GameSoundManager.play(SoundEffect.CRITICAL_HIT);
                     screenShakeTimer = Math.max(screenShakeTimer, 0.08);
                 }
 
@@ -1735,18 +1741,31 @@ public class PlayingState extends GameState {
                 if (dummy.isAlive() && !dummy.isSpawning() && slash.canHit(dummy) && slash.getBounds().intersects(dummy.getBounds())) {
                     slash.markHit(dummy);
                     // Nhát chém dao cận chiến gây sát thương và đẩy lùi cực mạnh theo hướng vung dao
-                    dummy.takeDamage(slash.getDamage(), slash.getAngle(), slash.getKnockbackForce(), slash.isCritical());
-                    if (slash.isCritical()) {
-                        activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), slash.getDamage()));
-                        screenShakeTimer = Math.max(screenShakeTimer, 0.08);
-                    }
-                    if (dummy instanceof MeleeEnemy meleeEnemy) {
-                        meleeEnemy.stagger(0.40); // Khựng đòn cắn của quái cận chiến, giải tỏa áp lực bị vây hãm
-                    }
-                    if (!dummy.isAlive()) {
-                        double fatalAngle = slash.getAngle();
-                        double fatalForce = slash.isCritical() ? 650.0 : 560.0;
-                        onEnemyEliminated(dummy, fatalAngle, fatalForce);
+                    int damageDealt = dummy.takeMeleeDamage(slash.getDamage(), slash.getAngle(), slash.getKnockbackForce(), slash.isCritical());
+                    if (damageDealt > 0) {
+                        if (dummy == bossDummy) {
+                            isBossHealthBarRevealed = true;
+                            GameSoundManager.play(SoundEffect.HIT_BOSS);
+                        } else {
+                            GameSoundManager.play(SoundEffect.HIT_TARGET);
+                        }
+                        if (slash.isCritical()) {
+                            activeCritVisuals.add(new CriticalHitVisual(dummy.getX(), dummy.getY(), damageDealt));
+                    GameSoundManager.play(SoundEffect.CRITICAL_HIT);
+                            screenShakeTimer = Math.max(screenShakeTimer, 0.08);
+                        }
+                        if (dummy instanceof MeleeEnemy meleeEnemy) {
+                            meleeEnemy.stagger(0.40); // Khựng đòn cắn của quái cận chiến, giải tỏa áp lực bị vây hãm
+                        }
+                        if (!dummy.isAlive()) {
+                            double fatalAngle = slash.getAngle();
+                            double fatalForce = slash.isCritical() ? 650.0 : 560.0;
+                            onEnemyEliminated(dummy, fatalAngle, fatalForce);
+                        }
+                    } else if (dummy == bossDummy) {
+                        // Boss Tank miễn nhiễm sát thương dao -> Keng! Bật âm thanh dội giáp kim loại và mở lộ thanh máu Boss
+                        isBossHealthBarRevealed = true;
+                        GameSoundManager.play(SoundEffect.HIT_UNBREAKABLE_WALL);
                     }
                 }
             }
@@ -1786,11 +1805,25 @@ public class PlayingState extends GameState {
      * @param fatalForce Xung lực đẩy lùi kết liễu (px/s).
      */
     public void onEnemyEliminated(TargetDummy dummy, double fatalAngle, double fatalForce) {
-        // Sinh xác đầu lâu tông màu xám nâu mờ nhạt trượt văng do knockback
-        EnemyCorpse corpse = new EnemyCorpse(dummy.getX(), dummy.getY(), dummy.getSize(), fatalAngle, fatalForce, dummy.isBoss());
+        double corpseAngle = fatalAngle;
+        double corpseForce = fatalForce;
+        if (dummy instanceof com.groupproject.game.entity.enemy.BossTank bossTank) {
+            corpseAngle = bossTank.getChassisAngle();
+            corpseForce = 0.0; // Xe tăng bọc thép hạng nặng cố định vị trí khi bị nổ hủy
+        }
+
+        // Sinh xác kẻ địch (Boss Tank sinh xác xe bọc thép cháy rụi tồn tại vĩnh viễn, quái thường sinh đầu lâu trượt văng)
+        EnemyCorpse corpse = new EnemyCorpse(dummy.getX(), dummy.getY(), dummy.getSize(), corpseAngle, corpseForce, dummy.isBoss());
         activeCorpses.add(corpse);
 
         if (dummy.isBoss()) {
+            // Khi Boss Tank bị tiêu diệt: Tạo 1 vụ nổ nhỏ (thuần visual + sfx, không gây sát thương)
+            double bossCX = dummy.getX();
+            double bossCY = dummy.getY();
+            activeExplosions.add(new ExplosionVisual(bossCX, bossCY, 85.0, 0.55));
+            com.groupproject.game.core.GameSoundManager.play(com.groupproject.game.core.GameSoundManager.SoundEffect.ENEMY_BOSS_EXPLOSION);
+            triggerScreenShake(0.38);
+
             addCredits(50);
             showBanner("HẠ GỤC BOSS (+50 C)", new Color(255, 215, 60), 2.5);
             ammoPickups.add(new AmmoPickup(dummy.getX() - 36, dummy.getY(), AmmoType.AR, 30));
@@ -2254,6 +2287,7 @@ public class PlayingState extends GameState {
      */
     public void damagePlayer(int damage) {
         if (player.takeDamage(damage)) {
+            GameSoundManager.play(SoundEffect.PLAYER_GOT_HIT);
             screenShakeTimer = 0.2; // 0.2 giây rung màn hình phản hồi va chạm
             if (player.isDead()) {
                 showBanner("[!] CHIẾN BINH ĐÃ TỬ TRẬN (OPERATIVE KIA) [!]", new Color(255, 50, 50), 5.0);
@@ -2330,6 +2364,11 @@ public class PlayingState extends GameState {
 
     public void triggerScreenShake(double duration) {
         this.screenShakeTimer = Math.max(this.screenShakeTimer, duration);
+
+    }
+
+    public double getScreenShakeTimer() {
+        return screenShakeTimer;
     }
 
     public List<ExplosionVisual> getActiveExplosions() {
@@ -2406,6 +2445,80 @@ public class PlayingState extends GameState {
                 }
             }
         }
+    }
+
+    private boolean isProcessingExplosion = false;
+    private final java.util.ArrayDeque<ExplosionRequest> pendingBarrelExplosions = new java.util.ArrayDeque<>();
+
+    private record ExplosionRequest(double x, double y, double radius, int damage) {}
+
+    @Override
+    public void onTileExploded(int col, int row, double worldCenterX, double worldCenterY, double radius, int damage) {
+        pendingBarrelExplosions.add(new ExplosionRequest(worldCenterX, worldCenterY, radius, damage));
+        if (!isProcessingExplosion) {
+            isProcessingExplosion = true;
+            try {
+                while (!pendingBarrelExplosions.isEmpty()) {
+                    ExplosionRequest req = pendingBarrelExplosions.poll();
+                    executeBarrelExplosion(req.x, req.y, req.radius, req.damage);
+                }
+            } finally {
+                isProcessingExplosion = false;
+            }
+        }
+    }
+
+    /**
+     * Thuc thi boc pha thung phi no tai toa do the gioi (worldCenterX, worldCenterY).
+     *
+     * <p>WHY: Thung phi no gay sat thuong cuc lon len moi doi tuong trong ban kinh:
+     * - Nguoi choi nhan sat thuong co suy giam theo khoang cach (distance falloff).
+     * - Toan bo ke dich (ke ca Boss Tank va quai phu) deu nhan sat thuong va hieu ung day lui.
+     * - Kich hoat phan ung no day chuyen (chain reaction) pha huy thung go va kich no cac thung phi lan can.
+     */
+    private void executeBarrelExplosion(double x, double y, double radius, int damage) {
+        GameSoundManager.play(SoundEffect.GRENADIER_EXPLOSION);
+        activeExplosions.add(new ExplosionVisual(x, y, radius, 0.48));
+        triggerScreenShake(0.40);
+
+        // 1. Kiem tra sat thuong len nguoi choi (xuyen cover/dia hinh)
+        double playerCX = player.getCenterX();
+        double playerCY = player.getCenterY();
+        double pDist = Math.hypot(playerCX - x, playerCY - y);
+        double maxHitDist = radius + (player.getSize() / 2.0);
+        if (pDist <= maxHitDist) {
+            int pDmg = BossCannonShell.calculateFalloffDamage(pDist, maxHitDist, damage);
+            damagePlayer(pDmg);
+        }
+
+        // 2. Tac dong sat thuong len toan bo muc tieu (ke dich thuong va Boss)
+        for (TargetDummy dummy : combatTargets) {
+            if (dummy.isAlive()) {
+                double dummyCX = dummy.getX() + (dummy.getSize() / 2.0);
+                double dummyCY = dummy.getY() + (dummy.getSize() / 2.0);
+                double dDist = Math.hypot(dummyCX - x, dummyCY - y);
+                double dummyMaxDist = radius + (dummy.getSize() / 2.0);
+                if (dDist <= dummyMaxDist) {
+                    int enemyDmg = BossCannonShell.calculateFalloffDamage(dDist, dummyMaxDist, damage);
+                    double angle = Math.atan2(dummyCY - y, dummyCX - x);
+                    double force = 220.0;
+                    if (dummy == bossDummy) {
+                        isBossHealthBarRevealed = true;
+                        GameSoundManager.play(SoundEffect.HIT_BOSS);
+                        dummy.takeDamage(enemyDmg, angle, 0.0);
+                    } else {
+                        dummy.takeDamage(enemyDmg, angle, force);
+                    }
+                    if (!dummy.isAlive()) {
+                        onEnemyEliminated(dummy, angle, 420.0);
+                    }
+                }
+            }
+        }
+
+        // 3. Phan ung no day chuyen len cac o cover va thung phi lan can
+        double aoeReach = radius * 1.6;
+        dungeonMap.damageDestructibleCoverInArea(x - aoeReach / 2.0, y - aoeReach / 2.0, aoeReach, aoeReach, damage);
     }
 
     public double getBossMinionRespawnTimer() {

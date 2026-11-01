@@ -543,6 +543,54 @@ public class DungeonMapTest {
     }
 
     @Test
+    @DisplayName("Verify procedural dungeon and boss stage compute natural grass autotiling patterns (1-30)")
+    void testGrassPatternsAutotiling() {
+        DungeonMap map = new DungeonMap();
+        map.generateProceduralDungeon();
+        int coreGrassCount = 0;
+        int transitionPatternCount = 0;
+        int pureDirtCount = 0;
+
+        for (int c = 0; c < DungeonMap.COLS; c++) {
+            for (int r = 0; r < DungeonMap.ROWS; r++) {
+                Tile tile = map.getTile(c, r);
+                if (tile != null && tile.getType() == TileType.FLOOR) {
+                    int p = tile.getGrassPattern();
+                    assertTrue(p >= 0 && p <= 30, "Grass pattern must be in valid range [0..30], got: " + p);
+                    if (tile.hasGrass() && p == 0) {
+                        coreGrassCount++;
+                    } else if (p >= 1 && p <= 30) {
+                        transitionPatternCount++;
+                    } else {
+                        pureDirtCount++;
+                    }
+                }
+            }
+        }
+        assertTrue(coreGrassCount > 0, "Dungeon must have lush core grass tiles (Grass.png)");
+        assertTrue(transitionPatternCount > 0, "Dungeon must have transition border tiles (Grass_pattern 1-30)");
+        assertTrue(pureDirtCount > 0, "Dungeon must have pure dirt floor tiles (Dirt.png)");
+
+        // Also verify Boss Stage
+        map.generateBossStage();
+        int bossCoreGrass = 0;
+        int bossTransition = 0;
+        for (int c = 0; c < DungeonMap.COLS; c++) {
+            for (int r = 0; r < DungeonMap.ROWS; r++) {
+                Tile tile = map.getTile(c, r);
+                if (tile != null && tile.getType() == TileType.FLOOR) {
+                    int p = tile.getGrassPattern();
+                    assertTrue(p >= 0 && p <= 30);
+                    if (tile.hasGrass() && p == 0) bossCoreGrass++;
+                    else if (p >= 1 && p <= 30) bossTransition++;
+                }
+            }
+        }
+        assertTrue(bossCoreGrass > 0, "Boss stage must have core grass");
+        assertTrue(bossTransition > 0, "Boss stage must have transition grass");
+    }
+
+    @Test
     @DisplayName("Verify map render executes smoothly with camera viewport offset without seams")
     void testRenderTileCameraAlignmentAndSeamProtection() {
         com.groupproject.game.core.Camera camera = new com.groupproject.game.core.Camera(1024, 600);
@@ -586,5 +634,28 @@ public class DungeonMapTest {
         java.awt.Graphics2D g = img.createGraphics();
         assertDoesNotThrow(() -> map.render(g, camera), "Render vùng VOID với Void Culling phải trơn tru không lỗi");
         g.dispose();
+    }
+    @Test
+    @DisplayName("Verify corridors have grass flanks with autotiling transitions")
+    void testCorridorGrassFlanks() {
+        DungeonMap map = new DungeonMap();
+        map.generateProceduralDungeon();
+        List<DungeonMap.RoomConnection> conns = map.getActiveConnections();
+        assertFalse(conns.isEmpty(), "Procedural dungeon must have active connections");
+
+        int corridorGrassCount = 0;
+        for (DungeonMap.RoomConnection conn : conns) {
+            java.awt.Rectangle bounds = conn.getCorridorTileBounds();
+            assertNotNull(bounds);
+            for (int c = bounds.x; c < bounds.x + bounds.width; c++) {
+                for (int r = bounds.y; r < bounds.y + bounds.height; r++) {
+                    Tile t = map.getTile(c, r);
+                    if (t != null && (t.hasGrass() || t.getGrassPattern() > 0)) {
+                        corridorGrassCount++;
+                    }
+                }
+            }
+        }
+        assertTrue(corridorGrassCount > 0, "Corridors must contain grass along their flanks");
     }
 }

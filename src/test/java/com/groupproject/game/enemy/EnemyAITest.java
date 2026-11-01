@@ -1230,4 +1230,105 @@ class EnemyAITest {
 
         g2.dispose();
     }
+
+    @Test
+    @DisplayName("Verify BossTank buff: Bullet damage reduced by 30% and immune to knife melee damage")
+    void testBossTankBulletDamageReductionAndKnifeImmunity() {
+        BossTank tank = new BossTank(300, 300);
+        tank.setSpawnTelegraph(0.0);
+        assertEquals(1250, tank.getCurrentHealth(), "Initial Boss HP must be 1250");
+
+        // 1. Kiểm tra sát thương nhận vào từ đạn giảm 30% (Boss chỉ nhận 70%)
+        // Đạn 100 DMG -> Nhận 70 DMG
+        int dealt1 = tank.takeBulletDamage(100, 0.0, 100.0, false);
+        assertEquals(70, dealt1, "100 bullet DMG reduced by 30% must deal 70 DMG");
+        assertEquals(1180, tank.getCurrentHealth(), "Boss HP after 70 DMG must be 1180");
+
+        // Đạn 20 DMG -> Nhận 14 DMG
+        int dealt2 = tank.takeBulletDamage(20, false);
+        assertEquals(14, dealt2, "20 bullet DMG reduced by 30% must deal 14 DMG");
+        assertEquals(1166, tank.getCurrentHealth());
+
+        // Đạn lẻ: 35 DMG -> 35 * 0.7 = 24.5 -> làm tròn 25 DMG
+        int dealt3 = tank.takeBulletDamage(35, true);
+        assertEquals(25, dealt3, "35 bullet DMG rounded to 25 DMG");
+        assertEquals(1141, tank.getCurrentHealth());
+
+        // Đạn sát thương nhỏ: 1 DMG -> tối thiểu 1 DMG
+        int dealt4 = tank.takeBulletDamage(1, false);
+        assertEquals(1, dealt4, "1 bullet DMG must deal at least 1 DMG");
+        assertEquals(1140, tank.getCurrentHealth());
+
+        // Đạn sát thương 0 hoặc âm -> 0 DMG
+        int dealt5 = tank.takeBulletDamage(0, false);
+        assertEquals(0, dealt5);
+        assertEquals(1140, tank.getCurrentHealth());
+
+        // 2. Kiểm tra BossTank hoàn toàn miễn nhiễm sát thương từ dao cận chiến (Knife Immunity)
+        // Nhát chém thường: 45 DMG -> Boss nhận 0 DMG
+        int knifeDmg1 = tank.takeMeleeDamage(45, 0.5, 600.0, false);
+        assertEquals(0, knifeDmg1, "BossTank must be immune to knife damage (0 DMG dealt)");
+        assertEquals(1140, tank.getCurrentHealth(), "Boss HP must NOT decrease from knife attacks");
+
+        // Nhát chém chí mạng: 90 DMG -> Boss nhận 0 DMG
+        int knifeDmg2 = tank.takeMeleeDamage(90, true);
+        assertEquals(0, knifeDmg2, "BossTank must be immune to critical knife damage (0 DMG dealt)");
+        assertEquals(1140, tank.getCurrentHealth(), "Boss HP must still be 1140");
+
+        // 3. Đối chiếu với mục tiêu luyện tập thông thường (TargetDummy)
+        TargetDummy normalDummy = new TargetDummy(100, 100, 500);
+        normalDummy.setSpawnTelegraph(0.0);
+        // Dummy thường nhận đủ 100% sát thương đạn và dao
+        assertEquals(100, normalDummy.takeBulletDamage(100, false), "Normal dummy receives 100% bullet damage");
+        assertEquals(400, normalDummy.getCurrentHealth());
+        assertEquals(45, normalDummy.takeMeleeDamage(45, false), "Normal dummy receives 100% knife damage");
+        assertEquals(355, normalDummy.getCurrentHealth());
+    }
+
+    @Test
+    @DisplayName("Verify PlayingState bullet and knife collisions with BossTank reflect 30% reduction and knife immunity")
+    void testPlayingStateBossTankDamageMechanics() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+        state.setCurrentStage(PlayingState.BOSS_STAGE);
+
+        // Lấy tọa độ tâm Spawn Room (đảm bảo 100% sàn mở, không bao giờ bị vướng tường hay VOID)
+        com.groupproject.game.dungeon.Room room = state.getDungeonMap().getSpawnRoom();
+        double bx = room != null ? room.getCenterWorldX() : 500.0;
+        double by = room != null ? room.getCenterWorldY() : 500.0;
+
+        // Spawn BossTank với 1250 HP
+        state.spawnBossForTesting(bx, by, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+        TargetDummy boss = state.getBossDummy();
+        assertNotNull(boss);
+        assertTrue(boss instanceof BossTank);
+        boss.setSpawnTelegraph(0.0);
+
+        // 1. Test đạn người chơi bắn trúng Boss: sát thương giảm 30%
+        // Bắn 1 viên đạn thường 50 DMG bay thẳng vào Boss
+        Projectile bullet = new Projectile(bx, by, 0.0, 500.0, 50, 1.0, true, false);
+        state.getProjectileManager().spawn(bullet);
+
+        // Cập nhật state để đạn chạm Boss
+        com.groupproject.game.input.KeyboardHandler keyH = new com.groupproject.game.input.KeyboardHandler();
+        com.groupproject.game.input.MouseHandler mouseH = new com.groupproject.game.input.MouseHandler();
+        state.update(0.016, keyH, mouseH);
+
+        // Đạn 50 DMG -> giảm 30% còn 35 DMG -> Boss còn 1250 - 35 = 1215 HP
+        assertEquals(1215, boss.getCurrentHealth(), "Boss HP should decrease by 35 (50 * 0.7)");
+        assertTrue(state.isBossHealthBarRevealed(), "Boss health bar must be revealed upon taking bullet hit");
+
+        // 2. Test dao cận chiến chém vào Boss: Boss miễn nhiễm, HP không giảm!
+        int hpBeforeKnife = boss.getCurrentHealth();
+        // Giả lập nhát chém dao bao phủ Boss
+        com.groupproject.game.entity.weapon.MeleeSlash slash = new com.groupproject.game.entity.weapon.MeleeSlash(
+                bx, by, 0.0, 0.0, 100.0, 45, 0.20, 600.0, false);
+        state.getWeaponManager().getActiveSlashes().add(slash);
+
+        state.update(0.016, keyH, mouseH);
+
+        // HP không hề thay đổi sau nhát chém dao!
+        assertEquals(hpBeforeKnife, boss.getCurrentHealth(), "Boss HP must NOT decrease when hit by knife slash");
+        assertTrue(boss.isAlive(), "Boss must still be alive");
+    }
 }

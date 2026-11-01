@@ -18,6 +18,16 @@ import java.awt.image.BufferedImage;
  */
 public class Tile {
 
+    private static TileExplosionListener explosionListener;
+
+    public static void setExplosionListener(TileExplosionListener listener) {
+        explosionListener = listener;
+    }
+
+    public static TileExplosionListener getExplosionListener() {
+        return explosionListener;
+    }
+
     private final int gridX;
     private final int gridY;
     private final int worldX;
@@ -26,6 +36,14 @@ public class Tile {
     private int health = 0;
     private int maxHealth = 0;
     private boolean hasGrass = false;
+    /**
+     * Chỉ số biến thể hoa văn cỏ - đất (1-26 từ Grass_pattern, hoặc 0 nếu dùng texture gốc).
+     *
+     * <p>WHY: Lưu trữ trước kết quả autotiling được tính toán lúc tạo bản đồ (DungeonMap),
+     * giúp quá trình dựng hình mỗi khung hình (render) đạt tốc độ O(1) tuyệt đối bằng cách
+     * tra cứu trực tiếp hình ảnh tương thích phần cứng từ GameSpriteManager, không tính toán lại lân cận.
+     */
+    private int grassPattern = 0;
 
     /**
      * Constructs a tile at the designated grid coordinates.
@@ -84,6 +102,14 @@ public class Tile {
         return worldY;
     }
 
+    public double getCenterX() {
+        return worldX + GameConfig.TILE_SIZE / 2.0;
+    }
+
+    public double getCenterY() {
+        return worldY + GameConfig.TILE_SIZE / 2.0;
+    }
+
     public TileType getType() {
         return type;
     }
@@ -93,12 +119,16 @@ public class Tile {
         if (type == TileType.DESTRUCTIBLE_COVER) {
             this.maxHealth = 40;
             this.health = 40;
+        } else if (type == TileType.EXPLOSIVE_BARREL) {
+            this.maxHealth = 20;
+            this.health = 20;
         } else {
             this.health = 0;
             this.maxHealth = 0;
         }
-        if (type != TileType.FLOOR) {
+        if (type != TileType.FLOOR && type != TileType.DESTRUCTIBLE_COVER && type != TileType.EXPLOSIVE_BARREL && type != TileType.COVER) {
             this.hasGrass = false;
+            this.grassPattern = 0;
         }
     }
 
@@ -108,6 +138,14 @@ public class Tile {
 
     public void setHasGrass(boolean hasGrass) {
         this.hasGrass = hasGrass;
+    }
+
+    public int getGrassPattern() {
+        return grassPattern;
+    }
+
+    public void setGrassPattern(int grassPattern) {
+        this.grassPattern = grassPattern;
     }
 
     /**
@@ -129,7 +167,11 @@ public class Tile {
      * Xác định xem ô này có phải là cover tạm thời có thể phá hủy được hay không.
      */
     public boolean isDestructible() {
-        return type == TileType.DESTRUCTIBLE_COVER;
+        return type == TileType.DESTRUCTIBLE_COVER || type == TileType.EXPLOSIVE_BARREL;
+    }
+
+    public boolean isExplosiveBarrel() {
+        return type == TileType.EXPLOSIVE_BARREL;
     }
 
     /**
@@ -143,13 +185,22 @@ public class Tile {
         if (!isDestructible() || damage <= 0) {
             return false;
         }
+        boolean wasExplosive = isExplosiveBarrel();
         this.health -= damage;
         if (this.health <= 0) {
             setType(TileType.FLOOR);
-            GameSoundManager.play(SoundEffect.HIT_CRATE_BREAKING);
+            if (wasExplosive) {
+                if (explosionListener != null) {
+                    explosionListener.onTileExploded(gridX, gridY, getCenterX(), getCenterY(), 110.0, 65);
+                } else {
+                    GameSoundManager.play(SoundEffect.GRENADIER_EXPLOSION);
+                }
+            } else {
+                GameSoundManager.play(SoundEffect.HIT_CRATE_BREAKING);
+            }
             return true;
         }
-        GameSoundManager.play(SoundEffect.HIT_CRATE);
+        GameSoundManager.play(wasExplosive ? SoundEffect.HIT_UNBREAKABLE_WALL : SoundEffect.HIT_CRATE);
         return false;
     }
 
@@ -178,7 +229,13 @@ public class Tile {
 
         // 1. Base surface fill: Tối ưu 1-pass không overdraw cho các ô có texture VRAM (FLOOR, WALL, COVER, BARREL)
         if (type == TileType.FLOOR) {
-            BufferedImage floorTex = hasGrass ? GameSpriteManager.getPreScaledTextureGrass() : GameSpriteManager.getPreScaledTextureDirt();
+            BufferedImage floorTex = null;
+            if (grassPattern >= 1 && grassPattern <= 30) {
+                floorTex = GameSpriteManager.getPreScaledGrassPattern(grassPattern);
+            }
+            if (floorTex == null) {
+                floorTex = hasGrass ? GameSpriteManager.getPreScaledTextureGrass() : GameSpriteManager.getPreScaledTextureDirt();
+            }
             if (floorTex != null) {
                 g.drawImage(floorTex, screenX, screenY, null);
             } else {
@@ -199,6 +256,17 @@ public class Tile {
                 g.fillRect(screenX + 4, screenY + 4, size - 8, size - 8);
             }
         } else if (type == TileType.COVER) {
+            // Nền sàn bên dưới cột cover
+            BufferedImage floorTex = null;
+            if (grassPattern >= 1 && grassPattern <= 30) {
+                floorTex = GameSpriteManager.getPreScaledGrassPattern(grassPattern);
+            }
+            if (floorTex == null) {
+                floorTex = hasGrass ? GameSpriteManager.getPreScaledTextureGrass() : GameSpriteManager.getPreScaledTextureDirt();
+            }
+            if (floorTex != null) {
+                g.drawImage(floorTex, screenX, screenY, null);
+            }
             BufferedImage stoneTex = GameSpriteManager.getPreScaledCoverStone();
             if (stoneTex != null) {
                 g.drawImage(stoneTex, screenX, screenY, null);
@@ -212,6 +280,17 @@ public class Tile {
                 g.drawLine(screenX + size - 5, screenY + 4, screenX + 4, screenY + size - 5);
             }
         } else if (type == TileType.DESTRUCTIBLE_COVER) {
+            // Nền sàn bên dưới thùng gỗ
+            BufferedImage floorTex = null;
+            if (grassPattern >= 1 && grassPattern <= 30) {
+                floorTex = GameSpriteManager.getPreScaledGrassPattern(grassPattern);
+            }
+            if (floorTex == null) {
+                floorTex = hasGrass ? GameSpriteManager.getPreScaledTextureGrass() : GameSpriteManager.getPreScaledTextureDirt();
+            }
+            if (floorTex != null) {
+                g.drawImage(floorTex, screenX, screenY, null);
+            }
             BufferedImage barrelTex = GameSpriteManager.getPreScaledCoverBarrel();
             if (barrelTex != null) {
                 g.drawImage(barrelTex, screenX, screenY, null);
@@ -231,6 +310,32 @@ public class Tile {
                 g.fillRect(screenX + 2, screenY + size - 2 - bSize, bSize, bSize);
                 g.fillRect(screenX + size - 2 - bSize, screenY + size - 2 - bSize, bSize, bSize);
             }
+        } else if (type == TileType.EXPLOSIVE_BARREL) {
+            // Vẽ lớp nền sàn đất/cỏ trước để các pixel trong suốt (4 góc của hình tròn thùng phi) hòa nhập mượt mà vào sàn phòng, không bị lộ nền đen
+            BufferedImage floorTex = null;
+            if (grassPattern >= 1 && grassPattern <= 30) {
+                floorTex = GameSpriteManager.getPreScaledGrassPattern(grassPattern);
+            }
+            if (floorTex == null) {
+                floorTex = hasGrass ? GameSpriteManager.getPreScaledTextureGrass() : GameSpriteManager.getPreScaledTextureDirt();
+            }
+            if (floorTex != null) {
+                g.drawImage(floorTex, screenX, screenY, null);
+            } else {
+                g.setColor(hasGrass ? new Color(55, 110, 50) : TileType.FLOOR.getDefaultColor());
+                g.fillRect(screenX, screenY, drawSize, drawSize);
+            }
+
+            BufferedImage redBarrelTex = GameSpriteManager.getPreScaledCoverRedBarrel();
+            if (redBarrelTex != null) {
+                g.drawImage(redBarrelTex, screenX, screenY, null);
+            } else {
+                g.setColor(new Color(200, 30, 30));
+                g.fillOval(screenX + 2, screenY + 2, size - 4, size - 4);
+                g.setColor(new Color(40, 40, 40));
+                g.drawOval(screenX + 2, screenY + 2, size - 4, size - 4);
+                g.fillOval(screenX + size / 2 - 4, screenY + size / 2 - 4, 8, 8);
+            }
         } else {
             // Các ô chức năng và vùng chiến thuật đặc biệt (SPAWN_ZONE, DOOR_OPEN, DOOR_CLOSED, EXTRACT_ZONE...)
             // Tô lớp nền màu đặc trưng (defaultColor) để không bị lộ nền đen của GamePanel
@@ -239,18 +344,20 @@ public class Tile {
         }
 
         // 2. Visual ornamentation based on tile classification
-        if (type == TileType.DESTRUCTIBLE_COVER) {
+        if (type == TileType.DESTRUCTIBLE_COVER || type == TileType.EXPLOSIVE_BARREL) {
             // Hiệu ứng rạn nứt khi bị nhận sát thương
             if (health < maxHealth) {
-                g.setColor(new Color(25, 15, 10, 220));
-                g.drawLine(screenX + 14, screenY + 8, screenX + 26, screenY + 24);
-                g.drawLine(screenX + 26, screenY + 24, screenX + 20, screenY + 38);
-                if (health <= maxHealth / 2) {
-                    g.drawLine(screenX + 34, screenY + 12, screenX + 28, screenY + 28);
-                    g.drawLine(screenX + 10, screenY + 30, screenX + 22, screenY + 32);
+                if (type == TileType.DESTRUCTIBLE_COVER) {
+                    g.setColor(new Color(25, 15, 10, 220));
+                    g.drawLine(screenX + 14, screenY + 8, screenX + 26, screenY + 24);
+                    g.drawLine(screenX + 26, screenY + 24, screenX + 20, screenY + 38);
+                    if (health <= maxHealth / 2) {
+                        g.drawLine(screenX + 34, screenY + 12, screenX + 28, screenY + 28);
+                        g.drawLine(screenX + 10, screenY + 30, screenX + 22, screenY + 32);
+                    }
                 }
 
-                // Thanh HP nhỏ màu vàng cam phía trên đỉnh thùng
+                // Thanh HP nhỏ phía trên đỉnh thùng: đỏ cam cho thùng phi nổ, vàng cam cho thùng gỗ
                 int barW = 30;
                 int barH = 4;
                 int barX = screenX + (size - barW) / 2;
@@ -258,7 +365,7 @@ public class Tile {
                 g.setColor(new Color(0, 0, 0, 180));
                 g.fillRect(barX, barY, barW, barH);
                 int fillW = (int) Math.round((barW * health) / (double) maxHealth);
-                g.setColor(new Color(255, 160, 40));
+                g.setColor(type == TileType.EXPLOSIVE_BARREL ? new Color(255, 60, 40) : new Color(255, 160, 40));
                 g.fillRect(barX, barY, fillW, barH);
                 g.setColor(new Color(255, 255, 255, 140));
                 g.drawRect(barX, barY, barW, barH);

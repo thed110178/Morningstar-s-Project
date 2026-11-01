@@ -480,9 +480,13 @@ public class HubRangeState extends GameState {
                 if (bullet.canHit(dummy) && dummy.getBounds().intersects(bulletBounds)) {
                     int dmg = bullet.getDamage();
                     boolean isCrit = bullet.isCritical();
-                    dummy.takeDamage(dmg, isCrit);
-                    popupManager.addPopup(dummy.getX(), dummy.getY(), dmg, isCrit);
-                    GameSoundManager.play(SoundEffect.HIT_TARGET);
+                    int actualDmg = dummy.takeBulletDamage(dmg, isCrit);
+                    popupManager.addPopup(dummy.getX(), dummy.getY(), actualDmg, isCrit);
+                    if (isCrit) {
+                        GameSoundManager.play(SoundEffect.CRITICAL_HIT);
+                    } else {
+                        GameSoundManager.play(SoundEffect.HIT_TARGET);
+                    }
 
                     // Tiêu hao lượt xuyên phá của đạn (nếu là Sniper có thể xuyên qua dummy tiếp theo)
                     bullet.onHitTarget(dummy);
@@ -500,9 +504,13 @@ public class HubRangeState extends GameState {
                 if (dummy.isAlive() && bullet.canHit(dummy) && dummy.getBounds().intersects(bulletBounds)) {
                     int dmg = bullet.getDamage();
                     boolean isCrit = bullet.isCritical();
-                    dummy.takeDamage(dmg, isCrit);
-                    popupManager.addPopup(dummy.getX(), dummy.getY(), dmg, isCrit);
-                    GameSoundManager.play(SoundEffect.HIT_TARGET);
+                    int actualDmg = dummy.takeBulletDamage(dmg, isCrit);
+                    popupManager.addPopup(dummy.getX(), dummy.getY(), actualDmg, isCrit);
+                    if (isCrit) {
+                        GameSoundManager.play(SoundEffect.CRITICAL_HIT);
+                    } else {
+                        GameSoundManager.play(SoundEffect.HIT_TARGET);
+                    }
 
                     // Tiêu hao lượt xuyên phá của đạn (nếu là Sniper có thể xuyên qua dummy tiếp theo)
                     bullet.onHitTarget(dummy);
@@ -690,27 +698,9 @@ public class HubRangeState extends GameState {
             }
         }
 
-        // 2. Trang trí vạt cỏ ở rìa chân tường bao và bãi đất trống The Range
-        for (int x = 1; x < cols - 1; x++) {
-            for (int y = WALL_ROW_TOP + 1; y < WALL_ROW_BOT; y++) {
-                com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
-                if (t != null && t.getType() == com.groupproject.game.dungeon.TileType.FLOOR) {
-                    boolean nearWall = (x == 1 || x == cols - 2 || y == WALL_ROW_TOP + 1 || y == WALL_ROW_BOT - 1);
-                    if (nearWall) {
-                        int hash = (x * 31 + y * 17 + (x ^ y) * 7) & 0x7FFFFFFF;
-                        if (hash % 100 < 75) {
-                            t.setHasGrass(true);
-                        }
-                    } else {
-                        // Bãi đất trống ở giữa sân: Phân bổ các cụm cỏ xanh dã chiến đan xen tự nhiên (~38%)
-                        int hash = (x * 73856093 ^ y * 19349663 ^ (x + y) * 83492791) & 0x7FFFFFFF;
-                        if (hash % 100 < 38) {
-                            t.setHasGrass(true);
-                        }
-                    }
-                }
-            }
-        }
+        // 2. Trang trí các mảng cỏ dày (Core Grass) và tính toán Autotiling 30 biến thể ranh giới trong The Range
+        decorateHubGrass(cols, rows, leftBarCol, rightBarCol);
+        updateHubGrassPatterns(cols, rows);
 
         // 3. Surface Baking: Nướng toàn bộ nền The Range vào một tấm ảnh đệm VRAM duy nhất
         int surfaceW = cols * ts;
@@ -732,6 +722,165 @@ public class HubRangeState extends GameState {
 
         // Chuyển đổi sang CompatibleImage khớp với VRAM card màn hình để BitBlt cực nhanh
         this.bakedHubSurface = com.groupproject.game.core.GameSpriteManager.toCompatibleImage(rawSurface);
+    }
+
+    /**
+     * Tự động trang trí các mảng cỏ dày (Core Grass) ở các góc sân, chân tường và bãi đất The Range.
+     */
+    private void decorateHubGrass(int cols, int rows, int leftBarCol, int rightBarCol) {
+        for (int x = 0; x < cols; x++) {
+            for (int y = 0; y < rows; y++) {
+                com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
+                if (t != null) {
+                    t.setHasGrass(false);
+                    t.setGrassPattern(0);
+                }
+            }
+        }
+
+        // 1. Vạt cỏ dày ở 4 góc của sân Hub chính (2x2)
+        placeHubGrassClump(leftBarCol + 1, WALL_ROW_TOP + 1, 1, 1, 2, 2);
+        placeHubGrassClump(rightBarCol - 1, WALL_ROW_TOP + 1, -1, 1, 2, 2);
+        placeHubGrassClump(leftBarCol + 1, WALL_ROW_BOT - 1, 1, -1, 2, 2);
+        placeHubGrassClump(rightBarCol - 1, WALL_ROW_BOT - 1, -1, -1, 2, 2);
+
+        // 2. Dải cỏ ven chân tường bờ Bắc và bờ Nam
+        for (int x = leftBarCol + 3; x <= rightBarCol - 3; x++) {
+            setHubCoreGrassIfFloor(x, WALL_ROW_TOP + 1);
+            setHubCoreGrassIfFloor(x, WALL_ROW_BOT - 1);
+        }
+
+        // 3. Dải cỏ chạy dọc mép rào chắn năng lượng phía Đông và phía Tây
+        for (int y = WALL_ROW_TOP + 3; y <= WALL_ROW_BOT - 3; y++) {
+            setHubCoreGrassIfFloor(leftBarCol + 1, y);
+            setHubCoreGrassIfFloor(rightBarCol - 1, y);
+        }
+
+        // 4. Các cụm cỏ dã chiến tự nhiên trong lòng sân The Range (2x2)
+        placeHubGrassClump(16, 12, 1, 1, 2, 2);
+        placeHubGrassClump(26, 12, 1, 1, 2, 2);
+    }
+
+    private void placeHubGrassClump(int startX, int startY, int dirX, int dirY, int sizeX, int sizeY) {
+        for (int dx = 0; dx < sizeX; dx++) {
+            for (int dy = 0; dy < sizeY; dy++) {
+                int x = startX + dx * dirX;
+                int y = startY + dy * dirY;
+                setHubCoreGrassIfFloor(x, y);
+            }
+        }
+    }
+
+    private void setHubCoreGrassIfFloor(int x, int y) {
+        if (x >= 0 && x < hubTiles.length && y >= 0 && y < hubTiles[0].length) {
+            com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
+            if (t != null && t.getType() == com.groupproject.game.dungeon.TileType.FLOOR) {
+                t.setHasGrass(true);
+            }
+        }
+    }
+
+    /**
+     * Tự động tính toán hoa văn ranh giới chuyển tiếp (Autotiling Grass Pattern 1 đến 30) cho The Range.
+     */
+    private void updateHubGrassPatterns(int cols, int rows) {
+        boolean[][] isCore = new boolean[cols][rows];
+        for (int x = 0; x < cols; x++) {
+            for (int y = 0; y < rows; y++) {
+                com.groupproject.game.dungeon.Tile t = hubTiles[x][y];
+                if (t != null && t.getType() == com.groupproject.game.dungeon.TileType.FLOOR && t.hasGrass()) {
+                    isCore[x][y] = true;
+                }
+            }
+        }
+
+        for (int x = 0; x < cols; x++) {
+            for (int y = 0; y < rows; y++) {
+                com.groupproject.game.dungeon.Tile tile = hubTiles[x][y];
+                if (tile == null || tile.getType() != com.groupproject.game.dungeon.TileType.FLOOR) {
+                    continue;
+                }
+
+                if (isCore[x][y]) {
+                    tile.setGrassPattern(0);
+                } else {
+                    boolean n = isHubCoreTile(isCore, x, y - 1);
+                    boolean s = isHubCoreTile(isCore, x, y + 1);
+                    boolean w = isHubCoreTile(isCore, x - 1, y);
+                    boolean e = isHubCoreTile(isCore, x + 1, y);
+
+                    int cardCount = (n ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0) + (e ? 1 : 0);
+                    if (cardCount > 0) {
+                        int p = getHubCardinalBorderPattern(n, s, w, e);
+                        tile.setGrassPattern(p);
+                    } else {
+                        boolean nw = isHubCoreTile(isCore, x - 1, y - 1);
+                        boolean ne = isHubCoreTile(isCore, x + 1, y - 1);
+                        boolean sw = isHubCoreTile(isCore, x - 1, y + 1);
+                        boolean se = isHubCoreTile(isCore, x + 1, y + 1);
+                        int cornerP = getHubCornerBorderPattern(nw, ne, sw, se);
+                        tile.setGrassPattern(cornerP);
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isHubCoreTile(boolean[][] isCore, int x, int y) {
+        if (x < 0 || x >= isCore.length || y < 0 || y >= isCore[0].length) return false;
+        return isCore[x][y];
+    }
+
+    private int getHubCardinalBorderPattern(boolean n, boolean s, boolean w, boolean e) {
+        int count = (n ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0) + (e ? 1 : 0);
+        if (count == 4) return 15;
+        if (count == 3) {
+            if (n && s && e) return 11;
+            if (s && w && e) return 12;
+            if (n && s && w) return 13;
+            if (n && w && e) return 14;
+        }
+        if (count == 2) {
+            if (w && e) return 5;
+            if (n && s) return 6;
+            if (s && w) return 7;
+            if (n && w) return 8;
+            if (n && e) return 9;
+            if (s && e) return 10;
+        }
+        if (count == 1) {
+            if (s) return 1;
+            if (n) return 2;
+            if (w) return 3;
+            if (e) return 4;
+        }
+        return 0;
+    }
+
+    private int getHubCornerBorderPattern(boolean nw, boolean ne, boolean sw, boolean se) {
+        int count = (nw ? 1 : 0) + (ne ? 1 : 0) + (sw ? 1 : 0) + (se ? 1 : 0);
+        if (count == 0) return 0;
+        if (count == 4) return 16;
+        if (count == 3) {
+            if (!nw) return 17;
+            if (!ne) return 18;
+            if (!se) return 19;
+            if (!sw) return 20;
+        }
+        if (count == 2) {
+            if (nw && se) return 26;
+            if (ne && sw) return 25;
+            if (sw && se) return 21;
+            if (nw && sw) return 22;
+            if (nw && ne) return 23;
+            if (ne && se) return 24;
+        }
+        // count == 1: 4 góc ranh giới đơn (27-30)
+        if (nw) return 29;
+        if (ne) return 27;
+        if (sw) return 28;
+        if (se) return 30;
+        return 0;
     }
 
     private static final BasicStroke BARRIER_GLOW_STROKE = new BasicStroke(6.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);

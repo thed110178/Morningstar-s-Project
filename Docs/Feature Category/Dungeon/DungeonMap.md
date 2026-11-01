@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 20/10/2026
+Cập nhật mới nhất vào ngày: 31/10/2026
 
 # DungeonMap.java - Hệ Thống Hầm Ngục Lưới 4 Hướng (12h, 3h, 6h, 9h) Liền Kề & Kiểm Tra Va Chạm Lưới
 
@@ -63,6 +63,7 @@ Hệ thống hầm ngục được xây dựng theo **Kiến trúc Lưới Phòn
 * `public Room getExtractRoom()`: Truy xuất phòng sơ tán (trả về null ở Stage 3 khi chưa dọn sạch).
 * `public List<Room> getRooms()`: Truy xuất tất cả các phòng trên bản đồ.
 * `public Tile getTile(int col, int row)`: Truy xuất ô gạch tại tọa độ lưới.
+* `public void updateGrassPatterns()`: Tự động tính toán mẫu biến thể autotiling (1-26) cho toàn bộ các ô sàn sau khi rải cỏ nhằm tạo sự chuyển tiếp tự nhiên, mềm mại giữa cỏ và đất.
 
 ---
 
@@ -103,3 +104,13 @@ Hệ thống hầm ngục được xây dựng theo **Kiến trúc Lưới Phòn
     + Archetype 4: Tactical Killzone ($13 \times 9$) - Bàn cờ đan xen so le che chắn đa hướng.
     + Archetype 5: Divided Bastion ($14 \times 10$) - Chiến hào phân đôi cánh bảo vệ hai sườn.
   - Mọi bố cục cover cứng đều được kiểm tra nghiêm ngặt qua `isNearDoorway(room, c, r)` đối với tất cả các cửa thực tế đã lắp đặt, đảm bảo 100% lối đi hành lang và tâm phòng luôn thông thoáng.
+* **31/10/2026 (Lần 8 - Hệ thống Autotiling 26 biến thể chuyển tiếp mượt mà Cỏ - Đất & Khắc phục góc đơn / viền tường)**:
+  - Phân tích toán học toàn bộ 26 texture trong `src/main/resources/textures/Grass_pattern`.
+  - Nhóm Pattern 1-15: Autotiling rìa 4 hướng chính (Bắc, Nam, Tây, Đông) với đầy đủ 15 tổ hợp nhị phân cho các ô cỏ kề đất/tường.
+  - Nhóm Pattern 16-26: Autotiling góc chéo, phân tách chính xác:
+    + 4 góc đơn ngoài ($NW \to 8$, $NE \to 9$, $SW \to 7$, $SE \to 10$) giúp triệt tiêu hoàn toàn chỏm cỏ trắng thừa nhô ra nền đất.
+    + 2 góc đối diện cắt chéo nhau ($NW + SE \to 26$, $NE + SW \to 25$).
+    + Các tổ hợp 2 góc kề nhau (21-24), 3 góc (17-20) và 4 góc (16).
+  - Khắc phục dải cỏ ven tường (`placeWallStrip`): Bỏ tỷ lệ ngắt quãng ngẫu nhiên, giữ thảm cỏ ven tường liền mạch, không còn hiện tượng răng lược/răng cưa.
+  - Tích hợp tự động trong cả chế độ hầm ngục thủ tục (Procedural Dungeon) và Đấu trường Trùm (Boss Stage).
+  - Kết hợp với hệ thống Compatible Image Pre-scaling trong `GameSpriteManager` đảm bảo duy trì tuyệt đối 60 FPS mà không tiêu tốn CPU trong vòng lặp dựng hình.
