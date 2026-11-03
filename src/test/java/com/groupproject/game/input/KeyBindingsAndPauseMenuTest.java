@@ -432,13 +432,52 @@ public class KeyBindingsAndPauseMenuTest {
     }
 
     @Test
+    @DisplayName("Kiểm tra tùy chọn chuyển đổi Toàn màn hình (Display Mode / Fullscreen) trong menu Cài đặt")
+    void testDisplayModeToggleControls() {
+        PauseMenuUI menu = new PauseMenuUI();
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+
+        menu.setCurrentSubMenu(PauseMenuUI.SubMenu.SETTINGS);
+        menu.render(g, 1280, 720);
+        g.dispose();
+
+        java.awt.Rectangle toggleBounds = menu.getDisplayModeToggleBounds();
+        assertNotNull(toggleBounds, "Vùng toggle Display Mode phải được khởi tạo");
+        assertTrue(toggleBounds.width > 0 && toggleBounds.height > 0, "Kích thước toggle box Display Mode phải hợp lệ");
+
+        // Giả lập callback toggle
+        boolean[] fullScreenState = new boolean[]{true};
+        com.groupproject.game.core.GameConfig.fullScreenToggler = () -> fullScreenState[0] = !fullScreenState[0];
+        com.groupproject.game.core.GameConfig.fullScreenChecker = () -> fullScreenState[0];
+
+        // 1. Click vào toggle Display Mode -> Chuyển sang Cửa sổ (false)
+        int clickX = (int) toggleBounds.getCenterX();
+        int clickY = (int) toggleBounds.getCenterY();
+        clickMouse(MouseEvent.BUTTON1, clickX, clickY);
+
+        menu.update(keyH, mouseH, 0.016);
+        assertFalse(fullScreenState[0], "Click vào Display Mode toggle phải chuyển sang false (Cửa sổ)");
+
+        // 2. Click lần nữa -> Bật lại Toàn màn hình (true)
+        clickMouse(MouseEvent.BUTTON1, clickX, clickY);
+        menu.update(keyH, mouseH, 0.016);
+        assertTrue(fullScreenState[0], "Click lần nữa phải chuyển lại thành true (Toàn màn hình)");
+
+        // Dọn dẹp callback
+        com.groupproject.game.core.GameConfig.fullScreenToggler = null;
+        com.groupproject.game.core.GameConfig.fullScreenChecker = null;
+    }
+
+    @Test
     @DisplayName("Kiểm tra điều khiển âm lượng SFX và BGM tách biệt trong giao diện Cài đặt (PauseMenuUI)")
     void testSfxAndBgmVolumeControlsInSettings() {
         PauseMenuUI menu = new PauseMenuUI();
         java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
         java.awt.Graphics2D g = img.createGraphics();
 
-        // Khởi tạo trạng thái âm lượng chuẩn
+        // Khởi tạo trạng thái âm lượng chuẩn trên file test riêng
+        com.groupproject.game.core.GameSoundManager.setSettingsFilePath("target/test_audio_settings_menu.properties");
         com.groupproject.game.core.GameSoundManager.setSfxVolume(0.50f);
         com.groupproject.game.core.GameSoundManager.setBgmVolume(0.50f);
         com.groupproject.game.core.GameSoundManager.setSfxMuted(false);
@@ -491,11 +530,14 @@ public class KeyBindingsAndPauseMenuTest {
         com.groupproject.game.core.GameSoundManager.setBgmMuted(false);
         com.groupproject.game.core.GameSoundManager.setSfxVolume(0.50f);
         com.groupproject.game.core.GameSoundManager.setBgmVolume(0.50f);
+        com.groupproject.game.core.GameSoundManager.setSettingsFilePath("save/audio_settings.properties");
+        com.groupproject.game.core.GameSoundManager.loadSettings();
     }
 
         @Test
     @DisplayName("Kiểm tra giữ chuột kéo trái phải (Continuous Dragging) trên thanh trượt âm lượng SFX và BGM")
     void testSliderDraggingSfxAndBgm() {
+        com.groupproject.game.core.GameSoundManager.setSettingsFilePath("target/test_audio_settings_menu.properties");
         PauseMenuUI menu = new PauseMenuUI();
         java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1280, 720, java.awt.image.BufferedImage.TYPE_INT_ARGB);
         java.awt.Graphics2D g = img.createGraphics();

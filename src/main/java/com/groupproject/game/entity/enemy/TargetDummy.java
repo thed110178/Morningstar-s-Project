@@ -602,6 +602,10 @@ public class TargetDummy {
         return currentHealth;
     }
 
+    public void setCurrentHealth(int health) {
+        this.currentHealth = Math.max(0, Math.min(maxHealth, health));
+    }
+
     public double getKnockbackVx() {
         return knockbackVx;
     }

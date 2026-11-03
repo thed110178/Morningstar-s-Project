@@ -124,7 +124,7 @@ public final class GameSpriteManager {
         GraphicsConfiguration gc = null;
         try {
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            if (!ge.isHeadless()) {
+            if (!GraphicsEnvironment.isHeadless()) {
                 GraphicsDevice gd = ge.getDefaultScreenDevice();
                 if (gd != null) {
                     gc = gd.getDefaultConfiguration();
@@ -173,7 +173,7 @@ public final class GameSpriteManager {
         GraphicsConfiguration gc = null;
         try {
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            if (!ge.isHeadless()) {
+            if (!GraphicsEnvironment.isHeadless()) {
                 GraphicsDevice gd = ge.getDefaultScreenDevice();
                 if (gd != null) {
                     gc = gd.getDefaultConfiguration();

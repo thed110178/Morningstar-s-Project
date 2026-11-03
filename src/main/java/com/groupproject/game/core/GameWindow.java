@@ -12,17 +12,68 @@ import javax.swing.JFrame;
  * to stop the independent {@link GameLoop} thread when the user clicks the close ('X') button,
  * preventing zombie threads from lingering in the background.
  */
+@SuppressWarnings("serial")
 public class GameWindow extends JFrame {
+    private static final long serialVersionUID = 1L;
 
     private final GamePanel gamePanel;
     private final GameLoop gameLoop;
 
+    private static String displaySettingsFilePath = "save/display_settings.properties";
+    private boolean fullScreen = true;
+    private java.awt.Rectangle windowedBounds = null;
+
+    public static void setDisplaySettingsFilePath(String path) {
+        displaySettingsFilePath = (path != null && !path.trim().isEmpty()) ? path : "save/display_settings.properties";
+    }
+
+    public static String getDisplaySettingsFilePath() {
+        return displaySettingsFilePath;
+    }
+
+    private void loadDisplaySettings() {
+        java.io.File file = new java.io.File(displaySettingsFilePath);
+        if (file.exists() && file.isFile()) {
+            java.util.Properties props = new java.util.Properties();
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+                props.load(fis);
+                fullScreen = Boolean.parseBoolean(props.getProperty("fullscreen", "true"));
+            } catch (Exception e) {
+                fullScreen = true;
+            }
+        } else {
+            fullScreen = true;
+            saveDisplaySettings();
+        }
+        GameConfig.fullscreen = fullScreen;
+    }
+
+    public void saveDisplaySettings() {
+        try {
+            java.io.File file = new java.io.File(displaySettingsFilePath);
+            java.io.File dir = file.getParentFile();
+            if (dir != null && !dir.exists()) {
+                dir.mkdirs();
+            }
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("fullscreen", Boolean.toString(fullScreen));
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(file)) {
+                props.store(fos, "Alone in the zone Display Settings");
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     /**
      * Constructs and arranges the window container.
      */
+    @SuppressWarnings("this-escape")
     public GameWindow() {
         setTitle(GameConfig.GAME_TITLE);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Nạp cấu hình chế độ hiển thị (mặc định Toàn màn hình theo nhu cầu trải nghiệm)
+        loadDisplaySettings();
 
         // Thiết lập biểu tượng cho cửa sổ ứng dụng và thanh tác vụ Taskbar
         setupWindowIcon();
@@ -34,23 +85,34 @@ public class GameWindow extends JFrame {
         this.gamePanel = new GamePanel();
         this.gameLoop = new GameLoop(gamePanel);
 
-        // Đăng ký bộ chuyển đổi toàn màn hình F11
+        // Đăng ký bộ chuyển đổi toàn màn hình F11 và hook kiểm tra trạng thái
         this.gamePanel.setFullScreenToggler(this::toggleFullScreen);
+        GameConfig.fullScreenToggler = this::toggleFullScreen;
+        GameConfig.fullScreenChecker = this::isFullScreen;
 
-        add(gamePanel);
-
-        // WHY: pack() sizes the frame so that the content pane (GamePanel) matches its preferredSize exactly,
-        // avoiding window border insets eating into the playable 1280x720 area.
-        pack();
-
-        // WHY: Passing null centers the window on the primary monitor
-        setLocationRelativeTo(null);
+        if (fullScreen) {
+            setUndecorated(true);
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+            add(gamePanel);
+        } else {
+            setUndecorated(false);
+            add(gamePanel);
+            pack();
+            setLocationRelativeTo(null);
+        }
 
         // Gracefully terminate the worker thread upon window close request
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                // Tự động lưu tiến trình ván đấu checkpoint nếu người chơi đang trong Chiến dịch Campaign
+                try {
+                    com.groupproject.game.core.GameSoundManager.saveSettings();
+                } catch (Exception ignored) {
+                }
+                try {
+                    saveDisplaySettings();
+                } catch (Exception ignored) {
+                }
                 try {
                     com.groupproject.game.state.GameStateManager gsm = gamePanel.getStateManager();
                     if (gsm != null && gsm.getCurrentStateType() == com.groupproject.game.state.GameStateManager.StateType.PLAYING) {
@@ -67,14 +129,12 @@ public class GameWindow extends JFrame {
         });
     }
 
-    private boolean fullScreen = false;
-    private java.awt.Rectangle windowedBounds = null;
-
     /**
      * Chuyển đổi mượt mà giữa chế độ Cửa sổ (Windowed 1280x720) và Toàn màn hình (Borderless Fullscreen).
      */
     public void toggleFullScreen() {
         fullScreen = !fullScreen;
+        GameConfig.fullscreen = fullScreen;
         dispose();
         if (fullScreen) {
             windowedBounds = getBounds();
@@ -91,6 +151,7 @@ public class GameWindow extends JFrame {
         }
         setVisible(true);
         gamePanel.requestFocusInWindow();
+        saveDisplaySettings();
     }
 
     public boolean isFullScreen() {

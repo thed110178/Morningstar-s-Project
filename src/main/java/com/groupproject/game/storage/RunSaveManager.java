@@ -198,6 +198,7 @@ public final class RunSaveManager {
 
         RunProgressData data = new RunProgressData();
         String currentSection = "HEADER";
+        boolean shouldDelete = false;
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
@@ -226,13 +227,12 @@ public final class RunSaveManager {
                         switch (key) {
                             case "version" -> {
                                 data.setGameVersion(val);
-                                // KIỂM TRA PHIÊN BẢN: Nếu khác phiên bản hiện tại -> Hủy và xóa save!
+                                // KIỂM TRA PHIÊN BẢN: Nếu khác phiên bản hiện tại -> Đánh dấu để xóa save sau khi stream đóng!
                                 if (!GameConfig.GAME_BUILD_VERSION.equals(val)) {
                                     System.out.println("[RunSaveManager] Phát hiện bản lưu cũ (Phiên bản " + val
                                             + " != " + GameConfig.GAME_BUILD_VERSION + "). Tự động xóa để cập nhật!");
-                                    reader.close();
-                                    deleteSave();
-                                    return null;
+                                    shouldDelete = true;
+                                    break;
                                 }
                             }
                             case "timestamp" -> data.setTimestamp(parseLong(val, 0L));
@@ -264,20 +264,28 @@ public final class RunSaveManager {
                         }
                     }
                 }
+
+                if (shouldDelete) {
+                    break;
+                }
             }
 
             // Nếu đọc xong mà không có mã phiên bản hoặc không có stage hợp lệ
-            if (data.getGameVersion().isEmpty() || data.getCurrentStage() < 1) {
-                deleteSave();
-                return null;
+            if (!shouldDelete && (data.getGameVersion().isEmpty() || data.getCurrentStage() < 1)) {
+                shouldDelete = true;
             }
-
-            return data;
         } catch (Exception e) {
             System.err.println("[RunSaveManager] Lỗi khi đọc file lưu checkpoint: " + e.getMessage());
             deleteSave();
             return null;
         }
+
+        if (shouldDelete) {
+            deleteSave();
+            return null;
+        }
+
+        return data;
     }
 
     /**

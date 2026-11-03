@@ -54,6 +54,7 @@ public class PauseMenuUI {
     private final Map<GameAction, Rectangle> keybindBounds = new HashMap<>();
     private final Rectangle resetDefaultsBtnBounds = new Rectangle();
     private final Rectangle backFromSettingsBtnBounds = new Rectangle();
+    private final Rectangle displayModeToggleBounds = new Rectangle();
     private final Rectangle aimGuidelineToggleBounds = new Rectangle();
     private final Rectangle fpsUpsToggleBounds = new Rectangle();
     // Cài đặt Âm lượng SFX (SFX Volume Controls)
@@ -70,6 +71,7 @@ public class PauseMenuUI {
 
     private boolean isResetHovered = false;
     private boolean isBackHovered = false;
+    private boolean isDisplayModeHovered = false;
     private boolean isAimGuidelineHovered = false;
     private boolean isFpsUpsHovered = false;
 
@@ -272,9 +274,20 @@ public class PauseMenuUI {
             return PauseAction.NONE;
         }
 
+        // Phím R để khôi phục mặc định
+        if (rebindingAction == null && keyH.getAnyKeyPressedOnce() == KeyEvent.VK_R) {
+            GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
+            KeyBindings.resetToDefaults();
+            GameSoundManager.resetToDefaults();
+            feedbackMessage = "ĐÃ KHÔI PHỤC TOÀN BỘ PHÍM & ÂM LƯỢNG VỀ MẶC ĐỊNH (50%)!";
+            feedbackTimer = 2.2;
+            return PauseAction.NONE;
+        }
+
         // 2. Hover chuột
         isResetHovered = resetDefaultsBtnBounds.contains(mouseX, mouseY);
         isBackHovered = backFromSettingsBtnBounds.contains(mouseX, mouseY);
+        isDisplayModeHovered = displayModeToggleBounds.contains(mouseX, mouseY);
         isAimGuidelineHovered = aimGuidelineToggleBounds.contains(mouseX, mouseY);
         isFpsUpsHovered = fpsUpsToggleBounds.contains(mouseX, mouseY);
         isSfxDecHovered = sfxVolDecBtnBounds.contains(mouseX, mouseY);
@@ -340,7 +353,19 @@ public class PauseMenuUI {
             if (isResetHovered) {
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 KeyBindings.resetToDefaults();
-                feedbackMessage = "ĐÃ KHÔI PHỤC TOÀN BỘ PHÍM VỀ MẶC ĐỊNH!";
+                GameSoundManager.resetToDefaults();
+                feedbackMessage = "ĐÃ KHÔI PHỤC TOÀN BỘ PHÍM & ÂM LƯỢNG VỀ MẶC ĐỊNH (50%)!";
+                feedbackTimer = 2.2;
+                return PauseAction.NONE;
+            }
+
+            if (isDisplayModeHovered) {
+                GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
+                com.groupproject.game.core.GameConfig.toggleFullScreen();
+                boolean isFull = com.groupproject.game.core.GameConfig.isFullScreen();
+                feedbackMessage = isFull
+                        ? "ĐÃ BẬT CHẾ ĐỘ TOÀN MÀN HÌNH (FULLSCREEN: ON)"
+                        : "ĐÃ CHUYỂN VỀ CHẾ ĐỘ CỬA SỔ (WINDOWED 1280x720: ON)";
                 feedbackTimer = 2.0;
                 return PauseAction.NONE;
             }
@@ -370,8 +395,13 @@ public class PauseMenuUI {
                 float cur = GameSoundManager.getSfxVolume();
                 float next = Math.max(0.0f, Math.round((cur - 0.05f) * 100.0f) / 100.0f);
                 GameSoundManager.setSfxVolume(next);
+                if (next <= 0.001f) {
+                    GameSoundManager.setSfxMuted(true);
+                }
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
-                feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(next * 100));
+                feedbackMessage = next <= 0.001f
+                        ? "ĐÃ TẮT HIỆU ỨNG ÂM THANH (SFX: 0%)"
+                        : String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(next * 100));
                 feedbackTimer = 1.8;
                 return PauseAction.NONE;
             }
@@ -379,7 +409,13 @@ public class PauseMenuUI {
             if (isSfxIncHovered) {
                 float cur = GameSoundManager.getSfxVolume();
                 float next = Math.min(1.0f, Math.round((cur + 0.05f) * 100.0f) / 100.0f);
+                if (cur <= 0.001f && next <= 0.05f) {
+                    next = 0.05f;
+                }
                 GameSoundManager.setSfxVolume(next);
+                if (GameSoundManager.isSfxMuted()) {
+                    GameSoundManager.setSfxMuted(false);
+                }
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 feedbackMessage = String.format("ÂM LƯỢNG HIỆU ỨNG (SFX): %d%%", Math.round(next * 100));
                 feedbackTimer = 1.8;
@@ -406,6 +442,9 @@ public class PauseMenuUI {
             if (isSfxMuteHovered) {
                 boolean nextMute = !GameSoundManager.isSfxMuted();
                 GameSoundManager.setSfxMuted(nextMute);
+                if (!nextMute && GameSoundManager.getSfxVolume() <= 0.001f) {
+                    GameSoundManager.setSfxVolume(0.5f);
+                }
                 if (!nextMute) {
                     GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 }
@@ -421,8 +460,13 @@ public class PauseMenuUI {
                 float cur = GameSoundManager.getBgmVolume();
                 float next = Math.max(0.0f, Math.round((cur - 0.05f) * 100.0f) / 100.0f);
                 GameSoundManager.setBgmVolume(next);
+                if (next <= 0.001f) {
+                    GameSoundManager.setBgmMuted(true);
+                }
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
-                feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(next * 100));
+                feedbackMessage = next <= 0.001f
+                        ? "ĐÃ TẮT NHẠC NỀN (BGM: 0%)"
+                        : String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(next * 100));
                 feedbackTimer = 1.8;
                 return PauseAction.NONE;
             }
@@ -430,7 +474,13 @@ public class PauseMenuUI {
             if (isBgmIncHovered) {
                 float cur = GameSoundManager.getBgmVolume();
                 float next = Math.min(1.0f, Math.round((cur + 0.05f) * 100.0f) / 100.0f);
+                if (cur <= 0.001f && next <= 0.05f) {
+                    next = 0.05f;
+                }
                 GameSoundManager.setBgmVolume(next);
+                if (GameSoundManager.isBgmMuted()) {
+                    GameSoundManager.setBgmMuted(false);
+                }
                 GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 feedbackMessage = String.format("ÂM LƯỢNG NHẠC NỀN (BGM): %d%%", Math.round(next * 100));
                 feedbackTimer = 1.8;
@@ -457,6 +507,9 @@ public class PauseMenuUI {
             if (isBgmMuteHovered) {
                 boolean nextMute = !GameSoundManager.isBgmMuted();
                 GameSoundManager.setBgmMuted(nextMute);
+                if (!nextMute && GameSoundManager.getBgmVolume() <= 0.001f) {
+                    GameSoundManager.setBgmVolume(0.5f);
+                }
                 if (!nextMute) {
                     GameSoundManager.play(GameSoundManager.SoundEffect.UI_INTERACT);
                 }
@@ -742,14 +795,16 @@ public class PauseMenuUI {
         int toggleBoxH = 30;
         int toggleBoxX = panelX + 30;
 
-        int toggleFpsY = botBtnY - toggleBoxH - 6;      // Hàng 4: FPS & UPS
-        int toggleAimY = toggleFpsY - toggleBoxH - 6;     // Hàng 3: Đường ngắm chuột
-        int toggleBgmY = toggleAimY - toggleBoxH - 6;     // Hàng 2: Nhạc nền BGM
-        int toggleSfxY = toggleBgmY - toggleBoxH - 6;     // Hàng 1: Hiệu ứng SFX
+        int toggleFpsY = botBtnY - toggleBoxH - 6;          // Hàng 5: FPS & UPS
+        int toggleAimY = toggleFpsY - toggleBoxH - 6;         // Hàng 4: Đường ngắm chuột
+        int toggleDisplayY = toggleAimY - toggleBoxH - 6;     // Hàng 3: Chế độ hiển thị màn hình
+        int toggleBgmY = toggleDisplayY - toggleBoxH - 6;     // Hàng 2: Nhạc nền BGM
+        int toggleSfxY = toggleBgmY - toggleBoxH - 6;         // Hàng 1: Hiệu ứng SFX
 
         int toggle1Y = toggleAimY;
         int toggle2Y = toggleFpsY;
 
+        displayModeToggleBounds.setBounds(toggleBoxX, toggleDisplayY, toggleBoxW, toggleBoxH);
         aimGuidelineToggleBounds.setBounds(toggleBoxX, toggleAimY, toggleBoxW, toggleBoxH);
         fpsUpsToggleBounds.setBounds(toggleBoxX, toggleFpsY, toggleBoxW, toggleBoxH);
 
@@ -948,7 +1003,48 @@ public class PauseMenuUI {
             g.drawString(mStr, muteBtnX + (muteBtnW - mw) / 2, statusBgmBtnY + 15);
         }
 
-        // --- HÀNG 2: ĐƯỜNG NGẮM CHUỘT ---
+        // --- HÀNG 3: CHẾ ĐỘ HIỂN THỊ (DISPLAY MODE) ---
+        Color toggleDisplayBg = isDisplayModeHovered ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
+        g.setColor(toggleDisplayBg);
+        g.fillRoundRect(toggleBoxX, toggleDisplayY, toggleBoxW, toggleBoxH, 6, 6);
+        g.setColor(isDisplayModeHovered ? new Color(0, 210, 255) : new Color(45, 65, 95));
+        g.drawRoundRect(toggleBoxX, toggleDisplayY, toggleBoxW, toggleBoxH, 6, 6);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(11.0f));
+        g.setColor(new Color(230, 245, 255));
+        g.drawString("[MÀN HÌNH] CHẾ ĐỘ HIỂN THỊ (DISPLAY MODE)", toggleBoxX + 14, toggleDisplayY + 20);
+
+        g.setFont(com.groupproject.game.core.GameFontManager.getSmallFont(10.0f));
+        g.setColor(new Color(145, 175, 205));
+        g.drawString("Toàn màn hình không viền tối ưu trải nghiệm (Phím tắt: F11 hoặc Alt+Enter)", toggleBoxX + 310, toggleDisplayY + 20);
+
+        int statusBtnDisplayY = toggleDisplayY + (toggleBoxH - statusBtnH) / 2;
+        int statusBtnW = 125;
+        int statusBtnX = toggleBoxX + toggleBoxW - statusBtnW - 8;
+        boolean isFullOn = com.groupproject.game.core.GameConfig.isFullScreen();
+        if (isFullOn) {
+            g.setColor(new Color(25, 110, 70));
+            g.fillRoundRect(statusBtnX, statusBtnDisplayY, statusBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(60, 240, 140));
+            g.drawRoundRect(statusBtnX, statusBtnDisplayY, statusBtnW, statusBtnH, 4, 4);
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String onText = "[ TOÀN MÀN HÌNH ]";
+            int otw = g.getFontMetrics().stringWidth(onText);
+            g.setColor(Color.WHITE);
+            g.drawString(onText, statusBtnX + (statusBtnW - otw) / 2, statusBtnDisplayY + 16);
+        } else {
+            g.setColor(new Color(45, 50, 60));
+            g.fillRoundRect(statusBtnX, statusBtnDisplayY, statusBtnW, statusBtnH, 4, 4);
+            g.setColor(new Color(110, 115, 130));
+            g.drawRoundRect(statusBtnX, statusBtnDisplayY, statusBtnW, statusBtnH, 4, 4);
+            g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));
+            String offText = "[ CỬA SỔ 720P ]";
+            int oftw = g.getFontMetrics().stringWidth(offText);
+            g.setColor(new Color(180, 185, 195));
+            g.drawString(offText, statusBtnX + (statusBtnW - oftw) / 2, statusBtnDisplayY + 16);
+        }
+
+        // --- HÀNG 4: ĐƯỜNG NGẮM CHUỘT ---
         Color toggle1Bg = isAimGuidelineHovered ? new Color(22, 34, 50, 230) : new Color(15, 22, 34, 190);
         g.setColor(toggle1Bg);
         g.fillRoundRect(toggleBoxX, toggle1Y, toggleBoxW, toggleBoxH, 6, 6);
@@ -963,8 +1059,6 @@ public class PauseMenuUI {
         g.setColor(new Color(145, 175, 205));
         g.drawString("Đường kẻ đứt mờ nối từ người chơi đến con trỏ chuột hỗ trợ ngắm bắn", toggleBoxX + 310, toggle1Y + 21);
 
-        int statusBtnW = 125;
-        int statusBtnX = toggleBoxX + toggleBoxW - statusBtnW - 8;
         int statusBtn1Y = toggle1Y + (toggleBoxH - statusBtnH) / 2;
 
         boolean isAimOn = com.groupproject.game.core.GameConfig.showAimGuideline;
@@ -1099,6 +1193,10 @@ public class PauseMenuUI {
 
     public void setRebindingAction(GameAction action) {
         this.rebindingAction = action;
+    }
+
+    public Rectangle getDisplayModeToggleBounds() {
+        return displayModeToggleBounds;
     }
 
     public Rectangle getAimGuidelineToggleBounds() {

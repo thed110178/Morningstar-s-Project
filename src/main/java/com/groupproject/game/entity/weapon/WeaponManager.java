@@ -193,7 +193,7 @@ public class WeaponManager {
     /**
      * Registers a weapon into its assigned slot and binds player's ammo inventory and buff manager.
      */
-    public void addWeapon(Weapon weapon) {
+    public final void addWeapon(Weapon weapon) {
         if (weapon != null) {
             weapon.bindAmmoInventory(ammoInventory);
             if (boundBuffManager != null) {

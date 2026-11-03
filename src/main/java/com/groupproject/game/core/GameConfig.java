@@ -44,7 +44,20 @@ public final class GameConfig {
     /**
      * Fullscreen toggle flag. Defaulted to false for developer convenience during debugging.
      */
-    public static final boolean FULLSCREEN = false;
+    public static boolean fullscreen = true;
+    public static final boolean FULLSCREEN = true;
+    public static Runnable fullScreenToggler = null;
+    public static java.util.function.BooleanSupplier fullScreenChecker = null;
+
+    public static void toggleFullScreen() {
+        if (fullScreenToggler != null) {
+            fullScreenToggler.run();
+        }
+    }
+
+    public static boolean isFullScreen() {
+        return fullScreenChecker != null ? fullScreenChecker.getAsBoolean() : fullscreen;
+    }
 
     // --- Performance and Threading Configuration ---
 

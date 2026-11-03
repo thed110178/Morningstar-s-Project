@@ -312,7 +312,7 @@ public class MeleeEnemy extends TargetDummy {
                 Stroke oldStroke = g.getStroke();
                 g.setStroke(new BasicStroke(2.8f));
                 g.setColor(new Color(255, 230, 140, 220)); // Ánh chém thép bạc pha vàng
-                int arcRadius = (int) (half + 16);
+                int arcRadius = half + 16;
                 int startAngle = (int) Math.toDegrees(-facingAngle) - 45;
                 g.drawArc(screenCX - arcRadius, screenCY - arcRadius, arcRadius * 2, arcRadius * 2, startAngle, 90);
                 g.setStroke(oldStroke);
@@ -372,7 +372,7 @@ public class MeleeEnemy extends TargetDummy {
             if (attackAnimTimer > 0) {
                 g.setStroke(new BasicStroke(2.8f));
                 g.setColor(new Color(255, 230, 140, 220));
-                int arcRadius = (int) (half + 16);
+                int arcRadius = half + 16;
                 int startAngle = (int) Math.toDegrees(-facingAngle) - 45;
                 g.drawArc(screenCX - arcRadius, screenCY - arcRadius, arcRadius * 2, arcRadius * 2, startAngle, 90);
                 g.setStroke(oldStroke);

@@ -114,7 +114,7 @@ public class Tile {
         return type;
     }
 
-    public void setType(TileType type) {
+    public final void setType(TileType type) {
         this.type = type;
         if (type == TileType.DESTRUCTIBLE_COVER) {
             this.maxHealth = 40;

@@ -11,6 +11,7 @@ import com.groupproject.game.entity.weapon.SemiAutoShotgun;
 import com.groupproject.game.entity.weapon.WeaponSpriteManager;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,8 +25,16 @@ public class SemiAutoShotgunTest {
 
     @BeforeAll
     public static void initAudio() {
+        GameSoundManager.setSettingsFilePath("target/test_audio_settings_sas.properties");
         GameSoundManager.init();
         GameSoundManager.setMuted(true);
+    }
+
+    @AfterAll
+    public static void tearDownAudio() {
+        GameSoundManager.setMuted(false);
+        GameSoundManager.setSettingsFilePath("save/audio_settings.properties");
+        GameSoundManager.loadSettings();
     }
 
     @Test

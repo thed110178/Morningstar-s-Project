@@ -20,7 +20,9 @@ import javax.swing.JPanel;
  * completely eliminates tearing and visible blanking artifacts. Furthermore, GamePanel acts as
  * the central coordinator linking OS inputs (keyboard, mouse) with the {@link GameStateManager}.
  */
+@SuppressWarnings("serial")
 public class GamePanel extends JPanel {
+    private static final long serialVersionUID = 1L;
 
     private final KeyboardHandler keyHandler;
     private final MouseHandler mouseHandler;
@@ -29,6 +31,7 @@ public class GamePanel extends JPanel {
     /**
      * Initializes the panel layout, input listeners, and registers default game states.
      */
+    @SuppressWarnings("this-escape")
     public GamePanel() {
         setPreferredSize(new Dimension(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT));
         setBackground(Color.BLACK);
@@ -42,6 +45,9 @@ public class GamePanel extends JPanel {
         // WHY: Java Swing mặc định tiêu thụ (consume) phím TAB để chuyển focus traversal giữa các component.
         // Tắt focus traversal keys để KeyListener nhận được đầy đủ sự kiện KeyEvent.VK_TAB cho tính năng Balo.
         setFocusTraversalKeysEnabled(false);
+
+        // Khởi tạo và nạp cài đặt âm thanh người dùng ngay từ đầu
+        com.groupproject.game.core.GameSoundManager.init();
 
         this.keyHandler = new KeyboardHandler();
         this.mouseHandler = new MouseHandler();

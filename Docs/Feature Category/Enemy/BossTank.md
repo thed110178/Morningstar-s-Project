@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 01/11/2026
+Cập nhật mới nhất vào ngày: 03/11/2026
 
 # Chiến Xa Bọc Thép Titan (BossTank - Titan Battle Tank)
 
@@ -38,7 +38,7 @@ Nhằm tái hiện độ chân thực và phong cách cơ khí quân sự hiện
 
 ## 3. Bộ Chiêu Thức (Moveset)
 
-Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 8 trạng thái: `PATROL_REPOSITION`, `RAM_WINDUP`, `RAM_RUSH`, `RAM_STUN`, `MG_BURST`, `CANNON_AIMING`, `CANNON_LOCKED`, `COOLDOWN`.
+Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 10 trạng thái: `PATROL_REPOSITION`, `RAM_WINDUP`, `RAM_RUSH`, `RAM_STUN`, `MG_BURST`, `CANNON_AIMING`, `CANNON_LOCKED`, `CANISTER_WINDUP`, `CANISTER_FIRE`, `COOLDOWN`.
 
 ### 3.1. Chiêu 1: Đâm Húc Thần Tốc Kinh Hoàng (Ram / Charge - 950 px/s, Biển Cảnh Báo "!" & Dừng Va Chạm)
 * **Quy trình hoạt động**:
@@ -81,6 +81,22 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
 
 ---
 
+
+### 3.4. Chiêu 4: Đạn Diệt Bộ Binh (Canister Shot / Shotgun Shell for Tank Cannon - HP ≤ 75%)
+* **Bối cảnh & Ý tưởng**: Khi cỗ xe tăng bị tiêu hao từ $25\%$ lượng máu trở lên ($	ext{HP} \le 75\% 	ext{ maxHealth}$, tương đương $\le 937	ext{ HP}$), Boss mở khóa khoang đạn chống bộ binh chuyên dụng: nạp một liều đạn chùm shotgun cỡ lớn vào nòng pháo chính để trừng phạt người chơi dám áp sát hoặc chạy lòng vòng quanh xe tăng.
+* **Phân Hóa Hỏa Lực Theo Cự Ly (Distance-based Priority)**:
+  - **CỰ LY GẦN ($	ext{dist} \le 320	ext{ px}$)**: **ƯU TIÊN PHÁO BỘ BINH (Canister Shot)**! Tỷ lệ kích hoạt áp đảo lên tới $80\%$ khi cực gần ($< 220	ext{px}$) và $65\%$ khi ở cự ly $220 - 320	ext{px}$. Pháo nổ đại bác ở gần chỉ là đòn phụ trợ nhỏ ($20\%$).
+  - **CỰ LY XA ($	ext{dist} > 320	ext{ px}$)**: **ƯU TIÊN PHÁO NỔ ĐẠI BÁC (Heavy Cannon Blast)**! Tỷ lệ kích hoạt $75\%$ khi $	ext{HP} < 50\%$. Pháo bộ binh ở cự ly xa hoàn toàn bị vô hiệu hóa ($0\%$).
+* **Quy trình hoạt động**:
+  1. *Lấy ngắm & Quạt nón cảnh báo nguy hiểm (CANISTER_WINDUP - 0.75s)*:
+     - Tháp pháo chính xoay nòng trực diện theo dõi Operative.
+     - Kích hoạt **Telegraph hình quạt nón cảnh báo kéo dài 0.75s** trên sàn đấu (góc mở $70^\circ$, bán kính quét $300	ext{px}$) với viền đỏ cam chớp tắt nhịp điệu và vệt nạp lực tỏa dần từ tâm xe.
+     - **Cửa sổ né đòn $0.20	ext{s}$ cuối**: Ở $0.20	ext{s}$ cuối cùng, góc ngắm của nón được KHÓA CỐ ĐỊNH, viền phát quang vàng chói báo hiệu sắp khai hỏa, tạo cơ hội cho người chơi lướt né ra ngoài hoặc nấp sau cột đá kiên cố.
+  2. *Khai hỏa Siêu Tốc tức thì (CANISTER_FIRE - 0.12s)*: Pháo chính nổ tung phát bắn đạn chùm diệt bộ binh:
+     - **Sát thương hình nón tức thì (Instant Hitscan Cone AoE)**: Gây ngay $34	ext{ HP}$ sát thương nếu Operative nằm trong góc quét $70^\circ$ và bán kính $300	ext{px}$.
+     - **Cơ chế ẩn nấp tránh đạn (Line-of-Sight Cover Check)**: Nếu người chơi kịp thời nấp sau bờ tường cứng (`WALL`) hoặc cột trụ kiên cố (`COVER`), toàn bộ chùm đạn bị chắn lại hoàn toàn ($0	ext{ DMG}$), tạo cơ hội chiến thuật ẩn nấp hoàn hảo.
+     - **Hiệu ứng hỏa lực cực đại**: Đầu nòng pháo bùng lên chớp lửa hình nón cực đại rực sáng, tóe chùm tia lửa cam vàng, sóng chấn động $55	ext{px}$, rung màn hình $0.25	ext{s}$ và âm thanh khai hỏa uy lực.
+
 ## 4. API & Phương Thức Chính
 
 | Phương thức | Kiểu trả về | Mô tả |
@@ -93,6 +109,7 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
 | `getLaserTargetWorldX()` | `double` | Lấy tọa độ X thế giới của điểm lock-on laser. |
 | `getLaserTargetWorldY()` | `double` | Lấy tọa độ Y thế giới của điểm lock-on laser. |
 | `isLastAttackWasRam()` | `boolean` | Kiểm tra cờ ghi nhận đòn tấn công trước có phải là đâm hay không. |
+| `getCanisterWindupDuration()` | `double` | Lấy thời gian chuẩn bị & quạt nón cảnh báo đạn diệt bộ binh (0.75s). |
 | `isCannonAwakened()` | `boolean` | Kiểm tra xem tháp pháo chính đã thức tỉnh chưa ($\text{HP} < 50\%$). |
 | `updateAI(...)` | `void` | Cập nhật logic di chuyển, xoay 3 tầng độc lập, và ra chiêu. |
 | `render(Graphics2D, Camera)` | `void` | Vẽ đồ họa Vector 3 tầng, dấu "!" cảnh báo, laser lock-on và thanh máu Boss. |
@@ -109,6 +126,16 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
 ---
 
 ## 6. Sửa Đổi / Cập Nhật
+
+* **03/11/2026 (Sửa Lỗi Đòn Đâm Phase 2, Cân Bằng Hỏa Lực Đa Cự Ly & Toàn Màn Hình Tự Động)**:
+  - **Khắc phục lỗi triệt để: Boss dưới 50% máu ngừng đâm húc**:
+    * Sửa thuật toán chọn chiêu `chooseNextAction()`: Loại bỏ lỗi chia sẻ biến ngẫu nhiên `roll` trong các chuỗi `if-else` lồng nhau.
+    * Khi Boss dưới 50% máu (Phase 2 thức tỉnh), xe tăng duy trì tỷ lệ đâm húc cực kỳ uy lực (**32% - 35% khi đường đâm thông thoáng**) ở cả cự ly gần lẫn cự ly xa, kết hợp với thời gian lấy đà nhanh hơn ($0.48	ext{s}$) và tốc độ đâm khủng khiếp ($720	ext{px/s}$).
+    * Sau khi bắn Canister Shot cận chiến, nếu người chơi vẫn ở cự ly gần và không nấp sau cover, tỷ lệ Boss lập tức bồi đòn đâm húc lên tới **60%**!
+  - **Tái thiết kế Đấu trường Trùm (Grand Boss Arena 28x18)**: Dịch 4 cột trụ cover cứng ra xa nhau 12 ô gạch (~576px), cách tường Bắc/Nam 5 ô (~240px). Mở toang đại lộ chữ thập trung tâm rộng rãi, vừa đảm bảo người chơi có vật che chắn nấp bắn, vừa tạo không gian lý tưởng cho cỗ xe tăng thi triển hết bộ kỹ năng.
+  - **Nâng cấp AI Quét Cover Cứng Chống Đâm Mù Quáng**: Tích hợp thuật toán raycast 3 luồng kiểm tra đường đâm. Khi người chơi nấp sau cover cứng, Boss không bao giờ thực hiện đòn đâm (tránh bị đâm vào cột gây Stun vô ích) mà lập tức chuyển sang cơ động xả súng máy chạy ngang hoặc bắn đại pháo bộc phá.
+  - **Bổ sung chiêu thức mới Đạn Diệt Bộ Binh (Canister Shot)**: Dùng khi Boss mất 25% máu (HP <= 75%), kích hoạt khi người chơi áp sát trong phạm vi 320px. Quạt nón cảnh báo 0.75s, sát thương tức thì 34 HP, có thể né tránh hoàn toàn bằng cách nấp sau cover cứng.
+  - **Toàn bộ 304 bài kiểm thử tự động của dự án đạt 100% Passed**.
 
 * **19/10/2026**:
   - Tạo mới class `BossTank`, `BossCannonShell`, và `ExplosionVisual`.

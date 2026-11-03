@@ -39,6 +39,7 @@ public class DungeonMap {
     /**
      * Constructs the dungeon matrix and builds the procedural multi-room layout.
      */
+    @SuppressWarnings("this-escape")
     public DungeonMap() {
         this.tiles = new Tile[COLS][ROWS];
         initializeEmptyWorld();
@@ -277,7 +278,7 @@ public class DungeonMap {
      * - 1 Extract Room (ở cuối chuỗi)
      * - Mỗi cặp phòng kề nhau được nối bởi 1 hành lang thẳng tắp duy nhất, bọc tường và lắp blast doors.
      */
-    public void generateProceduralDungeon() {
+    public final void generateProceduralDungeon() {
         int numCombat = ThreadLocalRandom.current().nextInt(3, 5);
         boolean success = false;
         int maxAttempts = 100;
@@ -1173,23 +1174,27 @@ public class DungeonMap {
         // WHY: Tăng cự ly từ cột trụ tới tường phòng lên tối thiểu 3 ô sàn (144px).
         // Nhờ đó cỗ xe tăng Boss (hitbox 84-96px) có hành lang di chuyển thông thoáng 100%,
         // lách qua thoải mái mà không bao giờ bị kẹt ở các khe hẹp giữa cover và tường phòng!
-        carvePillar(bossCol + 9, bossRow + 4, 2, 2);
-        carvePillar(bossCol + bossW - 11, bossRow + 4, 2, 2);
-        carvePillar(bossCol + 9, bossRow + bossH - 6, 2, 2);
-        carvePillar(bossCol + bossW - 11, bossRow + bossH - 6, 2, 2);
+        // 4 Cột trụ che chắn chiến thuật được bố trí cách xa nhau cân đối ở 4 góc chiến lược.
+        // WHY: Khoảng cách giữa các trụ trái-phải lên đến 12 ô gạch (~576px) và cách tường phòng 5 ô (~240px).
+        // Thiết kế này giải phóng toàn bộ trục chữ thập trung tâm thành "đại lộ thông thoáng 100%",
+        // giúp Boss xe tăng (hitbox 96px) có không gian sạc đòn đâm siêu tốc 950 px/s mà không lo va quẹt vào cover,
+        // đồng thời người chơi vẫn có các cứ điểm nấp kiên cố ở 4 góc phòng.
+        carvePillar(bossCol + 6, bossRow + 4, 2, 2);
+        carvePillar(bossCol + bossW - 8, bossRow + 4, 2, 2);
+        carvePillar(bossCol + 6, bossRow + bossH - 6, 2, 2);
+        carvePillar(bossCol + bossW - 8, bossRow + bossH - 6, 2, 2);
 
-        // Bố trí các cụm cover tạm thời (thùng gỗ đạn dược dã chiến - DESTRUCTIBLE_COVER)
-        // bám liền kề cụm cột trụ trung tâm, bảo lưu toàn bộ vành đai chu vi quanh tường (hành lang >= 3 ô)
-        // thông thoáng tuyệt đối cho xe tăng cơ động tuần tra và lao húc (Ram Rush).
-        carveDestructibleCluster(bossCol + 12, bossRow + 4, 2, 2);
-        carveDestructibleCluster(bossCol + 12, bossRow + bossH - 6, 2, 2);
-        carveDestructibleCluster(bossCol + bossW - 14, bossRow + 4, 2, 2);
-        carveDestructibleCluster(bossCol + bossW - 14, bossRow + bossH - 6, 2, 2);
-        carveDestructibleCluster(bossCol + 7, bossRow + 5, 2, 1);
-        carveDestructibleCluster(bossCol + bossW - 9, bossRow + bossH - 6, 2, 1);
+        // Bố trí các cụm cover tạm thời (thùng gỗ đạn dược - DESTRUCTIBLE_COVER)
+        // nép sát cạnh các cột trụ cứng và viền ngoài, bảo lưu đại lộ trung tâm thông thoáng tuyệt đối.
+        carveDestructibleCluster(bossCol + 6, bossRow + 6, 2, 1);
+        carveDestructibleCluster(bossCol + bossW - 8, bossRow + 6, 2, 1);
+        carveDestructibleCluster(bossCol + 6, bossRow + bossH - 7, 2, 1);
+        carveDestructibleCluster(bossCol + bossW - 8, bossRow + bossH - 7, 2, 1);
+        carveDestructibleCluster(bossCol + 3, bossRow + 8, 1, 2);
+        carveDestructibleCluster(bossCol + bossW - 4, bossRow + 8, 1, 2);
 
-        // Sinh thêm 16 ô cover tạm thời ngẫu nhiên rải đều trong Grand Boss Arena (tổng cộng ~36 cover)
-        spawnRandomDestructibleCovers(bossRoom, 16);
+        // Sinh thêm 8 ô cover tạm thời ngẫu nhiên rải đều trong Grand Boss Arena (tổng cộng ~20 cover)
+        spawnRandomDestructibleCovers(bossRoom, 8);
         spawnRandomExplosiveBarrels(bossRoom, 3);
 
         // 4. Nối hành lang thẳng từ Spawn Room sang Boss Arena (hướng EAST)

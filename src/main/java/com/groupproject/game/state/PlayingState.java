@@ -153,6 +153,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
      *
      * @param gsm The parent state manager.
      */
+    @SuppressWarnings("this-escape")
     public PlayingState(GameStateManager gsm) {
         super(gsm);
         this.camera = new Camera(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);

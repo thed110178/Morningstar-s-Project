@@ -40,6 +40,8 @@ public class BossTank extends TargetDummy {
         RAM_RUSH, // Lao vọt tới tốc độ cực đại (950 px/s) gây 40 HP va chạm
         RAM_STUN, // Khựng lại 0.38s - 0.45s sau khi đâm sầm vào tường/cột cover cứng
         MG_BURST, // Xả loạt đạn súng máy 6-8 viên (bắn tại chỗ hoặc vừa chạy ngang vừa bắn)
+        CANISTER_WINDUP, // Lấy đạn diệt bộ binh nạp vào pháo chính, chiếu hình quạt nón cảnh báo (0.50s, HP <= 75%)
+        CANISTER_FIRE,   // Khai hỏa nổ bùng hình nón hitscan tức thì (0.12s, HP <= 75%)
         CANNON_AIMING, // Tháp pháo chính xoay nòng, chiếu laser bám theo người chơi (0.65s, chỉ khi HP
                        // < 50%)
         CANNON_LOCKED, // Khóa laser cố định hướng, nạp năng lượng (0.38s, chỉ khi HP < 50%)
@@ -79,6 +81,15 @@ public class BossTank extends TargetDummy {
     private double cannonRecoilTimer = 0.0;
     private double laserTargetWorldX = 0.0;
     private double laserTargetWorldY = 0.0;
+
+    // --- Anti-Infantry Canister Shot (Chiêu Đạn Diệt Bộ Binh) ---
+    private double canisterAngle = 0.0;
+    private double canisterWindupDuration = 0.75;
+    private double canisterFlashTimer = 0.0;
+    private final double canisterRange = 300.0;
+    private final double canisterSpreadAngle = Math.toRadians(35.0); // Nửa góc nón (±35° -> góc mở 70°)
+    private final int canisterDamage = 34; // Sát thương đạn chùm tức thì
+    private boolean lastAttackWasCanister = false;
 
     /**
      * Constructs the Titan Battle Tank Boss.
@@ -164,6 +175,10 @@ public class BossTank extends TargetDummy {
             GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
         } else if (state == TankState.RAM_RUSH && this.chargeDistRemaining <= 0) {
             this.chargeDistRemaining = 800.0;
+        } else if (state == TankState.CANISTER_WINDUP) {
+            this.canisterWindupDuration = 0.75;
+            this.stateTimer = this.canisterWindupDuration;
+            GameSoundManager.play(SoundEffect.GUN_SAS_DRAW);
         }
     }
 
@@ -235,6 +250,55 @@ public class BossTank extends TargetDummy {
         return currentHealth < (maxHealth * 0.5);
     }
 
+    /// <summary>
+    /// Kiểm tra xem Boss đã mất 25% máu hay chưa (máu hiện tại <= 75% maxHealth).
+    /// WHY: Đạn diệt bộ binh (Canister Shot) là chiêu thức mở rộng hỏa lực cự ly gần của Boss Tank,
+    /// được kích hoạt sau khi cỗ xe tăng chịu tổn hại lớp giáp đầu tiên (mất 25% máu, tương đương HP <= 937.5).
+    /// </summary>
+    public boolean isCanisterUnlocked() {
+        return currentHealth <= (maxHealth * 0.75);
+    }
+
+    public double getCanisterWindupDuration() {
+        return canisterWindupDuration;
+    }
+
+    public void setCanisterWindupDuration(double canisterWindupDuration) {
+        this.canisterWindupDuration = canisterWindupDuration;
+    }
+
+    public double getCanisterAngle() {
+        return canisterAngle;
+    }
+
+    public void setCanisterAngle(double angle) {
+        this.canisterAngle = angle;
+    }
+
+    public double getCanisterRange() {
+        return canisterRange;
+    }
+
+    public double getCanisterSpreadAngle() {
+        return canisterSpreadAngle;
+    }
+
+    public int getCanisterDamage() {
+        return canisterDamage;
+    }
+
+    public double getCanisterFlashTimer() {
+        return canisterFlashTimer;
+    }
+
+    public boolean isLastAttackWasCanister() {
+        return lastAttackWasCanister;
+    }
+
+    public void setLastAttackWasCanister(boolean lastAttackWasCanister) {
+        this.lastAttackWasCanister = lastAttackWasCanister;
+    }
+
     public boolean isLastAttackWasRam() {
         return lastAttackWasRam;
     }
@@ -266,6 +330,9 @@ public class BossTank extends TargetDummy {
         if (crashEffectTimer > 0) {
             crashEffectTimer -= deltaTime;
         }
+        if (canisterFlashTimer > 0) {
+            canisterFlashTimer -= deltaTime;
+        }
 
         // Trong thời gian xuất hiện (spawn portal telegraph), đứng yên và không hành
         // động
@@ -296,6 +363,9 @@ public class BossTank extends TargetDummy {
                 handleRamRushState(deltaTime, playerCenterX, playerCenterY, playerSize, dungeonMap, playingState);
             case RAM_STUN -> handleRamStunState(deltaTime);
             case MG_BURST -> handleMgBurstState(deltaTime, playerCenterX, playerCenterY, dungeonMap, projectileManager);
+            case CANISTER_WINDUP -> handleCanisterWindupState(deltaTime, angleToPlayer);
+            case CANISTER_FIRE ->
+                handleCanisterFireState(deltaTime, playerCenterX, playerCenterY, playerSize, dungeonMap, playingState);
             case CANNON_AIMING -> handleCannonAimingState(deltaTime, playerCenterX, playerCenterY, angleToPlayer);
             case CANNON_LOCKED -> handleCannonLockedState(deltaTime, projectileManager, playingState, dungeonMap);
             case COOLDOWN -> handleCooldownState(deltaTime, angleToPlayer);
@@ -342,7 +412,7 @@ public class BossTank extends TargetDummy {
         }
 
         if (stateTimer <= 0) {
-            chooseNextAction(distToPlayer);
+            chooseNextAction(distToPlayer, playerCX, playerCY, map);
         }
     }
 
@@ -352,56 +422,243 @@ public class BossTank extends TargetDummy {
      * súng máy.
      * Nếu đòn trước vừa đâm thì đòn tiếp theo bắt buộc dùng súng máy.
      */
-    private void chooseNextAction(double distToPlayer) {
-        int roll = ThreadLocalRandom.current().nextInt(100);
+    public void chooseNextAction(double distToPlayer) {
+        chooseNextAction(distToPlayer, x + Math.cos(chassisAngle) * 200.0, y + Math.sin(chassisAngle) * 200.0, null);
+    }
 
-        // Nếu vừa mới thực hiện đòn đâm trước đó: BẮT BUỘC dùng súng máy để tránh spam
-        // đâm liên tục
+    /**
+     * Quyết định chiêu thức tiếp theo dựa trên cự ly, lượng máu còn lại và địa hình thực tế.
+     * <ul>
+     *   <li><b>Kiểm tra cover cứng trước khi đâm</b>: Nếu phát hiện người chơi đang nấp sau cover cứng hoặc tường kiên cố,
+     *       Boss TUYỆT ĐỐI KHÔNG thực hiện đòn đâm húc để tránh bị đâm vào cover liên tục.</li>
+     *   <li><b>Chiêu Đạn Diệt Bộ Binh (Canister Shot)</b>: Kích hoạt khi Boss mất 25% máu và người chơi ở cự ly gần (<= 320px).</li>
+     *   <li><b>Đại pháo nổ siêu thanh (Cannon Blast)</b>: Kích hoạt khi Boss mất 50% máu.</li>
+     *   <li><b>Súng máy dã chiến (MG Burst)</b>: Kết hợp chạy ngang để vòng qua vật cản tìm góc bắn.</li>
+     * </ul>
+     */
+    public void chooseNextAction(double distToPlayer, double playerCX, double playerCY, DungeonMap map) {
+        // 1. CÂN BẰNG ANTI-SPAM: Nếu vừa mới thực hiện đòn đâm trước đó,
+        // BẮT BUỘC chuyển sang xả súng máy để xen kẽ nhịp tấn công cho người chơi phản xạ
         if (lastAttackWasRam) {
             triggerMachineGunBurst();
             lastAttackWasRam = false;
             return;
         }
 
-        // Khi HP < 50%, tháp pháo chính thức tỉnh: có 45% cơ hội dùng Chiêu 3 (Đại pháo
-        // nổ)
-        if (isCannonAwakened() && roll < 45) {
-            state = TankState.CANNON_AIMING;
-            stateTimer = 0.65; // 0.65s (rút ngắn từ 0.90s) chiếu laser dính chặt theo người chơi
-            cannonLaserAngle = cannonAngle;
-            laserTargetWorldX = x;
-            laserTargetWorldY = y;
-            lastAttackWasRam = false;
-            return;
-        }
+        // 2. KIỂM TRA ĐỊA HÌNH: Đường đâm từ tâm xe tăng đến người chơi có bị chắn bởi Tường cứng / Cột cover cứng không
+        boolean ramPathBlocked = isRamPathBlockedBySolidCover(playerCX, playerCY, map);
 
-        // Khi HP >= 50% (nửa thanh máu đầu): Cân bằng kết hợp súng máy (50%) và đâm húc (50%)
-        if (!isCannonAwakened()) {
-            if (roll < 50) {
-                triggerMachineGunBurst();
-                lastAttackWasRam = false;
+        // Sinh số ngẫu nhiên độc lập 0..99 cho lần ra quyết định này
+        int actionRoll = ThreadLocalRandom.current().nextInt(100);
+
+        // 3. PHÂN CHIA HỎA LỰC THEO CỰ LY:
+        // =========================================================================
+        // A. CỰ LY GẦN (distToPlayer <= 320.0 px): ƯU TIÊN PHÁO BỘ BINH (CANISTER SHOT)
+        // =========================================================================
+        if (distToPlayer <= 320.0) {
+            if (isCanisterUnlocked()) {
+                if (!lastAttackWasCanister) {
+                    if (!ramPathBlocked) {
+                        // Đường đâm thông thoáng:
+                        // 60% Canister Shot (pháo bộ binh bắn gần)
+                        // 30% Đâm húc (Ram Attack) - Đảm bảo Boss liên tục đâm húc kể cả dưới 50% HP!
+                        // 10% Súng máy hoặc Pháo nổ phụ trợ
+                        if (actionRoll < 60) {
+                            triggerCanisterShot(playerCX, playerCY);
+                            return;
+                        } else if (actionRoll < 90) {
+                            triggerRamAttack();
+                            return;
+                        } else if (isCannonAwakened() && actionRoll < 95) {
+                            triggerCannonAiming();
+                            return;
+                        }
+                    } else {
+                        // Đường đâm bị chắn bởi cover cứng: TUYỆT ĐỐI KHÔNG ĐÂM
+                        // 75% Canister Shot, 15% Machine Gun, 10% Cannon
+                        if (actionRoll < 75) {
+                            triggerCanisterShot(playerCX, playerCY);
+                            return;
+                        } else if (isCannonAwakened() && actionRoll < 85) {
+                            triggerCannonAiming();
+                            return;
+                        }
+                    }
+                } else {
+                    // Vừa mới bắn Canister trước đó: Không spam Canister liên tiếp!
+                    lastAttackWasCanister = false;
+                    if (!ramPathBlocked) {
+                        // Đường đâm thông thoáng: ƯU TIÊN ĐÂM HÚC (60%)!
+                        // Kết hợp nhịp nhàng giữa Pháo bộ binh và Đâm húc áp sát
+                        if (actionRoll < 60) {
+                            triggerRamAttack();
+                            return;
+                        } else if (isCannonAwakened() && actionRoll < 75) {
+                            triggerCannonAiming();
+                            return;
+                        }
+                    } else {
+                        // Đường đâm bị cản: Pháo nổ (30%) hoặc súng máy strafe (70%)
+                        if (isCannonAwakened() && actionRoll < 30) {
+                            triggerCannonAiming();
+                            return;
+                        }
+                    }
+                }
             } else {
-                state = TankState.RAM_WINDUP;
-                ramWindupDuration = 0.58; // 0.58s lấy đà bẻ lái và phát vệt đỏ cảnh báo đường đâm (tăng từ 0.25s)
-                stateTimer = ramWindupDuration;
-                lastAttackWasRam = true;
-                GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
+                // Chưa mở khóa Canister (HP > 75%):
+                lastAttackWasCanister = false;
+                if (!ramPathBlocked) {
+                    if (actionRoll < 60) {
+                        triggerRamAttack();
+                        return;
+                    }
+                }
             }
-            return;
+        } else {
+            // =========================================================================
+            // B. CỰ LY XA (distToPlayer > 320.0 px): ƯU TIÊN PHÁO NỔ BẮN XA (HEAVY CANNON BLAST)
+            // Canister Shot = 0% ở cự ly xa
+            // =========================================================================
+            lastAttackWasCanister = false;
+
+            if (isCannonAwakened()) {
+                // Phase 2: HP < 50% (Pháo đại bác thức tỉnh)
+                if (!ramPathBlocked) {
+                    // Đường đâm thông thoáng:
+                    // 60% Pháo nổ đại bác tầm xa (Heavy Cannon Blast)
+                    // 32% Đâm húc (Ram) - KHẮC PHỤC TRIỆT ĐỂ: Boss dưới 50% HP vẫn đâm húc dũng mãnh ở cự ly xa!
+                    // 8% Súng máy
+                    if (actionRoll < 60) {
+                        triggerCannonAiming();
+                        return;
+                    } else if (actionRoll < 92) {
+                        triggerRamAttack();
+                        return;
+                    }
+                } else {
+                    // Đường đâm bị chắn bởi cover cứng: TUYỆT ĐỐI KHÔNG ĐÂM
+                    // 75% Pháo nổ đại bác bắn phá nổ cover, 25% Súng máy
+                    if (actionRoll < 75) {
+                        triggerCannonAiming();
+                        return;
+                    }
+                }
+            } else {
+                // Phase 1: HP >= 50% (Chưa thức tỉnh pháo đại bác)
+                if (!ramPathBlocked) {
+                    if (actionRoll < 55) {
+                        triggerRamAttack();
+                        return;
+                    }
+                }
+            }
         }
 
-        // Khi HP < 50%: nếu không dùng đại pháo thì đâm hoặc súng máy
-        if (distToPlayer >= 140.0 && roll < 70) {
-            state = TankState.RAM_WINDUP;
-            ramWindupDuration = 0.48; // 0.48s lấy đà trong Phase 2 thức tỉnh (tăng từ 0.22s)
-            stateTimer = ramWindupDuration;
-            lastAttackWasRam = true;
-            GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
-            return;
-        }
-
+        // 4. Nếu không chọn các đòn trên (hoặc đường đâm bị chắn): Dùng súng máy và bật Strafe
         triggerMachineGunBurst();
+        if (ramPathBlocked) {
+            mgIsStrafing = true; // Bắt buộc chạy ngang né góc nếu bị cover chắn
+        }
         lastAttackWasRam = false;
+    }
+
+    private void triggerRamAttack() {
+        state = TankState.RAM_WINDUP;
+        ramWindupDuration = isCannonAwakened() ? 0.48 : 0.58;
+        stateTimer = ramWindupDuration;
+        lastAttackWasRam = true;
+        lastAttackWasCanister = false;
+        GameSoundManager.play(SoundEffect.ENEMY_BOSS_CHARGE_WARNING);
+    }
+
+    private void triggerCanisterShot(double playerCX, double playerCY) {
+        state = TankState.CANISTER_WINDUP;
+        canisterWindupDuration = 0.75; // Cảnh báo chiêu mới đúng 0.75s
+        stateTimer = canisterWindupDuration;
+        canisterAngle = Math.atan2(playerCY - y, playerCX - x);
+        cannonAngle = canisterAngle;
+        lastAttackWasCanister = true;
+        lastAttackWasRam = false;
+        GameSoundManager.play(SoundEffect.GUN_SAS_DRAW); // Tiếng nạp đạn shotgun vào buồng pháo
+    }
+
+    private void triggerCannonAiming() {
+        state = TankState.CANNON_AIMING;
+        stateTimer = 0.65;
+        cannonLaserAngle = cannonAngle;
+        laserTargetWorldX = x;
+        laserTargetWorldY = y;
+        lastAttackWasRam = false;
+        lastAttackWasCanister = false;
+    }
+
+    /**
+     * Kiểm tra xem đường đâm từ tâm Boss đến vị trí mục tiêu có bị chắn bởi vật cản kiên cố
+     * (Tường cứng, Cột cover cứng không thể phá hủy) hay không.
+     * Quét 3 luồng song song (tâm xe và 2 bên sườn xe 34px) mô phỏng chính xác thân xe tăng rộng 96px.
+     */
+    public boolean isRamPathBlockedBySolidCover(double targetX, double targetY, DungeonMap map) {
+        if (map == null) return false;
+        double dx = targetX - x;
+        double dy = targetY - y;
+        double dist = Math.hypot(dx, dy);
+        if (dist < 10.0) return false;
+
+        double angle = Math.atan2(dy, dx);
+        double cosA = Math.cos(angle);
+        double sinA = Math.sin(angle);
+        double perpCos = -sinA;
+        double perpSin = cosA;
+        double sideOffset = 34.0; // Quét thêm 2 bên sườn xe tăng
+
+        // Quét từng bước 24px (nửa ô gạch) từ trước mũi xe đến mục tiêu
+        double step = 24.0;
+        for (double d = 48.0; d <= dist; d += step) {
+            double cx = x + cosA * d;
+            double cy = y + sinA * d;
+
+            if (isPointBlockedBySolid(cx, cy, map)
+                    || isPointBlockedBySolid(cx + perpCos * sideOffset, cy + perpSin * sideOffset, map)
+                    || isPointBlockedBySolid(cx - perpCos * sideOffset, cy - perpSin * sideOffset, map)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Kiểm tra xem người chơi có được che chắn hoàn toàn sau cover cứng / tường đối với đòn bắn Canister Shot hay không.
+     */
+    public boolean isLineOfSightBlockedBySolidCover(double startX, double startY, double endX, double endY, DungeonMap map) {
+        if (map == null) return false;
+        double dx = endX - startX;
+        double dy = endY - startY;
+        double dist = Math.hypot(dx, dy);
+        if (dist < 12.0) return false;
+
+        double cosA = dx / dist;
+        double sinA = dy / dist;
+        double step = 16.0; // Quét mịn 16px mỗi bước
+        for (double d = 16.0; d < dist - 8.0; d += step) {
+            double px = startX + cosA * d;
+            double py = startY + sinA * d;
+            if (isPointBlockedBySolid(px, py, map)) {
+                return true; // Có cover cứng che chắn!
+            }
+        }
+        return false;
+    }
+
+    private boolean isPointBlockedBySolid(double px, double py, DungeonMap map) {
+        int col = (int) Math.floor(px / com.groupproject.game.core.GameConfig.TILE_SIZE);
+        int row = (int) Math.floor(py / com.groupproject.game.core.GameConfig.TILE_SIZE);
+        com.groupproject.game.dungeon.Tile t = map.getTile(col, row);
+        if (t == null) return true;
+        com.groupproject.game.dungeon.TileType type = t.getType();
+        return type == com.groupproject.game.dungeon.TileType.WALL
+                || type == com.groupproject.game.dungeon.TileType.VOID
+                || type == com.groupproject.game.dungeon.TileType.COVER;
     }
 
     /**
@@ -533,6 +790,86 @@ public class BossTank extends TargetDummy {
             state = TankState.COOLDOWN;
             stateTimer = isCannonAwakened() ? 0.18 : 0.25;
         }
+    }
+
+    /**
+     * Chiêu Đạn Diệt Bộ Binh: Giai đoạn nạp đạn và chiếu hình quạt nón cảnh báo (0.50s).
+     * Nòng pháo hạ thấp và hình quạt bám theo người chơi, khóa góc cố định ở 0.15s cuối.
+     */
+    private void handleCanisterWindupState(double deltaTime, double angleToPlayer) {
+        stateTimer -= deltaTime;
+        if (stateTimer > 0.20) {
+            canisterAngle = angleToPlayer;
+            cannonAngle = angleToPlayer;
+        }
+
+        if (stateTimer <= 0) {
+            state = TankState.CANISTER_FIRE;
+            stateTimer = 0.12;
+        }
+    }
+
+    /**
+     * Chiêu Đạn Diệt Bộ Binh: Giai đoạn khai hỏa tức thì (Hitscan Cone AoE).
+     * Bắn chùm đạn shotgun uy lực từ nòng pháo, gây 34 HP sát thương cho người chơi trong hình nón
+     * trừ khi người chơi nấp sau cột cover cứng hoặc tường kiên cố.
+     */
+    private void handleCanisterFireState(double deltaTime, double playerCX, double playerCY, double playerSize,
+            DungeonMap map, PlayingState playingState) {
+        stateTimer -= deltaTime;
+
+        if (canisterFlashTimer <= 0.0) {
+            canisterFlashTimer = 0.28;
+            cannonRecoilTimer = 0.22;
+
+            double barrelLen = 54.0;
+            double bx = x + Math.cos(canisterAngle) * barrelLen;
+            double by = y + Math.sin(canisterAngle) * barrelLen;
+
+            // 1. Kiểm tra sát thương lên người chơi trong hình nón
+            double dx = playerCX - bx;
+            double dy = playerCY - by;
+            double dist = Math.hypot(dx, dy);
+            double angleToPlayer = Math.atan2(dy, dx);
+            double angleDiff = Math.abs(normalizeAngle(angleToPlayer - canisterAngle));
+
+            if (dist <= canisterRange && angleDiff <= canisterSpreadAngle) {
+                // Kiểm tra Line-of-Sight qua cover cứng: Trốn sau cover cứng tránh được hoàn toàn!
+                boolean coverBlocked = isLineOfSightBlockedBySolidCover(bx, by, playerCX, playerCY, map);
+                if (!coverBlocked && playingState != null) {
+                    playingState.damagePlayer(canisterDamage);
+                    playingState.triggerScreenShake(0.40);
+                    playingState.getActiveExplosions().add(new ExplosionVisual(playerCX, playerCY, 45.0, 0.25));
+                }
+            }
+
+            // 2. Nghiền nát/gây sát thương lên các ô thùng gỗ (Destructible Cover) nằm trong hình nón
+            if (map != null) {
+                double coneMidX = bx + Math.cos(canisterAngle) * (canisterRange * 0.5);
+                double coneMidY = by + Math.sin(canisterAngle) * (canisterRange * 0.5);
+                map.damageDestructibleCoverInArea(coneMidX - 60, coneMidY - 60, 120, 120, 150);
+            }
+
+            // 3. Âm thanh nổ súng chùm kết hợp uy lực
+            GameSoundManager.play(SoundEffect.GUN_SAS_SHOOT);
+            GameSoundManager.play(SoundEffect.ENEMY_BOSS_FIRE);
+
+            if (playingState != null) {
+                playingState.triggerScreenShake(0.35);
+                playingState.getActiveExplosions().add(new ExplosionVisual(bx, by, 70.0, 0.30));
+            }
+        }
+
+        if (stateTimer <= 0) {
+            state = TankState.COOLDOWN;
+            stateTimer = isCannonAwakened() ? 0.25 : 0.35;
+        }
+    }
+
+    private double normalizeAngle(double angle) {
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        return angle;
     }
 
     /**
@@ -690,6 +1027,9 @@ public class BossTank extends TargetDummy {
         // 0. RENDER RAM TELEGRAPH (Vùng đỏ cảnh báo đường đi đòn đâm khi RAM_WINDUP)
         renderRamTelegraph(g, screenCX, screenCY);
 
+        // 0.5 RENDER CANISTER TELEGRAPH (Vùng hình quạt cảnh báo đạn diệt bộ binh khi CANISTER_WINDUP)
+        renderCanisterTelegraph(g, screenCX, screenCY);
+
         // 1. RENDER WARNING TELEGRAPHS (Laser đại pháo lock-on hoặc khóa góc cố định)
         renderWarningTelegraphs(g, camera, screenCX, screenCY);
 
@@ -699,13 +1039,16 @@ public class BossTank extends TargetDummy {
         // 3. LAYER 2: MAIN HEAVY CANNON TURRET (Góc quay = cannonAngle)
         renderLayer2MainCannon(g, screenCX, screenCY);
 
+        // 3.5 RENDER CANISTER MUZZLE BLAST (Hoạt ảnh chớp lửa nổ bùng hình nón cực đại khi khai hỏa)
+        renderCanisterMuzzleBlast(g, screenCX, screenCY);
+
         // 4. LAYER 1: TOP MACHINE GUN TURRET (Góc quay = machineGunAngle)
         renderLayer1MachineGun(g, screenCX, screenCY);
 
         // 5. OVERHEAD TITAN BOSS HEALTH BAR & STATUS BADGE
         renderOverheadBossUI(g, screenCX, screenCY);
 
-        // 6. DẤU "!" CẢNH BÁO NGUY HIỂM KHI ĐÂM (RAM_WINDUP)
+        // 6. DẤU "!" CẢNH BÁO NGUY HIỂM KHI ĐÂM HOẶC BẮN ĐẠN CHÙM
         renderWarningExclamation(g, screenCX, screenCY);
     }
 
@@ -715,6 +1058,104 @@ public class BossTank extends TargetDummy {
      * với thanh đo nạp năng lượng (charge progress fill), hai biên viền laser cảnh báo và các
      * mũi tên chỉ hướng xung kích.
      */
+    /**
+     * Vẽ vùng hình quạt cảnh báo đạn diệt bộ binh (Canister Shot Cone Telegraph).
+     * Hiển thị hình nón phát quang quét trên mặt sàn với góc mở 70° (±35°), tầm xa 300px,
+     * hai biên viền laser cảnh báo và tiến trình nạp đạn (Charge Fill).
+     */
+    private void renderCanisterTelegraph(Graphics2D g, int screenCX, int screenCY) {
+        if (state != TankState.CANISTER_WINDUP) {
+            return;
+        }
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.translate(screenCX, screenCY);
+        g2.rotate(canisterAngle);
+
+        int r = (int) canisterRange;
+        int spreadDeg = (int) Math.round(Math.toDegrees(canisterSpreadAngle));
+        int totalArc = spreadDeg * 2;
+        int startAngle = -spreadDeg;
+
+        double progress = Math.max(0.0, Math.min(1.0, 1.0 - (stateTimer / canisterWindupDuration)));
+        boolean isLocked = (stateTimer <= 0.20);
+
+        // 1. Nền hình nón tĩnh cảnh báo nguy hiểm
+        int baseAlpha = isLocked ? 70 : 40;
+        g2.setColor(new Color(255, 120, 20, baseAlpha));
+        g2.fillArc(-r, -r, r * 2, r * 2, -startAngle - totalArc, totalArc);
+
+        // 2. Vệt nạp lực tỏa dần từ tâm ra ngoài (Progress Fill Arc)
+        int fillR = Math.max(10, (int) (r * progress));
+        int fillAlpha = isLocked ? 120 : 75;
+        g2.setColor(new Color(255, 60, 20, fillAlpha));
+        g2.fillArc(-fillR, -fillR, fillR * 2, fillR * 2, -startAngle - totalArc, totalArc);
+
+        // 3. Hai tia viền laser cảnh báo biên độ góc nón
+        float railStroke = isLocked ? 3.0f : 2.0f;
+        Color railColor = isLocked ? new Color(255, 230, 60, 240) : new Color(255, 140, 30, 210);
+        g2.setColor(railColor);
+        g2.setStroke(new BasicStroke(railStroke, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        double cos1 = Math.cos(-canisterSpreadAngle);
+        double sin1 = Math.sin(-canisterSpreadAngle);
+        double cos2 = Math.cos(canisterSpreadAngle);
+        double sin2 = Math.sin(canisterSpreadAngle);
+        g2.drawLine(0, 0, (int) (cos1 * r), (int) (sin1 * r));
+        g2.drawLine(0, 0, (int) (cos2 * r), (int) (sin2 * r));
+
+        // 4. Cung tròn viền rìa tầm bắn
+        g2.drawArc(-r, -r, r * 2, r * 2, -startAngle - totalArc, totalArc);
+
+        g2.dispose();
+    }
+
+    /**
+     * Vẽ hoạt ảnh chớp lửa nổ bùng hình nón cực đại khi khai hỏa đạn diệt bộ binh (Muzzle Blast Arc).
+     */
+    private void renderCanisterMuzzleBlast(Graphics2D g, int screenCX, int screenCY) {
+        if (canisterFlashTimer <= 0.0) {
+            return;
+        }
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+        double barrelLen = 54.0;
+        int bx = (int) (screenCX + Math.cos(canisterAngle) * barrelLen);
+        int by = (int) (screenCY + Math.sin(canisterAngle) * barrelLen);
+
+        g2.translate(bx, by);
+        g2.rotate(canisterAngle);
+
+        float alphaRatio = (float) Math.max(0.0, Math.min(1.0, canisterFlashTimer / 0.28));
+        int blastR = (int) (canisterRange * (1.1 - alphaRatio * 0.4)); // Bùng nổ bung rộng ra 180px - 260px
+
+        // 1. Quầng lửa nổ bung hình nón
+        g2.setColor(new Color(255, 200, 50, (int) (210 * alphaRatio)));
+        g2.fillArc(-blastR, -blastR, blastR * 2, blastR * 2, -35, 70);
+
+        g2.setColor(new Color(255, 255, 200, (int) (240 * alphaRatio)));
+        int innerR = (int) (blastR * 0.5);
+        g2.fillArc(-innerR, -innerR, innerR * 2, innerR * 2, -30, 60);
+
+        // 2. Các vệt đạn chì chùm (Pellet Streaks) tỏa ra hình nón
+        g2.setColor(new Color(255, 240, 120, (int) (255 * alphaRatio)));
+        g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = -3; i <= 3; i++) {
+            double angle = i * Math.toRadians(9.0);
+            double cos = Math.cos(angle);
+            double sin = Math.sin(angle);
+            int startD = 10;
+            int endD = blastR;
+            g2.drawLine((int) (cos * startD), (int) (sin * startD), (int) (cos * endD), (int) (sin * endD));
+        }
+
+        g2.dispose();
+    }
+
     private void renderRamTelegraph(Graphics2D g, int screenCX, int screenCY) {
         if (state != TankState.RAM_WINDUP) {
             return;

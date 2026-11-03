@@ -457,9 +457,6 @@ public final class GameSoundManager {
     }
 
     /**
-     * Giải mã mảng byte của tệp WAV chuẩn 16-bit Little-Endian sang mảng mẫu short[].
-     */
-    /**
      * Tự động giải mã tệp âm thanh (hỗ trợ cả WAV và MP3 qua JLayer) sang mảng mẫu PCM short[] 16-bit.
      */
     private static short[] decodeAudioToPcmShorts(String filename, byte[] fileBytes) {
@@ -483,8 +480,9 @@ public final class GameSoundManager {
         if (mp3Bytes == null || mp3Bytes.length == 0) {
             return null;
         }
+        Bitstream bitstream = null;
         try {
-            Bitstream bitstream = new Bitstream(new ByteArrayInputStream(mp3Bytes));
+            bitstream = new Bitstream(new ByteArrayInputStream(mp3Bytes));
             Decoder decoder = new Decoder();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             Header header;
@@ -510,7 +508,6 @@ public final class GameSoundManager {
                 }
                 bitstream.closeFrame();
             }
-            bitstream.close();
             byte[] rawPcm = baos.toByteArray();
             int sampleCount = rawPcm.length / 2;
             short[] shorts = new short[sampleCount];
@@ -522,6 +519,13 @@ public final class GameSoundManager {
             return shorts;
         } catch (Exception e) {
             return null;
+        } finally {
+            if (bitstream != null) {
+                try {
+                    bitstream.close();
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 
@@ -583,6 +587,17 @@ public final class GameSoundManager {
     }
 
     /**
+     * Tự động phục hồi luồng Audio Mixer nếu thiết bị âm thanh bị gián đoạn,
+     * hoặc khi máy tính khởi động ở trạng thái tắt âm sau đó được bật lại.
+     */
+    public static synchronized void ensureMixerRunning() {
+        if (!mixerRunning || mixerLine == null || !mixerLine.isOpen()) {
+            mixerRunning = false;
+            startSoftwareMixer();
+        }
+    }
+
+    /**
      * Vòng lặp trộn đa kênh PCM thời gian thực.
      * Cộng gộp toàn bộ các luồng âm thanh đang phát với bộ nén mềm (Soft-Knee Limiter),
      * giữ nguyên vẹn tiếng vọng của súng mà không bao giờ bị mất tiếng hay vỡ âm.
@@ -599,8 +614,8 @@ public final class GameSoundManager {
                 break;
             }
 
-            boolean sfxEffectiveMuted = muted || sfxMuted || sfxVolume <= 0.001f;
-            boolean bgmEffectiveMuted = muted || bgmMuted || bgmVolume <= 0.001f;
+            boolean sfxEffectiveMuted = sfxMuted || sfxVolume <= 0.001f;
+            boolean bgmEffectiveMuted = bgmMuted || bgmVolume <= 0.001f;
 
             if ((ACTIVE_VOICES.isEmpty() && activeBgm == null) || (sfxEffectiveMuted && bgmEffectiveMuted)) {
                 if (!ACTIVE_VOICES.isEmpty() && sfxEffectiveMuted) {
@@ -665,30 +680,30 @@ public final class GameSoundManager {
 
             if (!sfxEffectiveMuted) {
                 for (ActiveVoice voice : ACTIVE_VOICES) {
-                if (voice == null || voice.stopped) {
-                    finishedVoices.add(voice);
-                    continue;
-                }
+                    if (voice == null || voice.stopped) {
+                        finishedVoices.add(voice);
+                        continue;
+                    }
 
-                final short[] samples = voice.samples;
-                final int totalSamples = samples.length;
-                int cur = voice.cursor;
-                if (cur >= totalSamples) {
-                    finishedVoices.add(voice);
-                    continue;
-                }
+                    final short[] samples = voice.samples;
+                    final int totalSamples = samples.length;
+                    int cur = voice.cursor;
+                    if (cur >= totalSamples) {
+                        finishedVoices.add(voice);
+                        continue;
+                    }
 
-                final float gain = masterGain * voice.volumeFactor;
-                final int count = Math.min(MIX_SHORTS, totalSamples - cur);
-                for (int i = 0; i < count; i++) {
-                    accumBuffer[i] += samples[cur + i] * gain;
-                }
-                cur += count;
-                voice.cursor = cur;
+                    final float gain = masterGain * voice.volumeFactor;
+                    final int count = Math.min(MIX_SHORTS, totalSamples - cur);
+                    for (int i = 0; i < count; i++) {
+                        accumBuffer[i] += samples[cur + i] * gain;
+                    }
+                    cur += count;
+                    voice.cursor = cur;
 
-                if (cur >= totalSamples) {
-                    finishedVoices.add(voice);
-                }
+                    if (cur >= totalSamples) {
+                        finishedVoices.add(voice);
+                    }
                 }
             } else if (!ACTIVE_VOICES.isEmpty()) {
                 ACTIVE_VOICES.clear();
@@ -853,9 +868,10 @@ public final class GameSoundManager {
     }
 
     private static void enqueueVoice(SoundEffect sfx, float volumeFactor, boolean reloadChannel) {
-        if (muted || sfxMuted || sfx == null || sfxVolume <= 0.001f || volumeFactor <= 0.001f) {
+        if (sfxMuted || sfx == null || sfxVolume <= 0.001f || volumeFactor <= 0.001f) {
             return;
         }
+        ensureMixerRunning();
 
         if (!initialized) {
             init();
@@ -921,9 +937,6 @@ public final class GameSoundManager {
     }
 
     /**
-     * Dừng ngay lập tức âm thanh nạp đạn đang phát (khi nạp xong súng thông thường hoặc khi người chơi hủy nạp đạn).
-     */
-    /**
      * Dừng ngay lập tức một hiệu ứng âm thanh cụ thể (ví dụ: dừng tiếng đếm ngược quả bom BOMB_BEEP khi bom nổ).
      */
     public static synchronized void stopEffect(SoundEffect sfx) {
@@ -947,6 +960,9 @@ public final class GameSoundManager {
         }
     }
 
+    /**
+     * Dừng ngay lập tức âm thanh nạp đạn đang phát (khi nạp xong súng thông thường hoặc khi người chơi hủy nạp đạn).
+     */
     public static synchronized void stopReload() {
         for (ActiveVoice voice : ACTIVE_VOICES) {
             if (voice != null && (voice.reloadChannel
@@ -965,37 +981,46 @@ public final class GameSoundManager {
     }
 
     public static boolean isMuted() {
-        return muted || (sfxMuted && bgmMuted);
+        return sfxMuted && bgmMuted;
     }
 
     public static void setMuted(boolean isMuted) {
         muted = isMuted;
         sfxMuted = isMuted;
         bgmMuted = isMuted;
-        if (muted) {
+        if (isMuted) {
             ACTIVE_VOICES.clear();
+        } else {
+            ensureMixerRunning();
         }
         saveSettings();
     }
 
     public static boolean isSfxMuted() {
-        return muted || sfxMuted;
+        return sfxMuted;
     }
 
     public static void setSfxMuted(boolean isMuted) {
         sfxMuted = isMuted;
+        muted = sfxMuted && bgmMuted;
         if (sfxMuted) {
             ACTIVE_VOICES.clear();
+        } else {
+            ensureMixerRunning();
         }
         saveSettings();
     }
 
     public static boolean isBgmMuted() {
-        return muted || bgmMuted;
+        return bgmMuted;
     }
 
     public static void setBgmMuted(boolean isMuted) {
         bgmMuted = isMuted;
+        muted = sfxMuted && bgmMuted;
+        if (!bgmMuted) {
+            ensureMixerRunning();
+        }
         saveSettings();
     }
 
@@ -1017,6 +1042,11 @@ public final class GameSoundManager {
     public static void setSfxVolume(float volume) {
         sfxVolume = Math.max(0.0f, Math.min(1.0f, volume));
         masterVolume = sfxVolume;
+        if (sfxVolume > 0.001f && sfxMuted) {
+            sfxMuted = false;
+            muted = sfxMuted && bgmMuted;
+        }
+        ensureMixerRunning();
         saveSettings();
     }
 
@@ -1026,6 +1056,26 @@ public final class GameSoundManager {
 
     public static void setBgmVolume(float volume) {
         bgmVolume = Math.max(0.0f, Math.min(1.0f, volume));
+        if (bgmVolume > 0.001f && bgmMuted) {
+            bgmMuted = false;
+            muted = sfxMuted && bgmMuted;
+        }
+        ensureMixerRunning();
+        saveSettings();
+    }
+
+    /**
+     * Khôi phục toàn bộ cài đặt âm thanh về mặc định ban đầu:
+     * Âm lượng SFX 50%, BGM 50%, mở toàn bộ âm thanh (unmute).
+     */
+    public static void resetToDefaults() {
+        masterVolume = 0.5f;
+        sfxVolume = 0.5f;
+        bgmVolume = 0.5f;
+        muted = false;
+        sfxMuted = false;
+        bgmMuted = false;
+        ensureMixerRunning();
         saveSettings();
     }
 
@@ -1048,9 +1098,9 @@ public final class GameSoundManager {
                 String bgmStr = props.getProperty("bgmVolume", volStr);
                 bgmVolume = Math.max(0.0f, Math.min(1.0f, Float.parseFloat(bgmStr)));
 
-                muted = Boolean.parseBoolean(props.getProperty("muted", "false"));
-                sfxMuted = Boolean.parseBoolean(props.getProperty("sfxMuted", Boolean.toString(muted)));
-                bgmMuted = Boolean.parseBoolean(props.getProperty("bgmMuted", Boolean.toString(muted)));
+                sfxMuted = Boolean.parseBoolean(props.getProperty("sfxMuted", "false"));
+                bgmMuted = Boolean.parseBoolean(props.getProperty("bgmMuted", "false"));
+                muted = sfxMuted && bgmMuted;
             } catch (Exception e) {
                 // Logger omitted to avoid java.logging module dependency in custom runtime
                 masterVolume = 0.5f;
@@ -1060,13 +1110,19 @@ public final class GameSoundManager {
                 sfxMuted = false;
                 bgmMuted = false;
             }
+            System.out.println("[GameSoundManager] Đã tải cài đặt âm thanh từ " + settingsFilePath
+                    + ": SFX=" + Math.round(sfxVolume * 100) + "% (" + (sfxMuted ? "MUTED" : "ON")
+                    + "), BGM=" + Math.round(bgmVolume * 100) + "% (" + (bgmMuted ? "MUTED" : "ON") + ")");
         } else {
+            // Lần đầu chạy khi chưa có file cài đặt: Thiết lập mặc định 50% mở tiếng và tự động lưu file mẫu
             masterVolume = 0.5f;
             sfxVolume = 0.5f;
             bgmVolume = 0.5f;
             muted = false;
             sfxMuted = false;
             bgmMuted = false;
+            saveSettings();
+            System.out.println("[GameSoundManager] Tạo tệp cài đặt âm thanh mặc định: " + settingsFilePath);
         }
     }
 

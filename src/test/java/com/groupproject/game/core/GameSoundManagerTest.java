@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.groupproject.game.core.GameSoundManager.BgmTrack;
 import com.groupproject.game.core.GameSoundManager.SoundEffect;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,7 @@ public class GameSoundManagerTest {
 
     @BeforeEach
     public void setUp() {
+        GameSoundManager.setSettingsFilePath("target/test_audio_settings.properties");
         GameSoundManager.init();
         GameSoundManager.setMuted(false);
     }
@@ -27,6 +29,12 @@ public class GameSoundManagerTest {
     @AfterEach
     public void tearDown() {
         GameSoundManager.setMuted(false);
+    }
+
+    @AfterAll
+    public static void restoreDefaultSettingsFile() {
+        GameSoundManager.setSettingsFilePath("target/test_audio_settings.properties");
+        GameSoundManager.loadSettings();
     }
 
     @Test
@@ -161,7 +169,7 @@ public class GameSoundManagerTest {
         assertFalse(GameSoundManager.isMuted());
 
         // Khôi phục lại đường dẫn chuẩn
-        GameSoundManager.setSettingsFilePath("save/audio_settings.properties");
+        GameSoundManager.setSettingsFilePath("target/test_audio_settings.properties");
         GameSoundManager.loadSettings();
     }
 
@@ -229,7 +237,7 @@ public class GameSoundManagerTest {
         assertTrue(GameSoundManager.isBgmMuted(), "Nạp lại trạng thái BGM Muted = true");
 
         // Khôi phục đường dẫn chuẩn
-        GameSoundManager.setSettingsFilePath("save/audio_settings.properties");
+        GameSoundManager.setSettingsFilePath("target/test_audio_settings.properties");
         GameSoundManager.loadSettings();
     }
 
@@ -290,5 +298,46 @@ public class GameSoundManagerTest {
         // Dọn dẹp BGM sau test
         GameSoundManager.stopBgm();
         assertNull(GameSoundManager.getCurrentBgmTrack());
+    }
+
+    @Test
+    @DisplayName("Kiem tra giai phong triet de deadlock Mute va dat lai mac dinh resetToDefaults()")
+    public void testResetToDefaultsAndMuteDeadlockResolution() {
+        // Mo phong trang thai bi khoa cung nhu phan anh cua nguoi dung
+        GameSoundManager.setMuted(true);
+        assertTrue(GameSoundManager.isMuted(), "He thong am thanh ban dau bi mute toan bo");
+        assertTrue(GameSoundManager.isSfxMuted(), "SFX bi mute");
+        assertTrue(GameSoundManager.isBgmMuted(), "BGM bi mute");
+
+        // Khi nguoi choi bam nut un-mute SFX -> SFX phai un-mute ngay lap tuc
+        GameSoundManager.setSfxMuted(false);
+        assertFalse(GameSoundManager.isSfxMuted(), "SFX phai duoc un-mute thanh cong");
+
+        // Khi nguoi choi bam nut un-mute BGM -> BGM cung phai un-mute
+        GameSoundManager.setBgmMuted(false);
+        assertFalse(GameSoundManager.isBgmMuted(), "BGM phai duoc un-mute thanh cong");
+        assertFalse(GameSoundManager.isMuted(), "Toan bo he thong khong con mute");
+
+        // Khi am thanh dang bi mute ma nguoi choi tang volume -> tu dong huy mute
+        GameSoundManager.setSfxMuted(true);
+        assertTrue(GameSoundManager.isSfxMuted());
+        GameSoundManager.setSfxVolume(0.6f);
+        assertFalse(GameSoundManager.isSfxMuted(), "Tang SFX Volume phai tu dong huy mute");
+        assertEquals(0.6f, GameSoundManager.getSfxVolume(), 0.001f);
+
+        // Kiem tra chuc nang Dat lai mac dinh resetToDefaults()
+        GameSoundManager.setSfxVolume(0.1f);
+        GameSoundManager.setBgmVolume(0.9f);
+        GameSoundManager.setSfxMuted(true);
+        GameSoundManager.setBgmMuted(true);
+        assertTrue(GameSoundManager.isMuted());
+
+        GameSoundManager.resetToDefaults();
+        assertEquals(0.5f, GameSoundManager.getMasterVolume(), 0.001f, "Master volume ve 50%");
+        assertEquals(0.5f, GameSoundManager.getSfxVolume(), 0.001f, "SFX volume ve 50%");
+        assertEquals(0.5f, GameSoundManager.getBgmVolume(), 0.001f, "BGM volume ve 50%");
+        assertFalse(GameSoundManager.isMuted(), "Muted phai la false sau khi reset");
+        assertFalse(GameSoundManager.isSfxMuted(), "SFX muted phai la false sau khi reset");
+        assertFalse(GameSoundManager.isBgmMuted(), "BGM muted phai la false sau khi reset");
     }
 }
