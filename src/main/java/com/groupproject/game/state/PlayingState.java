@@ -1453,17 +1453,29 @@ public class PlayingState extends GameState implements TileExplosionListener {
                 stage1FreeWeaponGranted = true;
             }
 
-            double chestCenterX = activeCombatRoom.getCenterWorldX();
-            double chestCenterY = (currentStage == BOSS_STAGE)
+            double rawCenterX = activeCombatRoom.getCenterWorldX();
+            double rawCenterY = (currentStage == BOSS_STAGE)
                     ? activeCombatRoom.getCenterWorldY() - 161
                     : activeCombatRoom.getCenterWorldY();
+
+            int targetCol = (int) (rawCenterX / com.groupproject.game.dungeon.DungeonMap.TILE_SIZE);
+            int targetRow = (int) (rawCenterY / com.groupproject.game.dungeon.DungeonMap.TILE_SIZE);
+            int[] validTile = dungeonMap.findNearestFloorTile(targetCol, targetRow);
+            double chestCenterX = (validTile[0] + 0.5) * com.groupproject.game.dungeon.DungeonMap.TILE_SIZE;
+            double chestCenterY = (validTile[1] + 0.5) * com.groupproject.game.dungeon.DungeonMap.TILE_SIZE;
 
             double chestX = chestCenterX - 19;
             double chestY = chestCenterY - 19;
             weaponChests.add(new WeaponChest(chestX, chestY, giveGuaranteedWeapon, currentStage));
 
-            // Rơi 2 stack đạn ngẫu nhiên đối xứng 2 bên hòm thưởng
-            spawnClearRoomAmmoStacks(chestCenterX, chestCenterY);
+            // Khi clear phòng: Có khả năng rơi hộp đạn tiếp tế (~75%, tăng theo chỉ số may mắn)
+            int ammoDropChance = 75;
+            if (player != null && player.getBuffManager() != null) {
+                ammoDropChance = Math.min(100, ammoDropChance + player.getBuffManager().getLuckBonus() * 5);
+            }
+            if (ThreadLocalRandom.current().nextInt(100) < ammoDropChance) {
+                spawnClearRoomAmmoStacks(chestCenterX, chestCenterY);
+            }
 
             // Tỉ lệ nhỏ (~15%) rơi thêm hộp máu cứu thương
             if (ThreadLocalRandom.current().nextInt(100) < 15) {
@@ -1608,29 +1620,74 @@ public class PlayingState extends GameState implements TileExplosionListener {
      * Tỉ lệ nhỏ (~35%) rơi một lượng đạn nhỏ khi tiêu diệt một mục tiêu (quái).
      * Ngẫu nhiên 1 trong 4 loại đạn: AR (6-10), SMG (8-14), Shotgun (2-4), Sniper (2-4).
      */
+    /**
+     * Tỉ lệ rơi đạn từ kẻ địch khi bị tiêu diệt (~45%, tăng theo may mắn).
+     * Tăng nhẹ số lượng đạn mỗi hộp nhằm đảm bảo nguồn cung cho các pha giao tranh:
+     * AR (10-15 viên), SMG (14-22 viên), Shotgun (3-5 viên), Sniper (3-5 viên).
+     */
     private void tryDropEnemyAmmo(double x, double y) {
-        if (ThreadLocalRandom.current().nextInt(100) < 35) {
+        int dropChance = 45;
+        if (player != null && player.getBuffManager() != null) {
+            dropChance = Math.min(75, dropChance + player.getBuffManager().getLuckBonus() * 3);
+        }
+        if (ThreadLocalRandom.current().nextInt(100) < dropChance) {
             AmmoType[] types = AmmoType.values();
             AmmoType chosen = types[ThreadLocalRandom.current().nextInt(types.length)];
             int amount = switch (chosen) {
-                case AR -> ThreadLocalRandom.current().nextInt(6, 11);
-                case SMG -> ThreadLocalRandom.current().nextInt(8, 15);
-                case SHOTGUN -> ThreadLocalRandom.current().nextInt(2, 5);
-                case SR -> ThreadLocalRandom.current().nextInt(2, 5);
+                case AR -> ThreadLocalRandom.current().nextInt(10, 16);
+                case SMG -> ThreadLocalRandom.current().nextInt(14, 23);
+                case SHOTGUN -> ThreadLocalRandom.current().nextInt(3, 6);
+                case SR -> ThreadLocalRandom.current().nextInt(3, 6);
             };
             ammoPickups.add(new AmmoPickup(x, y, chosen, amount));
         }
     }
 
     /**
-     * Rơi 2 đơn vị stack của 2 loại đạn ngẫu nhiên (có thể trùng lặp) khi clear phòng chiến đấu.
+     * Tỉ lệ nhỏ cơ sở 5% (tăng theo may mắn: +3%/cấp) sinh ra Băng Gạc Cứu Thương (Bandage) hồi 1 lượng nhỏ máu (+10 HP).
+     * Giảm từ 15% xuống 5% nhằm cân bằng độ thử thách tài nguyên sinh tồn, tránh rơi quá thường xuyên.
+     */
+    private void tryDropEnemyBandage(double x, double y) {
+        int bandageChance = 5;
+        if (player != null && player.getBuffManager() != null) {
+            bandageChance = Math.min(25, bandageChance + player.getBuffManager().getLuckBonus() * 3);
+        }
+        if (ThreadLocalRandom.current().nextInt(100) < bandageChance) {
+            healthPickups.add(new HealthPickup(x, y, HealthPickup.HealthSize.BANDAGE));
+        }
+    }
+
+    /**
+     * Rơi 2 đơn vị stack hộp đạn tiếp tế khi clear phòng chiến đấu.
+     * Ưu tiên thông minh các loại đạn tương ứng với vũ khí người chơi đang trang bị ở Slot 1 & 2.
      * Hòm thưởng nằm ở chính giữa, 2 stack đạn được bố trí đối xứng hoàn hảo 2 bên (Trái & Phải).
      * Định mức mỗi stack chuẩn: AR = 30 viên; SMG = 35 viên; Shotgun = 10 viên; SR = 5 viên.
      */
     public void spawnClearRoomAmmoStacks(double centerX, double centerY) {
-        AmmoType[] types = AmmoType.values();
-        AmmoType type1 = types[ThreadLocalRandom.current().nextInt(types.length)];
-        AmmoType type2 = types[ThreadLocalRandom.current().nextInt(types.length)];
+        List<AmmoType> equippedTypes = new java.util.ArrayList<>();
+        if (weaponManager != null) {
+            for (int slot : new int[]{1, 2}) {
+                com.groupproject.game.entity.weapon.Weapon w = weaponManager.getWeapon(slot);
+                if (w != null && w.getAmmoType() != null && !equippedTypes.contains(w.getAmmoType())) {
+                    equippedTypes.add(w.getAmmoType());
+                }
+            }
+        }
+
+        AmmoType[] allTypes = AmmoType.values();
+        AmmoType type1;
+        AmmoType type2;
+
+        if (equippedTypes.size() >= 2) {
+            type1 = equippedTypes.get(0);
+            type2 = equippedTypes.get(1);
+        } else if (equippedTypes.size() == 1) {
+            type1 = equippedTypes.get(0);
+            type2 = allTypes[ThreadLocalRandom.current().nextInt(allTypes.length)];
+        } else {
+            type1 = allTypes[ThreadLocalRandom.current().nextInt(allTypes.length)];
+            type2 = allTypes[ThreadLocalRandom.current().nextInt(allTypes.length)];
+        }
 
         // Bố trí đối xứng: Hòm thưởng nằm ở chính giữa (centerX), 2 stack đạn nằm cân xứng 2 bên
         double spacing = 58.0; // Khoảng cách cân xứng từ tâm hòm sang 2 bên
@@ -1834,10 +1891,11 @@ public class PlayingState extends GameState implements TileExplosionListener {
         } else {
             com.groupproject.game.core.GameSoundManager.playRandomEnemyDead();
             tryDropEnemyCredits(); // Tỉ lệ nhỏ rơi tiền khi tiêu diệt mục tiêu
-            tryDropEnemyAmmo(dummy.getX(), dummy.getY()); // Tỉ lệ nhỏ rơi hộp đạn khi tiêu diệt mục tiêu
+            tryDropEnemyAmmo(dummy.getX(), dummy.getY()); // Tăng nhẹ số lượng đạn rơi từ kẻ địch
+            tryDropEnemyBandage(dummy.getX(), dummy.getY()); // Khả năng rơi băng gạc cứu thương (+10 HP, cơ sở 5%)
         }
 
-        // Diệt địch hồi máu (+2.5 HP tích lũy từ Kỹ năng Buff)
+        // Diệt địch hồi máu (+1 HP từ Kỹ năng Buff)
         int killHeal = player.getBuffManager().onEnemyKilled();
         if (killHeal > 0) {
             healPlayer(killHeal);

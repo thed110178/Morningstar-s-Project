@@ -43,6 +43,8 @@ public class WeaponManager {
             drawEffect = SoundEffect.GUN_SCR_DRAW;
         } else if (weapon instanceof Shotgun) {
             drawEffect = SoundEffect.GUN_SHOTGUN_DRAW;
+        } else if (weapon instanceof SemiAutoShotgun) {
+            drawEffect = SoundEffect.GUN_SAS_DRAW;
         } else if (weapon instanceof SMG) {
             drawEffect = SoundEffect.GUN_SMG_DRAW;
         } else if (weapon instanceof SniperRifle) {
@@ -546,6 +548,8 @@ public class WeaponManager {
                 label = "SR " + w.getLevelDisplay();
             } else if (w instanceof SemiCarbineRifle) {
                 label = "SCR " + w.getLevelDisplay();
+            } else if (w instanceof SemiAutoShotgun) {
+                label = "SAS " + w.getLevelDisplay();
             } else if (w instanceof Pistol) {
                 label = "Pistol";
             } else if (w instanceof CombatKnife) {
@@ -693,6 +697,8 @@ public class WeaponManager {
         String lower = clean.toLowerCase();
         if (lower.contains("knife")) {
             return new CombatKnife();
+        } else if (lower.contains("semi-auto shotgun") || lower.contains("sas")) {
+            return new SemiAutoShotgun();
         } else if (lower.contains("semi") || lower.contains("carbine") || lower.contains("scr")) {
             return new SemiCarbineRifle();
         } else if (lower.contains("assault") || lower.contains("ar")) {

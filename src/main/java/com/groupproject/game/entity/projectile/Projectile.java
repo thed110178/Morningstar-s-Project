@@ -275,4 +275,12 @@ public class Projectile {
     public double getAngle() {
         return Math.atan2(vy, vx);
     }
+
+    public double getSpeed() {
+        return Math.hypot(vx, vy);
+    }
+
+    public double getLifetime() {
+        return lifetime;
+    }
 }

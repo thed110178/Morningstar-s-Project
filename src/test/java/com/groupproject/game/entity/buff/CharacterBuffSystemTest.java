@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Bộ kiểm thử tự động toàn diện cho Hệ thống Nâng Cấp & Buff Nhân Vật (Character Upgrade & Buffs).
  *
  * <p>WHY: Đảm bảo tính toán chính xác 13 loại Buff (6 buff cơ bản và 7 buff đặc biệt),
- * hành vi khiên chặn đòn 10s CD, diệt địch hồi 2.5 HP, mở rộng băng đạn cho AR/SMG/Lục,
+ * hành vi khiên chặn đòn 10s CD, diệt địch hồi 1 HP, mở rộng băng đạn cho AR/SMG/Lục,
  * giảm 30% hitbox, né xuyên vật cản, và logic mua bán tại 2 trạm riêng biệt.
  */
 public class CharacterBuffSystemTest {
@@ -124,8 +124,8 @@ public class CharacterBuffSystemTest {
         assertTrue(buffManager.isBarrierReady(), "Khiên phải hồi phục sau 10 giây");
     }
 
-    @Test
-    @DisplayName("Kiểm tra Diệt địch hồi máu: hồi chính xác 2.5 HP mỗi mạng (tích lũy phần lẻ)")
+        @Test
+    @DisplayName("Kiểm tra Diệt địch hồi máu: hồi chính xác 1 HP mỗi mạng diệt (sau khi nerf)")
     void testKillHealBuffAccumulator() {
         // Chưa có buff
         assertEquals(0, buffManager.onEnemyKilled());
@@ -133,16 +133,16 @@ public class CharacterBuffSystemTest {
         // Mua buff diệt địch hồi máu
         buffManager.applyBuff(CharacterBuff.KILL_HEAL, player, weaponManager);
 
-        // Địch 1: 2.5 HP tích lũy -> trả về 2 HP (dư 0.5 HP)
+        // Địch 1: hồi đúng 1 HP
         int heal1 = buffManager.onEnemyKilled();
-        assertEquals(2, heal1);
+        assertEquals(1, heal1);
 
-        // Địch 2: +2.5 HP nữa = 3.0 HP tích lũy -> trả về 3 HP (dư 0.0 HP)
+        // Địch 2: hồi đúng 1 HP
         int heal2 = buffManager.onEnemyKilled();
-        assertEquals(3, heal2);
+        assertEquals(1, heal2);
 
-        // Tổng 2 mạng diệt hồi đúng 5.0 HP (2.5 * 2)
-        assertEquals(5, heal1 + heal2);
+        // Tổng 2 mạng diệt hồi đúng 2 HP
+        assertEquals(2, heal1 + heal2);
     }
 
     @Test

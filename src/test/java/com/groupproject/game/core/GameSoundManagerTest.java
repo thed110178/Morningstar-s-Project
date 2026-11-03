@@ -32,7 +32,7 @@ public class GameSoundManagerTest {
     @Test
     @DisplayName("Tất cả hiệu ứng âm thanh SFX đều được nạp thành công")
     public void testAllSoundEffectsLoaded() {
-        assertEquals(48, SoundEffect.values().length, "Phải có đúng 48 loại âm thanh SoundEffect");
+        assertEquals(51, SoundEffect.values().length, "Phải có đúng 51 loại âm thanh SoundEffect");
 
         for (SoundEffect sfx : SoundEffect.values()) {
             assertNotNull(sfx.getFilename(), "Tên file âm thanh không được null: " + sfx.name());
@@ -56,6 +56,9 @@ public class GameSoundManagerTest {
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SNIPER_SHOOT), "Tiếng bắn Sniper phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SNIPER_LOADING_AMMO), "Tiếng lên đạn Sniper phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SHOTGUN_LOADING_AMMO), "Tiếng lên đạn từng phát của Shotgun phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SAS_DRAW), "Tiếng rút súng Semi-auto Shotgun SAS phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SAS_RELOAD), "Tiếng nạp đạn Semi-auto Shotgun SAS phải nạp thành công");
+        assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.GUN_SAS_SHOOT), "Tiếng bắn Semi-auto Shotgun SAS phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.INTERACT), "Tiếng tương tác Interact phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.HEALING), "Tiếng hồi máu Healing phải nạp thành công");
         assertTrue(GameSoundManager.isSoundLoaded(SoundEffect.COIN_PICK_UP), "Tiếng nhặt xu Coin-pick-up phải nạp thành công");
@@ -93,6 +96,15 @@ public class GameSoundManagerTest {
         GameSoundManager.stopReload();
         GameSoundManager.playRandomEnemyDead();
         GameSoundManager.stopEffect(SoundEffect.BOMB_BEEP);
+        GameSoundManager.playCriticalHit();
+    }
+
+    @Test
+    @DisplayName("Kiểm tra âm lượng hiệu ứng chí mạng CRITICAL_HIT được tăng cường đanh giòn")
+    public void testCriticalHitVolumeBoost() {
+        assertEquals(1.35f, SoundEffect.CRITICAL_HIT.getDefaultVolume(), 0.001f, "Âm lượng chí mạng phải được tăng nhẹ lên 1.35x (+35%)");
+        assertEquals(1.0f, SoundEffect.HIT_TARGET.getDefaultVolume(), 0.001f, "Âm lượng đòn đánh thường là 1.0x");
+        GameSoundManager.playCriticalHit();
     }
 
     @Test

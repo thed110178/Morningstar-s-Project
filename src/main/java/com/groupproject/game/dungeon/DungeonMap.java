@@ -20,6 +20,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class DungeonMap {
 
+    public static final int TILE_SIZE = GameConfig.TILE_SIZE;
     public static final int COLS = GameConfig.WORLD_WIDTH / GameConfig.TILE_SIZE; // 80 columns
     public static final int ROWS = GameConfig.WORLD_HEIGHT / GameConfig.TILE_SIZE; // 45 rows
 
@@ -124,13 +125,13 @@ public class DungeonMap {
         }
     }
 
-    public static final CombatRoomArchetype[] COMBAT_ARCHETYPES = new CombatRoomArchetype[] {
-        new CombatRoomArchetype(14, 10, "Tactical Arena", 0),       // 0: Cột trụ 4 góc kiên cố
-        new CombatRoomArchetype(12, 9,  "CQC Bunker", 1),           // 1: Boong-ke 2 Trụ Trung Tâm
-        new CombatRoomArchetype(14, 9,  "Assault Gallery", 2),      // 2: 2 Bức Tường Song Song Phân Làn
-        new CombatRoomArchetype(13, 10, "Crossfire Chamber", 3),    // 3: Công Sự Góc Chữ L
-        new CombatRoomArchetype(13, 9,  "Tactical Killzone", 4),    // 4: Bàn Cờ Đan Xen So Le
-        new CombatRoomArchetype(14, 10, "Divided Bastion", 5)       // 5: Chiến Hào Phân Đôi
+        public static final CombatRoomArchetype[] COMBAT_ARCHETYPES = new CombatRoomArchetype[] {
+        new CombatRoomArchetype(14, 10, "Tactical Arena", 0),       // 0: Trụ Trung Tâm & 4 Vệ Tinh (14x10)
+        new CombatRoomArchetype(12, 9,  "CQC Bunker", 1),           // 1: Boong-ke Đôi Trung Tâm (12x9)
+        new CombatRoomArchetype(14, 9,  "Assault Gallery", 2),      // 2: Chữ Thập Trung Tâm Phân 4 Khu Vực (14x9)
+        new CombatRoomArchetype(13, 10, "Crossfire Chamber", 3),    // 3: Công Sự Chữ L Kép Trung Tâm (13x10)
+        new CombatRoomArchetype(13, 9,  "Tactical Killzone", 4),    // 4: Đảo Chiến Hào Trung Tâm (13x9)
+        new CombatRoomArchetype(14, 10, "Divided Bastion", 5)       // 5: Chiến Tuyến Phân Làn Trung Tâm (14x10)
     };
 
     private static class PlacementChoice {
@@ -1168,21 +1169,24 @@ public class DungeonMap {
         rooms.add(bossRoom);
         carveRoom(bossRoom);
 
-        // 4 Cột trụ che chắn chiến thuật ở 4 góc xa của Boss Arena (không bao quanh lối vào)
-        carvePillar(bossCol + 8, bossRow + 2, 2, 2);
-        carvePillar(bossCol + bossW - 8, bossRow + 2, 2, 2);
-        carvePillar(bossCol + 8, bossRow + bossH - 4, 2, 2);
-        carvePillar(bossCol + bossW - 8, bossRow + bossH - 4, 2, 2);
+        // 4 Cột trụ che chắn chiến thuật được dịch về phía TRUNG TÂM phòng Boss Arena.
+        // WHY: Tăng cự ly từ cột trụ tới tường phòng lên tối thiểu 3 ô sàn (144px).
+        // Nhờ đó cỗ xe tăng Boss (hitbox 84-96px) có hành lang di chuyển thông thoáng 100%,
+        // lách qua thoải mái mà không bao giờ bị kẹt ở các khe hẹp giữa cover và tường phòng!
+        carvePillar(bossCol + 9, bossRow + 4, 2, 2);
+        carvePillar(bossCol + bossW - 11, bossRow + 4, 2, 2);
+        carvePillar(bossCol + 9, bossRow + bossH - 6, 2, 2);
+        carvePillar(bossCol + bossW - 11, bossRow + bossH - 6, 2, 2);
 
-        // Bố trí dày đặc các cụm cover tạm thời (thùng gỗ đạn dược dã chiến - DESTRUCTIBLE_COVER)
-        // Tạo bối cảnh kho quân nhu dã chiến kiên cố, nơi đạn pháo phát nổ bộc phá xuyên qua
-        // và cỗ xe tăng có thể cày nát đâm xuyên qua các hàng thùng gỗ mà không bị dừng lại.
-        carveDestructibleCluster(bossCol + 6, bossRow + 4, 2, 2);
-        carveDestructibleCluster(bossCol + 6, bossRow + bossH - 6, 2, 2);
-        carveDestructibleCluster(bossCol + bossW - 7, bossRow + 4, 2, 2);
-        carveDestructibleCluster(bossCol + bossW - 7, bossRow + bossH - 6, 2, 2);
-        carveDestructibleCluster(bossCol + 12, bossRow + 3, 4, 1);
-        carveDestructibleCluster(bossCol + 12, bossRow + bossH - 4, 4, 1);
+        // Bố trí các cụm cover tạm thời (thùng gỗ đạn dược dã chiến - DESTRUCTIBLE_COVER)
+        // bám liền kề cụm cột trụ trung tâm, bảo lưu toàn bộ vành đai chu vi quanh tường (hành lang >= 3 ô)
+        // thông thoáng tuyệt đối cho xe tăng cơ động tuần tra và lao húc (Ram Rush).
+        carveDestructibleCluster(bossCol + 12, bossRow + 4, 2, 2);
+        carveDestructibleCluster(bossCol + 12, bossRow + bossH - 6, 2, 2);
+        carveDestructibleCluster(bossCol + bossW - 14, bossRow + 4, 2, 2);
+        carveDestructibleCluster(bossCol + bossW - 14, bossRow + bossH - 6, 2, 2);
+        carveDestructibleCluster(bossCol + 7, bossRow + 5, 2, 1);
+        carveDestructibleCluster(bossCol + bossW - 9, bossRow + bossH - 6, 2, 1);
 
         // Sinh thêm 16 ô cover tạm thời ngẫu nhiên rải đều trong Grand Boss Arena (tổng cộng ~36 cover)
         spawnRandomDestructibleCovers(bossRoom, 16);
@@ -1543,6 +1547,34 @@ public class DungeonMap {
      * @param r Tọa độ hàng lưới.
      * @return true nếu ô này nằm gần lối ra vào hoặc tâm phòng.
      */
+    /**
+     * Tìm ô sàn (FLOOR) trống hợp lệ gần nhất xung quanh tọa độ chỉ định.
+     * Đảm bảo các vật phẩm thưởng (Hòm vũ khí, Bệ sơ tán) luôn rơi trên mặt sàn trống mà không bị đè lên cover.
+     *
+     * @param targetCol Cột mục tiêu (ví dụ tâm phòng).
+     * @param targetRow Hàng mục tiêu (ví dụ tâm phòng).
+     * @return Tọa độ [col, row] của ô FLOOR gần nhất, hoặc chính [targetCol, targetRow] nếu đã là FLOOR.
+     */
+    public int[] findNearestFloorTile(int targetCol, int targetRow) {
+        if (isValidGrid(targetCol, targetRow) && tiles[targetCol][targetRow].getType() == TileType.FLOOR) {
+            return new int[]{targetCol, targetRow};
+        }
+        for (int r = 1; r <= 3; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dy = -r; dy <= r; dy++) {
+                    if (Math.abs(dx) == r || Math.abs(dy) == r) {
+                        int c = targetCol + dx;
+                        int row = targetRow + dy;
+                        if (isValidGrid(c, row) && tiles[c][row].getType() == TileType.FLOOR) {
+                            return new int[]{c, row};
+                        }
+                    }
+                }
+            }
+        }
+        return new int[]{targetCol, targetRow};
+    }
+
     public boolean isNearDoorway(Room room, int c, int r) {
         int rx = room.getGridX();
         int ry = room.getGridY();
@@ -1579,11 +1611,6 @@ public class DungeonMap {
             return true;
         }
 
-        // 6. Khu vực tâm phòng: Dành cho giao tranh, bệ sơ tán và hòm tiếp tế
-        if (Math.abs(c - midX) <= 1 && Math.abs(r - midY) <= 1) {
-            return true;
-        }
-
         return false;
     }
 
@@ -1595,6 +1622,26 @@ public class DungeonMap {
      *
      * @param room Phòng chiến đấu cần bố trí cover cứng.
      */
+    /**
+     * Kiểm tra xem ô gạch (c, r) có nằm trong khu vực trung tâm tuyệt đối của căn phòng hay không.
+     * Khu vực này dành cho điểm rơi tiếp tế và đảm bảo tâm buồng tác chiến luôn thông thoáng để di chuyển.
+     *
+     * @param room Phòng cần kiểm tra.
+     * @param c Tọa độ cột lưới.
+     * @param r Tọa độ hàng lưới.
+     * @return true nếu ô này nằm trong vùng tâm phòng (bán kính 1 ô quanh tâm).
+     */
+    public boolean isNearCenter(Room room, int c, int r) {
+        if (room == null) return false;
+        int rx = room.getGridX();
+        int ry = room.getGridY();
+        int rw = room.getWidthInTiles();
+        int rh = room.getHeightInTiles();
+        int midX = rx + rw / 2;
+        int midY = ry + rh / 2;
+        return Math.abs(c - midX) <= 1 && Math.abs(r - midY) <= 1;
+    }
+
     public void spawnSolidCovers(Room room) {
         if (room == null || room.getRoomType() != Room.RoomType.COMBAT) return;
 
@@ -1606,63 +1653,80 @@ public class DungeonMap {
         int layout = room.getCoverLayout();
         List<int[]> candidates = new ArrayList<>();
 
+                int midX = rx + rw / 2;
+        int midY = ry + rh / 2;
+
         switch (layout) {
-            case 1: // CENTRAL_BARRICADES (Boong-ke 2 Trụ Trung Tâm - CQC Bunker)
+            case 1: // CQC_BUNKER: Boong-ke Đôi Trung Tâm Đối Xứng (Hành lang CQC trung tâm)
+                // 2 rào chắn kiên cố đặt ngay tại TRUNG TÂM phòng đối xứng 2 bên trục giữa
+                candidates.add(new int[]{midX - 2, midY - 1});
+                candidates.add(new int[]{midX - 2, midY + 1});
+                candidates.add(new int[]{midX + 2, midY - 1});
+                candidates.add(new int[]{midX + 2, midY + 1});
+                // 2 ụ che chắn góc chéo
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                break;
+
+            case 2: // ASSAULT_GALLERY: Chữ Thập Trung Tâm Phân 4 Khu Vực
+                // 4 trụ cover kiên cố bao quanh tâm phòng tạo thành ngã tư bắn tỉa trung tâm
+                candidates.add(new int[]{midX - 2, midY});
+                candidates.add(new int[]{midX + 2, midY});
+                candidates.add(new int[]{midX, midY - 2});
+                candidates.add(new int[]{midX, midY + 2});
+                // 2 ụ cánh phụ
+                candidates.add(new int[]{rx + 3, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + 2});
+                break;
+
+            case 3: // CROSSFIRE_CHAMBER: Công Sự Chữ L Kép Trung Tâm
+                // 2 công sự chữ L kiên cố ôm lấy khu vực trung tâm phòng (chừa ô tâm midX, midY)
+                candidates.add(new int[]{midX - 2, midY - 1});
+                candidates.add(new int[]{midX - 1, midY - 1});
+                candidates.add(new int[]{midX - 2, midY});
+                candidates.add(new int[]{midX + 2, midY + 1});
+                candidates.add(new int[]{midX + 1, midY + 1});
+                candidates.add(new int[]{midX + 2, midY});
+                // 2 ụ góc ngoài
+                candidates.add(new int[]{rx + 3, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 4, ry + 2});
+                break;
+
+            case 4: // TACTICAL_KILLZONE: Đảo Chiến Hào Trung Tâm
+                // Đảo cover trung tâm tạo 2 hốc nấp chiến lược
+                candidates.add(new int[]{midX - 1, midY - 1});
+                candidates.add(new int[]{midX + 1, midY - 1});
+                candidates.add(new int[]{midX - 1, midY + 1});
+                candidates.add(new int[]{midX + 1, midY + 1});
+                // 2 ụ vệ tinh hai bên sườn
+                candidates.add(new int[]{rx + 3, ry + 2});
+                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                break;
+
+            case 5: // DIVIDED_BASTION: Chiến Tuyến Phân Làn Trung Tâm
+                // Hai bờ tường chắn kiên cố kéo dài ở trung tâm theo trục ngang (chừa khe giữa tâm)
+                candidates.add(new int[]{midX - 3, midY});
+                candidates.add(new int[]{midX - 2, midY});
+                candidates.add(new int[]{midX + 2, midY});
+                candidates.add(new int[]{midX + 3, midY});
+                // 4 ụ nấp góc xa
                 candidates.add(new int[]{rx + 3, ry + 2});
                 candidates.add(new int[]{rx + rw - 4, ry + 2});
                 candidates.add(new int[]{rx + 3, ry + rh - 3});
                 candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
-                candidates.add(new int[]{rx + 4, ry + 2});
-                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
                 break;
 
-            case 2: // PARALLEL_DEFENSIVE_WALLS (Bức Tường Song Song Phân Làn - Assault Gallery)
-                candidates.add(new int[]{rx + 3, ry + 2});
-                candidates.add(new int[]{rx + 4, ry + 2});
-                candidates.add(new int[]{rx + 5, ry + 2});
-                candidates.add(new int[]{rx + rw - 6, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
-                break;
-
-            case 3: // L_SHAPED_FORTRESS (Công Sự Góc Chữ L - Crossfire Chamber)
-                // L-shape ở góc Tây Bắc
-                candidates.add(new int[]{rx + 3, ry + 2});
-                candidates.add(new int[]{rx + 4, ry + 2});
-                candidates.add(new int[]{rx + 3, ry + 3});
-                // L-shape ở góc Đông Nam
-                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 4, ry + rh - 4});
-                break;
-
-            case 4: // SCATTERED_CHECKERBOARD (Bàn Cờ Đan Xen So Le - Tactical Killzone)
-                candidates.add(new int[]{rx + 3, ry + 2});
-                candidates.add(new int[]{rx + rw - 4, ry + 2});
-                candidates.add(new int[]{rx + 4, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
-                candidates.add(new int[]{rx + 3, ry + rh - 4});
-                candidates.add(new int[]{rx + rw - 4, ry + 3});
-                break;
-
-            case 5: // DIVIDED_BASTION (Chiến Hào Phân Đôi - Divided Bastion)
-                // Hai cặp trụ đôi song lập ở cánh trái và cánh phải
-                candidates.add(new int[]{rx + 3, ry + 2});
-                candidates.add(new int[]{rx + 4, ry + 2});
-                candidates.add(new int[]{rx + rw - 5, ry + 2});
-                candidates.add(new int[]{rx + rw - 4, ry + 2});
-                candidates.add(new int[]{rx + 3, ry + rh - 3});
-                candidates.add(new int[]{rx + 4, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 5, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
-                break;
-
-            case 0: // CORNER_PILLARS (Cột Trụ 4 Góc Kiên Cố - Tactical Arena)
+            case 0: // TACTICAL_ARENA: Cột Trụ Trung Tâm Chỉ Huy & 4 Vệ Tinh Ngoại Vi
             default:
-                candidates.add(new int[]{rx + 3, ry + 2});
-                candidates.add(new int[]{rx + rw - 4, ry + 2});
-                candidates.add(new int[]{rx + 3, ry + rh - 3});
-                candidates.add(new int[]{rx + rw - 4, ry + rh - 3});
+                // Cặp trụ chỉ huy kiên cố ở khu vực trung tâm phòng
+                candidates.add(new int[]{midX, midY - 2});
+                candidates.add(new int[]{midX, midY + 2});
+                candidates.add(new int[]{midX + 2, midY});
+                // 4 Trụ Vệ Tinh ở 4 góc phòng
+                candidates.add(new int[]{rx + 2, ry + 2});
+                candidates.add(new int[]{rx + rw - 3, ry + 2});
+                candidates.add(new int[]{rx + 2, ry + rh - 3});
+                candidates.add(new int[]{rx + rw - 3, ry + rh - 3});
                 break;
         }
 
@@ -1695,7 +1759,7 @@ public class DungeonMap {
         for (int c = rx + 1; c < rx + rw - 1; c++) {
             for (int r = ry + 1; r < ry + rh - 1; r++) {
                 if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
-                    if (!isNearDoorway(room, c, r)) {
+                    if (!isNearDoorway(room, c, r) && !isNearCenter(room, c, r)) {
                         candidates.add(new int[]{c, r});
                     }
                 }
@@ -1730,7 +1794,7 @@ public class DungeonMap {
         for (int c = rx + 1; c < rx + rw - 1; c++) {
             for (int r = ry + 1; r < ry + rh - 1; r++) {
                 if (isValidGrid(c, r) && tiles[c][r].getType() == TileType.FLOOR) {
-                    if (!isNearDoorway(room, c, r)) {
+                    if (!isNearDoorway(room, c, r) && !isNearCenter(room, c, r)) {
                         candidates.add(new int[]{c, r});
                     }
                 }

@@ -1,6 +1,7 @@
 package com.groupproject.game.core;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -67,7 +68,7 @@ public final class GameSoundManager {
         BUY_COMPLETE("buy_complete.wav", 6),
         BUY_FAILED("buy_failed.wav", 6),
         COIN_PICK_UP("coin_pick_up.wav", 8),
-        CRITICAL_HIT("critcal_hit.wav", 10),
+        CRITICAL_HIT("critcal_hit.wav", 10, 1.35f), // Tăng âm lượng chí mạng (+35%) đanh giòn, sắc nét giữa tiếng súng
         DODGE("dodge.wav", 6),
         ENEMY_BOSS_CHARGE_WARNING("enemy_boss_charge_warning.wav", 4),
         ENEMY_BOSS_EXPLOSION("enemy_boss_explosion.wav", 6),
@@ -91,6 +92,9 @@ public final class GameSoundManager {
         GUN_SCR_DRAW("gun_scr_draw.wav", 2),
         GUN_SCR_RELOAD("gun_scr_reload.wav", 2),
         GUN_SCR_SHOOT("gun_scr_shoot.wav", 8),
+        GUN_SAS_DRAW("gun_SAS_draw.mp3", 2),
+        GUN_SAS_RELOAD("gun_SAS_reload.mp3", 2),
+        GUN_SAS_SHOOT("gun_SAS_shoot.mp3", 10),
         GUN_SHOTGUN_DRAW("gun_shotgun_draw.wav", 2),
         GUN_SHOTGUN_LOADING_AMMO("gun_shotgun_loadingAmmo.wav", 6), // Tiếng bơm tay lên đạn sau mỗi phát bắn của Shotgun (0.75s)
         GUN_SHOTGUN_RELOAD("gun_shotgun_reload.wav", 8), // Súng shotgun nạp từng viên: 8 kênh độc lập
@@ -115,15 +119,25 @@ public final class GameSoundManager {
         private final String filename;
         private final int poolSize;
         private final boolean optional;
+        private final float defaultVolume;
 
         SoundEffect(String filename, int poolSize) {
-            this(filename, poolSize, false);
+            this(filename, poolSize, false, 1.0f);
+        }
+
+        SoundEffect(String filename, int poolSize, float defaultVolume) {
+            this(filename, poolSize, false, defaultVolume);
         }
 
         SoundEffect(String filename, int poolSize, boolean optional) {
+            this(filename, poolSize, optional, 1.0f);
+        }
+
+        SoundEffect(String filename, int poolSize, boolean optional, float defaultVolume) {
             this.filename = filename;
             this.poolSize = poolSize;
             this.optional = optional;
+            this.defaultVolume = defaultVolume;
         }
 
         public String getFilename() {
@@ -136,6 +150,10 @@ public final class GameSoundManager {
 
         public boolean isOptional() {
             return optional;
+        }
+
+        public float getDefaultVolume() {
+            return defaultVolume;
         }
     }
 
@@ -425,7 +443,7 @@ public final class GameSoundManager {
             byte[] data = loadSoundData(effect.getFilename());
             if (data != null && data.length > 0) {
                 SOUND_DATA.put(effect, data);
-                short[] pcm = decodeWavToPcmShorts(data);
+                short[] pcm = decodeAudioToPcmShorts(effect.getFilename(), data);
                 if (pcm != null && pcm.length > 0) {
                     PCM_SAMPLES.put(effect, pcm);
                 }
@@ -441,6 +459,72 @@ public final class GameSoundManager {
     /**
      * Giải mã mảng byte của tệp WAV chuẩn 16-bit Little-Endian sang mảng mẫu short[].
      */
+    /**
+     * Tự động giải mã tệp âm thanh (hỗ trợ cả WAV và MP3 qua JLayer) sang mảng mẫu PCM short[] 16-bit.
+     */
+    private static short[] decodeAudioToPcmShorts(String filename, byte[] fileBytes) {
+        if (filename != null && filename.toLowerCase().endsWith(".mp3")) {
+            short[] mp3Pcm = decodeMp3ToPcmShorts(fileBytes);
+            if (mp3Pcm != null && mp3Pcm.length > 0) {
+                return mp3Pcm;
+            }
+        }
+        short[] wavPcm = decodeWavToPcmShorts(fileBytes);
+        if (wavPcm != null && wavPcm.length > 0) {
+            return wavPcm;
+        }
+        return decodeMp3ToPcmShorts(fileBytes);
+    }
+
+    /**
+     * Giải mã dữ liệu MP3 thành mảng mẫu short[] PCM 16-bit Stereo thông qua thư viện JLayer.
+     */
+    private static short[] decodeMp3ToPcmShorts(byte[] mp3Bytes) {
+        if (mp3Bytes == null || mp3Bytes.length == 0) {
+            return null;
+        }
+        try {
+            Bitstream bitstream = new Bitstream(new ByteArrayInputStream(mp3Bytes));
+            Decoder decoder = new Decoder();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Header header;
+            while ((header = bitstream.readFrame()) != null) {
+                SampleBuffer sb = (SampleBuffer) decoder.decodeFrame(header, bitstream);
+                int len = sb.getBufferLength();
+                int ch = sb.getChannelCount();
+                short[] buf = sb.getBuffer();
+                if (ch == 1) {
+                    for (int i = 0; i < len; i++) {
+                        short s = buf[i];
+                        baos.write(s & 0xFF);
+                        baos.write((s >> 8) & 0xFF);
+                        baos.write(s & 0xFF);
+                        baos.write((s >> 8) & 0xFF);
+                    }
+                } else if (ch >= 2) {
+                    for (int i = 0; i < len; i++) {
+                        short s = buf[i];
+                        baos.write(s & 0xFF);
+                        baos.write((s >> 8) & 0xFF);
+                    }
+                }
+                bitstream.closeFrame();
+            }
+            bitstream.close();
+            byte[] rawPcm = baos.toByteArray();
+            int sampleCount = rawPcm.length / 2;
+            short[] shorts = new short[sampleCount];
+            for (int i = 0; i < sampleCount; i++) {
+                int lo = rawPcm[i * 2] & 0xFF;
+                int hi = rawPcm[i * 2 + 1];
+                shorts[i] = (short) ((hi << 8) | lo);
+            }
+            return shorts;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private static short[] decodeWavToPcmShorts(byte[] wavFileBytes) {
         try (AudioInputStream ais = AudioSystem.getAudioInputStream(new ByteArrayInputStream(wavFileBytes))) {
             byte[] rawPcm = ais.readAllBytes();
@@ -757,7 +841,15 @@ public final class GameSoundManager {
      * @param volumeFactor Hệ số âm lượng riêng của đợt phát này.
      */
     public static void play(SoundEffect sfx, float volumeFactor) {
-        enqueueVoice(sfx, volumeFactor, false);
+        if (sfx == null) return;
+        enqueueVoice(sfx, sfx.getDefaultVolume() * volumeFactor, false);
+    }
+
+    /**
+     * Phát âm thanh đòn đánh chí mạng (Critical Hit) với âm lượng đanh rõ, nổi bật giữa tiếng súng.
+     */
+    public static void playCriticalHit() {
+        play(SoundEffect.CRITICAL_HIT);
     }
 
     private static void enqueueVoice(SoundEffect sfx, float volumeFactor, boolean reloadChannel) {
@@ -865,7 +957,8 @@ public final class GameSoundManager {
                     || voice.effect == SoundEffect.GUN_PISTOL_RELOAD
                     || voice.effect == SoundEffect.GUN_SCR_RELOAD
                     || voice.effect == SoundEffect.GUN_SNIPER_RELOAD
-                    || voice.effect == SoundEffect.GUN_SMG_RELOAD)) {
+                    || voice.effect == SoundEffect.GUN_SMG_RELOAD
+                    || voice.effect == SoundEffect.GUN_SAS_RELOAD)) {
                 voice.stopped = true;
             }
         }

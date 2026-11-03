@@ -23,6 +23,7 @@ public class HealthPickup {
      * Kích cỡ và định lượng hồi phục của Hộp Cứu Thương.
      */
     public enum HealthSize {
+        BANDAGE(10, "BĂNG GẠC CỨU THƯƠNG", "+10 HP", new Color(130, 240, 180)),
         SMALL(25, "HỘP SƠ CỨU NHỎ", "+25 HP", new Color(60, 230, 120)),
         LARGE(50, "HỘP CỨU THƯƠNG LỚN", "+50 HP", new Color(255, 215, 60));
 
@@ -134,38 +135,59 @@ public class HealthPickup {
 
         // 2. Vòng hào quang xanh lục bích chữa lành (Healing Aura)
         float pulse = (float) (Math.sin(bobbingTimer * 1.5) * 0.3 + 0.7);
-        int auraRadius = size == HealthSize.LARGE ? 22 : 18;
+        int auraRadius = size == HealthSize.LARGE ? 22 : (size == HealthSize.BANDAGE ? 14 : 18);
         g.setColor(new Color(50, 230, 120, (int) (40 * pulse)));
         g.fillOval(screenX - auraRadius, drawY - auraRadius, auraRadius * 2, auraRadius * 2);
 
-        // 3. Hộp Cứu Thương Kim Loại Quân Sự (Nanite Medkit Case)
-        int boxW = size == HealthSize.LARGE ? 28 : 24;
-        int boxH = size == HealthSize.LARGE ? 24 : 20;
+        // 3. Hộp Cứu Thương / Cuộn Băng Gạc
+        int boxW = size == HealthSize.LARGE ? 28 : (size == HealthSize.BANDAGE ? 18 : 24);
+        int boxH = size == HealthSize.LARGE ? 24 : (size == HealthSize.BANDAGE ? 16 : 20);
         int boxX = screenX - boxW / 2;
         int boxY = drawY - boxH / 2;
 
-        // Thân hộp bọc composite trắng ngà / xám quân sự
-        g.setColor(new Color(240, 245, 248));
-        g.fillRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+        if (size == HealthSize.BANDAGE) {
+            // Render Cuộn Băng Gạc (Bandage Roll)
+            g.setColor(new Color(248, 250, 252));
+            g.fillRoundRect(boxX, boxY, boxW, boxH, 8, 8);
 
-        // Viền kim loại công nghệ cao (Xanh ngọc lục bảo hoặc Vàng kim cho Hộp Lớn)
-        g.setColor(size.getAccentColor());
-        g.setStroke(new BasicStroke(1.8f));
-        g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
-        g.setStroke(new BasicStroke(1.0f));
+            g.setColor(size.getAccentColor());
+            g.setStroke(new BasicStroke(1.4f));
+            g.drawRoundRect(boxX, boxY, boxW, boxH, 8, 8);
+            g.setStroke(new BasicStroke(1.0f));
 
-        // Quai xách kim loại
-        g.setColor(new Color(120, 130, 145));
-        g.drawRoundRect(boxX + boxW / 2 - 4, boxY - 3, 8, 4, 2, 2);
+            // Dải băng quấn dã chiến
+            g.setColor(new Color(210, 225, 235));
+            g.fillRect(boxX + 4, boxY + 3, boxW - 8, 3);
+            g.fillRect(boxX + 4, boxY + boxH - 6, boxW - 8, 3);
 
-        // 4. Biểu tượng Dấu Thập Y Tế Chữa Lành (Medical Cross)
-        g.setColor(new Color(40, 200, 90));
-        int crossW = 4;
-        int crossL = 10;
-        // Thanh ngang
-        g.fillRect(screenX - crossL / 2, drawY - crossW / 2, crossL, crossW);
-        // Thanh dọc
-        g.fillRect(screenX - crossW / 2, drawY - crossL / 2, crossW, crossL);
+            // Dấu thập y tế nhỏ
+            g.setColor(new Color(50, 210, 110));
+            g.fillRect(screenX - 3, drawY - 1, 6, 2);
+            g.fillRect(screenX - 1, drawY - 3, 2, 6);
+        } else {
+            // Thân hộp bọc composite trắng ngà / xám quân sự
+            g.setColor(new Color(240, 245, 248));
+            g.fillRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+
+            // Viền kim loại công nghệ cao (Xanh ngọc lục bảo hoặc Vàng kim cho Hộp Lớn)
+            g.setColor(size.getAccentColor());
+            g.setStroke(new BasicStroke(1.8f));
+            g.drawRoundRect(boxX, boxY, boxW, boxH, 6, 6);
+            g.setStroke(new BasicStroke(1.0f));
+
+            // Quai xách kim loại
+            g.setColor(new Color(120, 130, 145));
+            g.drawRoundRect(boxX + boxW / 2 - 4, boxY - 3, 8, 4, 2, 2);
+
+            // 4. Biểu tượng Dấu Thập Y Tế Chữa Lành (Medical Cross)
+            g.setColor(new Color(40, 200, 90));
+            int crossW = 4;
+            int crossL = 10;
+            // Thanh ngang
+            g.fillRect(screenX - crossL / 2, drawY - crossW / 2, crossL, crossW);
+            // Thanh dọc
+            g.fillRect(screenX - crossW / 2, drawY - crossL / 2, crossW, crossL);
+        }
 
         // 5. Nhãn chỉ số nhỏ lơ lửng (+25 HP / +50 HP)
         g.setFont(com.groupproject.game.core.GameFontManager.getSmallBoldFont(10.0f));

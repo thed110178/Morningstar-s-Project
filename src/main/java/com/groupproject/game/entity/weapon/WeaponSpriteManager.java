@@ -41,6 +41,7 @@ public final class WeaponSpriteManager {
     public static final String SPRITE_PISTOL = "Pistol.png";
     public static final String SPRITE_KNIFE = "Knife.png";
     public static final String SPRITE_SEMI_CARBINE = "SemiCarbineRifle.png";
+    public static final String SPRITE_SEMI_AUTO_SHOTGUN = "Semi-auto Shotgun.png";
 
     static {
         loadAllSprites();
@@ -61,6 +62,7 @@ public final class WeaponSpriteManager {
         loadSprite(SPRITE_PISTOL);
         loadSprite(SPRITE_KNIFE);
         loadSprite(SPRITE_SEMI_CARBINE);
+        loadSprite(SPRITE_SEMI_AUTO_SHOTGUN);
     }
 
     /**
@@ -135,6 +137,8 @@ public final class WeaponSpriteManager {
             return getSprite(SPRITE_KNIFE);
         } else if (weapon instanceof SemiCarbineRifle) {
             return getSprite(SPRITE_SEMI_CARBINE);
+        } else if (weapon instanceof SemiAutoShotgun) {
+            return getSprite(SPRITE_SEMI_AUTO_SHOTGUN);
         }
         return null;
     }
@@ -257,6 +261,16 @@ public final class WeaponSpriteManager {
             g.fillRect(centerX + 8, centerY - 3, 10, 3);
             g.setColor(new Color(210, 225, 235));
             g.fillRect(centerX + 18, centerY - 3, 3, 4);
+        } else if (weapon instanceof SemiAutoShotgun) {
+            // Súng săn bán tự động SAS: Thân xám kim loại chắc nịch, nòng bọc tản nhiệt, hộp tiếp đạn đỏ đô nổi bật
+            g.setColor(new Color(60, 64, 72));
+            g.fillRect(centerX - 14, centerY - 4, 26, 6);
+            g.setColor(new Color(180, 30, 30)); // Hộp tiếp đạn đỏ đô
+            g.fillRect(centerX - 2, centerY + 2, 6, 8);
+            g.setColor(new Color(30, 32, 36)); // Báng và tay cầm
+            g.fillRect(centerX - 12, centerY + 2, 5, 6);
+            g.setColor(new Color(240, 100, 30)); // Đầu nòng lửa
+            g.fillRect(centerX + 12, centerY - 3, 3, 4);
         }
     }
 }

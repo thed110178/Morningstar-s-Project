@@ -71,7 +71,7 @@ public enum CharacterBuff {
     KILL_HEAL(
             BuffCategory.SPECIAL,
             "DIỆT ĐỊCH HỒI MÁU",
-            "Hồi ngay +2.5 HP sinh lực với mỗi kẻ địch bị tiêu diệt.",
+            "Hồi ngay +1 HP sinh lực với mỗi kẻ địch bị tiêu diệt.",
             120,
             1
     ),

@@ -371,6 +371,14 @@ public abstract class Weapon {
         return Math.max(0.0, reloadTimer);
     }
 
+    public double getReloadDuration() {
+        return reloadDuration;
+    }
+
+    public void setCooldownTimer(double cooldownTimer) {
+        this.cooldownTimer = Math.max(0.0, cooldownTimer);
+    }
+
     public boolean isMelee() {
         return magazineSize == 0;
     }
@@ -637,6 +645,8 @@ public abstract class Weapon {
             return prefix + "SR " + lvl;
         } else if (this instanceof SemiCarbineRifle) {
             return prefix + "SCR " + lvl;
+        } else if (this instanceof SemiAutoShotgun) {
+            return prefix + "SAS " + lvl;
         } else if (this instanceof Pistol) {
             return prefix + "Pistol " + lvl;
         } else {
@@ -991,24 +1001,27 @@ public abstract class Weapon {
         int roll = ThreadLocalRandom.current().nextInt(100);
         if (roll < 5) {
             // 5% tỉ lệ súng Hạng S siêu hiếm (S-Tier Legendary)
-            int sWeaponType = ThreadLocalRandom.current().nextInt(5);
+            int sWeaponType = ThreadLocalRandom.current().nextInt(6);
             Weapon sWeapon = switch (sWeaponType) {
                 case 0 -> new SMG();
                 case 1 -> new AssaultRifle();
                 case 2 -> new Shotgun();
                 case 3 -> new SemiCarbineRifle();
+                case 4 -> new SemiAutoShotgun();
                 default -> new SniperRifle();
             };
             sWeapon.applySTierUpgrade();
             return sWeapon;
-        } else if (roll < 35) { // 30% tỉ lệ rơi SMG
+        } else if (roll < 30) { // 30% tỉ lệ rơi SMG
             return new SMG();
-        } else if (roll < 60) { // 25% tỉ lệ rơi Assault Rifle
+        } else if (roll < 52) { // 25% tỉ lệ rơi Assault Rifle
             return new AssaultRifle();
-        } else if (roll < 80) { // 20% tỉ lệ rơi Semi-Carbine Rifle (SCR)
+        } else if (roll < 70) { // 20% tỉ lệ rơi Semi-Carbine Rifle (SCR)
             return new SemiCarbineRifle();
-        } else if (roll < 92) { // 12% tỉ lệ rơi Shotgun
+        } else if (roll < 82) { // 12% tỉ lệ rơi Shotgun
             return new Shotgun();
+        } else if (roll < 93) {
+            return new SemiAutoShotgun();
         } else { // 8% tỉ lệ súng bắn tỉa Sniper Rifle (quý hiếm, uy lực cực cao)
             return new SniperRifle();
         }

@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 20/10/2026
+Cập nhật mới nhất vào ngày: 03/11/2026
 
 # Hệ Thống Nâng Cấp & Cường Hóa Nhân Vật (Character Upgrade & Buffs System)
 
@@ -35,8 +35,8 @@ Hệ thống mang đậm phong cách Roguelite:
    - Tác dụng: Khiên năng lượng hấp thụ chặn đứng 100% sát thương của 1 đòn đánh bất kỳ (kể cả pháo Boss hay bộc phá).
    - Cơ chế hồi phục: Tự động hồi phục sau `10.0 giây` hồi chiêu kể từ khi vỡ khiên.
 2. **DIỆT ĐỊCH HỒI MÁU (`KILL_HEAL`)**:
-   - Tác dụng: Hồi phục `2.5 HP` cho mỗi mạng kẻ địch bị tiêu diệt.
-   - Cơ chế tích lũy phần lẻ: Địch 1 hồi 2 HP (dư 0.5), địch 2 hồi 3 HP (đủ 5 HP sau 2 mạng diệt).
+   - Tác dụng: Hồi phục `1 HP` sinh lực cho mỗi mạng kẻ địch bị tiêu diệt (Đã cân bằng nerf từ +2.5 HP xuống cố định +1 HP/kill).
+   - Cơ chế tức thời: Mỗi kẻ địch bị tiêu diệt lập tức hồi phục ngay +1 HP trực tiếp vào thanh sinh lực người chơi.
 3. **NÉ QUA VẬT CẢN (`PHASE_DODGE`)**:
    - Tác dụng: Khi kích hoạt lướt né [SPACE], người chơi có thể lướt đi xuyên qua mọi vật cản địa hình (tường, cửa, thùng che chắn).
 4. **THU NHỎ HITBOX (`SHRINK_HITBOX`)**:
@@ -79,7 +79,7 @@ Hệ thống mang đậm phong cách Roguelite:
 - `getDamageReduction()`: Tỉ lệ giảm sát thương (0.0 -> 0.30).
 - `getDodgeCooldownFactor()`: Hệ số rút ngắn hồi chiêu né (1.0 -> 1.5).
 - `checkAndConsumeBarrier()`: Kiểm tra và tiêu hao khiên chặn đòn 10s CD.
-- `onEnemyKilled()`: Tích lũy 2.5 HP khi diệt địch và trả về lượng máu chẵn cần hồi.
+- `onEnemyKilled()`: Trả về lượng máu hồi phục (+1 HP) khi người chơi tiêu diệt 1 kẻ địch.
 - `hasPhaseDodge()`: Kiểm tra né xuyên vật cản.
 - `getHitboxScale()`: Trả về tỉ lệ thu nhỏ hitbox (1.0 hoặc 0.70).
 - `getCritChanceBonus()`: Trả về tỉ lệ crit cộng thêm (+15%).
@@ -112,3 +112,6 @@ Hệ thống mang đậm phong cách Roguelite:
   - Phân tách thành 2 trạm bệ máy riêng biệt: Trạm Chỉ Số Cơ Bản và Trạm Kỹ Năng Đặc Biệt.
   - Cân bằng theo phản hồi người dùng: Loại bỏ buff Hóa máu thành giáp, điều chỉnh diệt địch hồi 2.5 HP, điều chỉnh crit +15%, loại bỏ các loại súng chưa có (MG/Sniper).
   - Hoàn thiện 9 bài Unit Test tự động trong `CharacterBuffSystemTest.java`.
+- **03/11/2026**:
+  - Cân bằng lại kỹ năng đặc biệt "Diệt Địch Hồi Máu" (`KILL_HEAL`): Giảm hiệu ứng (Nerf) từ +2.5 HP/kill (tích lũy lẻ) xuống cố định **+1 HP/kill**.
+  - Tối ưu cân bằng độ khó, tránh việc người chơi hồi máu quá nhanh khi đối mặt với số lượng đông kẻ địch trong hầm ngục, khuyến khích giữ vị trí và sử dụng Băng Gạc Cứu Thương (Bandage) kết hợp chiến thuật né đòn.

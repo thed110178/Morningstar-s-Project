@@ -13,6 +13,7 @@ import com.groupproject.game.entity.projectile.ProjectileManager;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.SMG;
 import com.groupproject.game.entity.weapon.SemiCarbineRifle;
+import com.groupproject.game.entity.weapon.SemiAutoShotgun;
 import com.groupproject.game.entity.weapon.Shotgun;
 import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
@@ -173,9 +174,11 @@ public class HubRangeState extends GameState {
                 WeaponSpriteManager.SPRITE_SMG, SMG::new));
         stations.add(new WeaponRackStation(1020, 860, "Shotgun", "Shotgun",
                 WeaponSpriteManager.SPRITE_SHOTGUN, Shotgun::new));
-        stations.add(new WeaponRackStation(1150, 860, "SCR", "Semi-Carbine",
+        stations.add(new WeaponRackStation(1150, 860, "SAS", "Semi-auto Shotgun",
+                WeaponSpriteManager.SPRITE_SEMI_AUTO_SHOTGUN, SemiAutoShotgun::new));
+        stations.add(new WeaponRackStation(1280, 860, "SCR", "Semi-Carbine",
                 WeaponSpriteManager.SPRITE_SEMI_CARBINE, SemiCarbineRifle::new));
-        stations.add(new WeaponRackStation(1280, 860, "Sniper", "Sniper Rifle",
+        stations.add(new WeaponRackStation(1410, 860, "Sniper", "Sniper Rifle",
                 WeaponSpriteManager.SPRITE_SNIPER, SniperRifle::new));
 
         // Center camera vào người chơi

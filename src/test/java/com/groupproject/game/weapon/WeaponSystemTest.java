@@ -1427,8 +1427,8 @@ public class WeaponSystemTest {
         assertEquals(1, sr.getFireRateStars());
         assertEquals(1, sr.getPierceStars());
         assertEquals(1, sr.getMaxPierces(), "Base penetration must allow 1 pierce (hitting up to 2 targets)");
-        assertEquals(0.40, sr.getPierceDamageFalloff(), 0.001, "Base damage falloff must be 40%");
-        assertEquals(40, sr.getPierceFalloffPercent());
+        assertEquals(0.50, sr.getPierceDamageFalloff(), 0.001, "Base damage falloff must be 50% (nerfed)");
+        assertEquals(50, sr.getPierceFalloffPercent());
         assertFalse(sr.isAutomatic(), "Bolt-action sniper rifle must not be automatic");
 
         // 2. Kiểm tra bắn đạn sinh Projectile có thuộc tính xuyên phá
@@ -1441,7 +1441,7 @@ public class WeaponSystemTest {
         Projectile bullet = pm.getActiveProjectiles().get(0);
         assertTrue(bullet.isPiercing(), "Sniper bullet must be marked as piercing");
         assertEquals(1, bullet.getRemainingPierces());
-        assertEquals(0.40, bullet.getPierceDamageFalloff(), 0.001);
+        assertEquals(0.50, bullet.getPierceDamageFalloff(), 0.001);
         int initialDmg = bullet.getDamage();
         assertTrue(initialDmg >= 95, "Fired damage must be at least base 95");
 
@@ -1455,7 +1455,7 @@ public class WeaponSystemTest {
         assertTrue(bullet.isActive(), "Bullet must remain active after 1st pierce");
         assertEquals(0, bullet.getRemainingPierces());
         int dmgAfter1 = bullet.getDamage();
-        assertEquals(Math.max(1, (int) Math.round(initialDmg * 0.60)), dmgAfter1);
+        assertEquals(Math.max(1, (int) Math.round(initialDmg * 0.50)), dmgAfter1);
 
         // Mục tiêu 1 không thể bị bắn trúng lần 2 bởi cùng viên đạn
         assertFalse(bullet.canHit(dummy1));
@@ -1469,11 +1469,18 @@ public class WeaponSystemTest {
         assertFalse(bullet.canHit(dummy3));
 
         // 4. Kiểm tra thăng sao Độ Xuyên (AccuracyStars/PierceStars)
-        sr.setPierceStars(3); // Thăng lên 3 sao độ xuyên
+        sr.setPierceStars(3); // Thăng lên 3 sao độ xuyên (cần 3 cấp sao mới tăng pierce)
         assertEquals(3, sr.getPierceStars());
-        assertEquals(2, sr.getMaxPierces(), "3-star pierce must allow 2 penetrations");
-        assertEquals(0.30, sr.getPierceDamageFalloff(), 0.001, "3-star pierce damage falloff must decrease to 30%");
-        assertEquals(30, sr.getPierceFalloffPercent());
+        assertEquals(1, sr.getMaxPierces(), "3-star pierce still maintains 1 pierce under 3-level rule");
+        assertEquals(0.42, sr.getPierceDamageFalloff(), 0.001, "3-star pierce damage falloff must decrease to 42%");
+        assertEquals(42, sr.getPierceFalloffPercent());
+
+        // Lên 4 sao (sau 3 cấp nâng) mới tăng lên 2 lần xuyên
+        sr.setPierceStars(4);
+        assertEquals(4, sr.getPierceStars());
+        assertEquals(2, sr.getMaxPierces(), "4-star pierce increases to 2 penetrations");
+        assertEquals(0.38, sr.getPierceDamageFalloff(), 0.001, "4-star pierce damage falloff must decrease to 38%");
+        assertEquals(38, sr.getPierceFalloffPercent());
     }
 
     @Test
@@ -1577,7 +1584,7 @@ public class WeaponSystemTest {
         assertEquals(1, sr.getPierceStars());
         assertEquals(1, sr.getAccuracyStars());
         assertEquals(SniperRifle.BASE_PIERCES, sr.getMaxPierces(), "Base pierces must be 1");
-        assertEquals(40, sr.getPierceFalloffPercent(), "Base falloff must be 40%");
+        assertEquals(50, sr.getPierceFalloffPercent(), "Base falloff must be 50% (nerfed)");
 
         // 3. Nâng cấp nhánh Sức Xuyên (ACCURACY) lên 2 sao
         String upgraded1 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
@@ -1585,15 +1592,23 @@ public class WeaponSystemTest {
         assertEquals(2, sr.getLevel());
         assertEquals(2, sr.getPierceStars());
         assertEquals(1, sr.getMaxPierces(), "Level 2 Pierce star maintains 1 pierce with reduced falloff");
-        assertEquals(35, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 35%");
+        assertEquals(46, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 46%");
 
-        // 4. Nâng cấp tiếp nhánh Sức Xuyên lần 2 lên 3 sao
+        // 4. Nâng cấp tiếp nhánh Sức Xuyên lần 2 lên 3 sao (chưa đủ 3 cấp, vẫn duy trì 1 lần xuyên)
         String upgraded2 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
         assertEquals("SỨC XUYÊN (PIERCE)", upgraded2);
         assertEquals(3, sr.getLevel());
         assertEquals(3, sr.getPierceStars());
-        assertEquals(2, sr.getMaxPierces(), "Level 3 Pierce star increases to 2 pierces");
-        assertEquals(30, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 30%");
+        assertEquals(1, sr.getMaxPierces(), "Level 3 Pierce star still maintains 1 pierce under 3-level rule");
+        assertEquals(42, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 42%");
+
+        // 5. Nâng cấp tiếp nhánh Sức Xuyên lần 3 lên 4 sao (đủ 3 cấp nâng -> tăng lên 2 lần xuyên)
+        String upgraded3 = sr.upgradeChosenStat(Weapon.UpgradeStatType.ACCURACY);
+        assertEquals("SỨC XUYÊN (PIERCE)", upgraded3);
+        assertEquals(4, sr.getLevel());
+        assertEquals(4, sr.getPierceStars());
+        assertEquals(2, sr.getMaxPierces(), "Level 4 Pierce star increases to 2 pierces after 3 levels invested");
+        assertEquals(38, sr.getPierceFalloffPercent(), "Damage falloff must reduce to 38%");
     }
 
     @Test

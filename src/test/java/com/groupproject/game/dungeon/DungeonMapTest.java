@@ -658,4 +658,98 @@ public class DungeonMapTest {
         }
         assertTrue(corridorGrassCount > 0, "Corridors must contain grass along their flanks");
     }
+
+    @Test
+    @DisplayName("Verify combat rooms feature solid cover structures around room center")
+    void testCombatRoomsHaveCenterCoverStructures() {
+        for (int run = 0; run < 10; run++) {
+            DungeonMap testMap = new DungeonMap();
+            testMap.generateProceduralDungeon();
+            for (Room cr : testMap.getCombatRooms()) {
+                int rx = cr.getGridX();
+                int ry = cr.getGridY();
+                int rw = cr.getWidthInTiles();
+                int rh = cr.getHeightInTiles();
+                int midX = rx + rw / 2;
+                int midY = ry + rh / 2;
+
+                // Kiểm tra có ít nhất 1 ô cover cứng trong khu vực trung tâm phòng
+                boolean hasCenterCover = false;
+                for (int c = rx + 1; c < rx + rw - 1; c++) {
+                    for (int r = ry + 1; r < ry + rh - 1; r++) {
+                        if (testMap.getTile(c, r).getType() == TileType.COVER) {
+                            if (Math.abs(c - midX) <= 3 && Math.abs(r - midY) <= 2) {
+                                hasCenterCover = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (hasCenterCover) break;
+                }
+                assertTrue(hasCenterCover, "Combat room " + cr.getName() + " must have solid cover around central area");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Verify Boss Room pillars clearance allows 96px Tank Boss to navigate without being blocked")
+    void testBossRoomPillarsHaveSufficientClearanceForTank() {
+        DungeonMap bossMap = new DungeonMap();
+        bossMap.generateBossStage();
+        Room bossRoom = bossMap.getCombatRoom();
+        assertNotNull(bossRoom);
+
+        int rx = bossRoom.getGridX();
+        int ry = bossRoom.getGridY();
+        int rw = bossRoom.getWidthInTiles();
+        int rh = bossRoom.getHeightInTiles();
+
+        int northWallRow = ry;
+        int southWallRow = ry + rh - 1;
+
+        int minUpperPillarRow = Integer.MAX_VALUE;
+        int maxLowerPillarRow = Integer.MIN_VALUE;
+
+        for (int c = rx; c < rx + rw; c++) {
+            for (int r = ry; r < ry + rh; r++) {
+                if (bossMap.getTile(c, r).getType() == TileType.COVER) {
+                    if (r < ry + rh / 2) {
+                        minUpperPillarRow = Math.min(minUpperPillarRow, r);
+                    } else {
+                        maxLowerPillarRow = Math.max(maxLowerPillarRow, r);
+                    }
+                }
+            }
+        }
+
+        // Cự ly từ mép trên cột trên tới tường Bắc: ít nhất 3 ô sàn (144px)
+        int upperClearanceTiles = minUpperPillarRow - northWallRow - 1;
+        assertTrue(upperClearanceTiles >= 3,
+                "Upper clearance between north wall and pillars must be at least 3 tiles (144px), got: " + upperClearanceTiles);
+
+        // Cự ly từ mép dưới cột dưới tới tường Nam: ít nhất 3 ô sàn (144px)
+        int lowerClearanceTiles = southWallRow - maxLowerPillarRow - 1;
+        assertTrue(lowerClearanceTiles >= 3,
+                "Lower clearance between south wall and pillars must be at least 3 tiles (144px), got: " + lowerClearanceTiles);
+
+        // Kiểm tra thực tế: xe tăng Boss kích thước 96px di chuyển dọc qua hành lang trên và dưới mà không bị cản
+        double tankSize = 96.0;
+        // Tâm hành lang phía trên (3 ô sàn giữa tường Bắc và cột trụ trên: hàng northWallRow + 1, 2, 3)
+        double upperCorridorY = (northWallRow + 2.5) * GameConfig.TILE_SIZE;
+        for (int c = rx + 8; c <= rx + rw - 8; c++) {
+            double tankX = (c + 0.5) * GameConfig.TILE_SIZE - tankSize / 2.0;
+            double tankY = upperCorridorY - tankSize / 2.0;
+            assertTrue(bossMap.isAreaWalkableIgnoringDestructible(tankX, tankY, tankSize, tankSize),
+                    "96px Boss Tank must be able to navigate upper perimeter corridor at tile col " + c);
+        }
+
+        // Tâm hành lang phía dưới (3 ô sàn giữa cột trụ dưới và tường Nam: hàng southWallRow - 3, 2, 1)
+        double lowerCorridorY = (southWallRow - 1.5) * GameConfig.TILE_SIZE;
+        for (int c = rx + 8; c <= rx + rw - 8; c++) {
+            double tankX = (c + 0.5) * GameConfig.TILE_SIZE - tankSize / 2.0;
+            double tankY = lowerCorridorY - tankSize / 2.0;
+            assertTrue(bossMap.isAreaWalkableIgnoringDestructible(tankX, tankY, tankSize, tankSize),
+                    "96px Boss Tank must be able to navigate lower perimeter corridor at tile col " + c);
+        }
+    }
 }

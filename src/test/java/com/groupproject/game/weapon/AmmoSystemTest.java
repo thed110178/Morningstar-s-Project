@@ -489,4 +489,33 @@ public class AmmoSystemTest {
         assertEquals(0, secondCall.droppedSurplus);
         assertEquals(initialPickupsCount + 1, state.getAmmoPickups().size());
     }
+
+    @Test
+    @DisplayName("Verify spawnClearRoomAmmoStacks intelligently prioritizes equipped weapons in Slot 1 and 2")
+    void testClearRoomAmmoStacksPrioritizesEquippedWeapons() {
+        GameStateManager gsm = new GameStateManager();
+        PlayingState state = new PlayingState(gsm);
+
+        // Trang bị AR ở Slot 1 và Shotgun ở Slot 2
+        AssaultRifle ar = new AssaultRifle(1);
+        Shotgun sg = new Shotgun();
+        sg.setSlotIndex(2);
+        state.getWeaponManager().addWeapon(ar);
+        state.getWeaponManager().addWeapon(sg);
+
+        state.getAmmoPickups().clear();
+        state.spawnClearRoomAmmoStacks(500.0, 500.0);
+
+        assertEquals(2, state.getAmmoPickups().size());
+        AmmoPickup p1 = state.getAmmoPickups().get(0);
+        AmmoPickup p2 = state.getAmmoPickups().get(1);
+
+        // 2 hộp đạn rơi ra phải chứa đúng loại đạn của 2 khẩu súng đang cầm (AR và Shotgun)
+        java.util.Set<AmmoType> droppedTypes = new java.util.HashSet<>();
+        droppedTypes.add(p1.getType());
+        droppedTypes.add(p2.getType());
+
+        assertTrue(droppedTypes.contains(AmmoType.AR), "Must drop AR ammo for equipped Assault Rifle");
+        assertTrue(droppedTypes.contains(AmmoType.SHOTGUN), "Must drop Shotgun ammo for equipped Shotgun");
+    }
 }

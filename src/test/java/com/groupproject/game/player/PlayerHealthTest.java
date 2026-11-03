@@ -115,6 +115,23 @@ public class PlayerHealthTest {
         boolean largeUsed = largeMedkit.interact(state);
         assertTrue(largeUsed);
         assertEquals(100, state.getPlayerCurrentHealth(), "70 + 50 capped at 100");
+
+        // 4. Test Băng Gạc Cứu Thương (Bandage) rơi từ kẻ địch
+        HealthPickup bandage = new HealthPickup(400, 400, HealthPickup.HealthSize.BANDAGE);
+        assertEquals(10, bandage.getHealAmount());
+        assertEquals("BĂNG GẠC CỨU THƯƠNG", bandage.getSize().getDisplayName());
+        assertEquals("+10 HP", bandage.getSize().getTag());
+        state.setPlayerCurrentHealth(75);
+        boolean bandageUsed = bandage.interact(state);
+        assertTrue(bandageUsed);
+        assertTrue(bandage.isUsed());
+        assertEquals(85, state.getPlayerCurrentHealth(), "75 + 10 = 85 HP");
+
+        // Khi đầy máu (100 HP), không thể sử dụng Bandage
+        HealthPickup fullBandage = new HealthPickup(420, 420, HealthPickup.HealthSize.BANDAGE);
+        state.setPlayerCurrentHealth(100);
+        assertFalse(fullBandage.interact(state), "Cannot consume Bandage when HP is full");
+        assertFalse(fullBandage.isUsed());
     }
 
     @Test

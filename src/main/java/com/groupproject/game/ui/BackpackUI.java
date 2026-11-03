@@ -771,7 +771,10 @@ public class BackpackUI {
             g.setColor(new Color(255, 225, 75));
 
             int nextX1 = Weapon.renderStarIcons(g, x + 88, y + 66 - 4, weapon.getDamageStars());
-            g.drawString("(" + weapon.getDamage() + " DMG)", nextX1, y + 66);
+            String dmgStr = (weapon.getProjectilesPerShot() > 1)
+                    ? ("(" + weapon.getDamage() + "x" + weapon.getProjectilesPerShot() + " DMG)")
+                    : ("(" + weapon.getDamage() + " DMG)");
+            g.drawString(dmgStr, nextX1, y + 66);
 
             int nextX2 = Weapon.renderStarIcons(g, x + 88, y + 80 - 4, weapon.getFireRateStars());
             g.drawString("(" + weapon.getFormattedRPM() + ")", nextX2, y + 80);

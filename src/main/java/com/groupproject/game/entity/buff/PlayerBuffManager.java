@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * Quản lý tập trung toàn bộ trạng thái Buff, Chỉ số cường hóa và Kỹ năng đặc biệt của người chơi.
  *
  * <p>WHY: Đóng gói toàn bộ logic tính toán chỉ số (Máu, Công, Thủ, Tốc, CD Né, May Mắn),
- * cơ chế chặn đòn 10s một lần, diệt địch hồi 2.5 HP, cấp đạn chu kỳ 30s, mở rộng băng đạn và chí mạng.
+ * cơ chế chặn đòn 10s một lần, diệt địch hồi 1 HP, cấp đạn chu kỳ 30s, mở rộng băng đạn và chí mạng.
  * Giúp mã nguồn tách bạch, dễ mở rộng và kiểm thử độc lập mà không làm phình to Player.java.
  */
 public class PlayerBuffManager {
@@ -178,6 +178,13 @@ public class PlayerBuffManager {
         return getLevel(CharacterBuff.LOOT_LUCK) * 0.25;
     }
 
+    /**
+     * Cấp độ may mắn nhặt đồ (Loot Luck Level 0..4).
+     */
+    public int getLuckBonus() {
+        return getLevel(CharacterBuff.LOOT_LUCK);
+    }
+
     // ==========================================
     // CÁC KỸ NĂNG ĐẶC BIỆT
     // ==========================================
@@ -218,18 +225,13 @@ public class PlayerBuffManager {
     }
 
     /**
-     * Xử lý diệt địch hồi 2.5 HP sinh lực.
+     * Xử lý diệt địch hồi 1 HP sinh lực.
      */
     public int onEnemyKilled() {
         if (getLevel(CharacterBuff.KILL_HEAL) <= 0) return 0;
 
-        fractionalHpAccumulator += 2.5;
-        if (fractionalHpAccumulator >= 1.0) {
-            int healWhole = (int) Math.floor(fractionalHpAccumulator);
-            fractionalHpAccumulator -= healWhole;
-            return healWhole;
-        }
-        return 0;
+        // Đã nerf từ +2.5 HP xuống cố định +1 HP mỗi mạng diệt
+        return 1;
     }
 
     public boolean hasKillHeal() {
@@ -300,6 +302,10 @@ public class PlayerBuffManager {
         } else if (w instanceof com.groupproject.game.entity.weapon.SniperRifle) {
             if (w.getMagazineSize() < 8) {
                 w.setMagazineSize(8); // Băng đạn súng ngắm mở rộng từ 5 lên 8 viên
+            }
+        } else if (w instanceof com.groupproject.game.entity.weapon.SemiAutoShotgun) {
+            if (w.getMagazineSize() < 8) {
+                w.setMagazineSize(8); // Bang dan SAS mo rong tu 5 len 8 vien
             }
         } else if (w instanceof com.groupproject.game.entity.weapon.SemiCarbineRifle) {
             if (w.getMagazineSize() < 28) {
