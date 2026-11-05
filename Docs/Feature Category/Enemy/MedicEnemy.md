@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 22/10/2026
+Cập nhật mới nhất vào ngày: 04/11/2026
 
 # Kẻ Địch Hỗ Trợ - Lính Quân Y (Medic Enemy)
 
@@ -6,12 +6,17 @@ Cập nhật mới nhất vào ngày: 22/10/2026
 `MedicEnemy` là đơn vị hỗ trợ chiến thuật (Tactical Support Unit) của lực lượng phản diện trong trò chơi DontKnow. 
 Đặc điểm then chốt:
 * **Hoàn toàn không có khả năng chiến đấu trực tiếp**: Không mang vũ khí tấn công, không gây sát thương lên người chơi qua đòn đánh hay đạn đạo.
-* **Hào quang Hồi Máu (Healing Aura)**: Phát ra một vòng tròn năng lượng nano-repair màu xanh ngọc bích (emerald green) với bán kính 135px lấy chính nó làm tâm. Mọi đồng minh (MeleeEnemy, RangedPistolEnemy, GrenadierEnemy, BossTank, v.v.) đứng trong vùng hào quang này sẽ được hồi máu liên tục định kỳ.
-* **Hành vi AI Chiến Thuật (Support AI)**:
-  1. *Tránh né Người chơi (Player Evasion / Flee)*: Nếu người chơi áp sát trong phạm vi cảnh giác ($< 210\text{px}$), Medic lập tức quay lưng bỏ chạy theo hướng ngược lại để tự bảo toàn mạng sống.
-  2. *Tiếp cận đồng đội bị thương (Prioritized Ally Triage)*: Quét toàn bộ kẻ địch còn sống trong phòng, tìm ra đồng minh có tỉ lệ máu thấp nhất ($\text{currentHealth} / \text{maxHealth}$) và chưa đầy máu để di chuyển tới hỗ trợ.
-  3. *Trú ẩn / Neo giữ (Hold & Orbit)*: Khi ở gần đồng đội bị thương ($< 80\text{px}$), Medic giữ khoảng cách ổn định và kích hoạt hào quang hồi phục.
-* **Thời điểm xuất hiện**: Bắt đầu xuất hiện từ **Stage 2** (Laboratory / Complex), và xuất hiện trong đội hình cận vệ của Boss tại **Stage 4 (Boss Arena)**.
+* **Hào quang Hồi Máu (Healing Aura)**: Phát ra một vòng tròn năng lượng nano-repair màu đỏ thẫm cảnh báo với bán kính **$150\text{px}$** lấy chính nó làm tâm. Mọi đồng minh (MeleeEnemy, RangedPistolEnemy, GrenadierEnemy, BossTank, v.v.) đứng trong vùng hào quang này sẽ được hồi máu liên tục định kỳ (**$8\text{ HP}$ mỗi $0.70\text{s}$**).
+* **Tự hồi phục nano (Nano Self-Repair)**: Mỗi khi phát xung hào quang, bản thân Medic cũng tự động hồi phục **$4\text{ HP}$** nếu đang bị thương, giúp gia tăng đáng kể độ sống sót.
+* **Hành vi AI Chiến Thuật Đỉnh Cao (Smart Support & Tactical Movement)**:
+  1. *Bộ Lọc Ngõ Cụt & Góc Chết (Dead-End & Corner Pocket Detection)*: Tuyệt đối không bao giờ chui vào góc tường hoặc ngách cụt (như ngách sau thùng gỗ) để làm nơi nấp. Medic sử dụng thuật toán quét đa tia 16 hướng đo độ mở không gian (`calculateOpennessScore`), nhận diện chính xác các vị trí bị bao vây 2 phía vuông góc hoặc 3 phía (`isDeadEndOrPocket`) để loại bỏ hoàn toàn khỏi danh sách Cover.
+  2. *Hệ Thống Né Tránh Lượn Sườn & Chống Dồn Vào Góc (Tactical Flank Steering & Wall Repulsion)*: Khi người chơi áp sát ($< 240\text{px}$), Medic không lùi thụ động thẳng vào tường sau lưng. Hệ thống tự động hòa trộn lực lùi, lực tiếp tuyến lượn ngang sườn (Tangential Flank) và lực kéo về trung tâm phòng (Room Center Attraction). Càng gần tường biên, lực hút về tâm phòng càng mạnh, giúp Medic tự bẻ lái lướt cong qua sườn người chơi để chạy ra không gian rộng mở giữa phòng.
+  3. *Cơ Chế Bứt Phá Thoát Hiểm Khẩn Cấp (Emergency Breakout / Slip-Through)*: Trong tình huống bị người chơi dồn sát góc tường (phía sau bị chặn), Medic không đứng im chịu trận mà kích hoạt thuật toán Breakout quét 16 hướng $360^\circ$. Medic quyết đoán lướt qua khoảng trống bên cạnh người chơi (lệch $\ge 22^\circ$) để phóng ra ngoài ngách cụt, quay trở lại trung tâm căn phòng.
+  4. *Tốc độ di chuyển tự nhiên*: Duy trì tốc độ chuẩn **$115.0\text{ px/s}$** như cũ, tạo nên sự cân bằng hoàn hảo: Medic thông minh và khó bị bắt bài nhờ chiến thuật cơ động khéo léo thay vì buff tốc độ quá đà.
+  5. *Lùi về sau vật cản ẩn nấp (Cover-Seeking Behavior)*: Khi **không có đồng minh bị thương** và bị lộ mặt trước làn đạn người chơi (`!inCover`), Medic quét bán kính 8 ô gạch lân cận (~$384\text{px}$) tìm ô Cover an toàn nhất (ở không gian mở, che khuất tầm đạn, không nằm ở góc cụt) để lùi về sau vật cản.
+  6. *Cơ động liên tục, không bao giờ đứng im (Dynamic Loitering & Kiting)*: Khi ở xa hoặc trong phòng trống không có cover, Medic chủ động giữ cự ly $350 - 450\text{px}$, liên tục lượn ngang đổi hướng (Tactical Strafe) thay vì đứng im làm bia tập bắn.
+  7. *Tiếp cận đồng đội bị thương (Prioritized Ally Triage)*: Quét toàn bộ kẻ địch còn sống trong phòng, tìm ra đồng minh có tỉ lệ máu thấp nhất ($\text{currentHealth} / \text{maxHealth}$) để di chuyển tới bảo vệ và hồi máu.
+* **Thời điểm xuất hiện**: Bắt đầu xuất hiện từ **Stage 2** (Laboratory / Complex), và xuất hiện trong đội hình cận vệ của Boss tại **Stage 4 (Grand Boss Arena)**.
 
 ---
 
@@ -19,74 +24,62 @@ Cập nhật mới nhất vào ngày: 22/10/2026
 
 ### 2.1. Chu kỳ AI Logic (`updateAI`)
 1. **Kiểm tra nguy hiểm từ Operative**:
-   - Tính vector tới người chơi:
-     $$\Delta x = \text{playerCenterX} - x, \quad \Delta y = \text{playerCenterY} - y, \quad \text{dist} = \sqrt{\Delta x^2 + \Delta y^2}$$
-   - Nếu $\text{dist} < \text{fleeRadius}$ (mặc định $210\text{px}$): Medic chuyển sang trạng thái hoảng loạn/chạy trốn, di chuyển ngược vector người chơi:
-     $$v_x = -\frac{\Delta x}{\text{dist}} \times \text{speed}, \quad v_y = -\frac{\Delta y}{\text{dist}} \times \text{speed}$$
-     Áp dụng trượt va chạm địa hình `dungeonMap.isAreaWalkable`.
+   - Nếu $\text{distToPlayer} < \text{fleeDistance}$ ($260\text{px}$): Kích hoạt Evasive Sprint ($165\text{ px/s}$). Dùng `moveWithSmartCollision` dò góc bẻ lái men theo tường né góc cụt.
 2. **Quét tìm đồng minh cần sơ cứu (Ally Scanning)**:
-   - Nếu không bị người chơi đe dọa trực tiếp, Medic lặp qua danh sách `playingState.getEnemies()`.
-   - Bỏ qua bản thân (`other != this`) và chỉ xét các thực thể còn sống (`other.isAlive()`).
    - Ưu tiên đồng đội có tỉ lệ phần trăm máu còn lại thấp nhất:
      $$\text{healthRatio} = \frac{\text{other.getCurrentHealth()}}{\text{other.getMaxHealth()}} < 1.0$$
-   - Nếu tìm thấy, Medic xác định mục tiêu và di chuyển áp sát đồng minh đó. Khi vào cự ly $\le 80\text{px}$, Medic dừng lại để duy trì vòng tròn hồi phục bao phủ đồng đội.
-3. **Phát xung Hồi Máu (Heal Pulse Pulse Cycle)**:
-   - Bộ đếm thời gian `healPulseTimer` tích lũy `deltaTime`.
-   - Khi `healPulseTimer >= healInterval` (mặc định $0.8\text{s}$):
-     - Quét lại danh sách kẻ địch nằm trong bán kính `healAuraRadius` (mặc định $135\text{px}$).
-     - Thực hiện gọi `ally.heal(healAmount)` (mặc định hồi $6\text{ HP}$ mỗi nhịp xung).
-     - Khởi tạo hiệu ứng sóng nano mở rộng (`auraPulseEffect`) để biểu diễn trực quan.
+   - Nếu tìm thấy, Medic xác định mục tiêu và di chuyển áp sát đồng minh đó. Khi vào cự ly $\le 0.60 \times \text{healRadius}$, Medic cơ động nhẹ quanh đồng đội.
+3. **Ẩn nấp sau vật cản khi không có đồng minh bị thương (Cover-Seeking)**:
+   - Nếu không có đồng minh bị thương (`healingTarget == null`):
+     * Kiểm tra Line-of-Sight tới người chơi qua `isLineOfSightBlocked`.
+     * Nếu bị lộ mặt (`!inCover`): Gọi `findBestCoverLocation` tìm vị trí ô sàn nằm sau vật cản gần nhất để di chuyển đến ẩn nấp.
+     * Nếu không có cover: Lùi xa kết hợp lượn ngang (Kiting Strafe), không bao giờ đứng im.
+     * Nếu đã ở sau cover (`inCover == true`): Duy trì vị trí ẩn nấp (Hold Cover) và nhích nhẹ giữ cự ly an toàn.
+4. **Phát xung Hồi Máu & Tự Hồi Phục**:
+   - Mỗi $0.70\text{s}$: Hồi $8\text{ HP}$ (+1 HP/Stage) cho toàn bộ đồng minh trong bán kính $150\text{px}$.
+   - Tự hồi $4\text{ HP}$ cho chính bản thân Medic nếu `currentHealth < maxHealth`.
 
 ---
 
 ## 3. Thông số kỹ thuật (Specifications)
 
-| Thuộc tính | Giá trị mặc định | Giải thích vai trò |
-|---|---|---|
-| Kích thước (Hitbox) | $30 \times 30\text{px}$ | Thực thể hình hộp tròn tương đồng các lính thông thường |
-| Máu tối đa (`maxHealth`) | $50 - 65\text{ HP}$ | Lượng máu mỏng hơn lính chiến đấu, cần được bảo vệ |
-| Tốc độ di chuyển (`speed`) | $110.0\text{ px/s}$ | Tốc độ nhanh nhẹn giúp né tránh người chơi hiệu quả |
-| Bán kính hào quang (`healAuraRadius`) | $135.0\text{ px}$ | Phạm vi vòng tròn hồi máu lấy Medic làm tâm |
-| Lượng máu hồi mỗi nhịp (`healAmount`) | $6\text{ HP}$ | Hồi máu lũy tiến, tạo áp lực buộc người chơi phải ưu tiên diệt Medic trước |
-| Tần suất hồi (`healInterval`) | $0.8\text{s}$ | Chu kỳ phát xung nano hồi phục |
-| Bán kính cảnh giác né tránh (`fleeRadius`) | $210.0\text{ px}$ | Khoảng cách người chơi kích hoạt phản xạ chạy trốn của Medic |
+| Thuộc tính | Giá trị cập nhật | Giá trị cũ | Giải thích vai trò |
+|---|---|---|---|
+| Kích thước (Hitbox) | $30 \times 30\text{px}$ | $30 \times 30\text{px}$ | Thực thể hình hộp tròn chuẩn |
+| Máu tối đa (`maxHealth`) | **$65 - 85\text{ HP}$** | $40 - 60\text{ HP}$ | Tăng cường độ chống chịu, không dễ bị sốc sát thương chết tức thì |
+| Tốc độ di chuyển (`speed`) | **$115.0\text{ px/s}$** | $110.0\text{ px/s}$ | Tốc độ cơ bản như cũ, giữ nhịp gameplay tự nhiên |
+| Tốc độ né chạy (`evasiveSpeed`) | **$115.0\text{ px/s}$** | $110.0\text{ px/s}$ | Di chuyển thông minh bằng chiến thuật bẻ lái lướt sườn thay vì buff tốc độ quá đà |
+| Bán kính hào quang (`healRadius`) | **$150.0\text{ px}$** | $135.0\text{ px}$ | Phạm vi hào quang mở rộng, bao phủ đồng đội tốt hơn |
+| Lượng máu hồi mỗi nhịp (`healAmount`) | **$8\text{ HP}$** | $6\text{ HP}$ | Tăng năng lực hồi phục cho đồng đội |
+| Tần suất hồi (`healInterval`) | **$0.70\text{s}$** | $0.80\text{s}$ | Tần số phát xung nhanh hơn |
+| Tự hồi máu bản thân (Self-Repair) | **$4\text{ HP/nhịp}$** | $0\text{ HP}$ | Tự dưỡng thương, chống bị rỉa máu từ xa |
+| Bán kính cảnh giác né tránh (`fleeDistance`) | **$240.0\text{ px}$** | $210.0\text{ px}$ | Nhận diện nguy hiểm sớm hơn để chủ động lùi |
+| Cơ chế né góc chết & Bứt phá (Breakout) | **Có (Đa lực & 16 tia quét $360^\circ$)** | Không có (kẹt góc) | Tự động lướt sườn ra giữa phòng; lách qua cạnh người chơi khi bị ép sát góc |
+| Tìm chỗ nấp an toàn (Safe Cover) | **Có (Lọc bỏ 100% ngõ cụt/góc tường)** | Không có (đứng tơ hơ) | Quét ô sàn thông thoáng sau vật cản, tuyệt đối không chui vào ngõ cụt |
 
 ---
 
 ## 4. Đồ họa & Hiệu ứng (Visuals 100% Java Graphics2D)
 * **Vòng tròn Hào quang Hồi Máu (Healing Aura Ring - Red Hostile Zone)**:
-  - **Tách Layer Độc Lập**: Phương thức `renderAura(g, camera)` được vẽ tại layer mặt đất sàn dungeon, **nằm ở dưới layer của toàn bộ các entity** (người chơi, kẻ địch, vật cản, trang bị) để không che khuất thực thể.
-  - Vòng tròn nền phát quang màu đỏ thẫm mờ `new Color(220, 35, 45, 24)`.
-  - Viền phát quang xoay đều với đường nét đứt đỏ cảnh báo `new Color(255, 60, 60, 135)`.
-  - 4 phù hiệu chữ thập đỏ ở 4 hướng trên vành đai hào quang.
-  - Sóng xung (Pulse Ripple) màu đỏ rực mở rộng ra ngoài mỗi khi nhịp hồi phục kích hoạt.
+  - Tách Layer Độc Lập vẽ ở sàn dưới tất cả entity, bán kính $150\text{px}$.
+  - Nền đỏ thẫm phát quang mờ, viền nét đứt đỏ xoay đều, 4 chữ thập đỏ ở 4 hướng.
+  - Sóng xung (Pulse Ripple) đỏ rực mở rộng ra ngoài mỗi khi nhịp hồi phục kích hoạt.
 * **Ngoại hình Thực thể (Military Gray Hostile Chassis)**:
-  - Thân vỏ hợp kim titan màu xám quân sự đậm `new Color(68, 74, 84)` (ăn khớp màu xám mặc định của lực lượng kẻ địch).
-  - Tấm giáp bảo vệ bên trong xám đen carbon `new Color(48, 53, 62)`.
-  - Đường viền giáp màu đỏ thẫm nguy hiểm `new Color(195, 45, 50)`.
-  - Phù hiệu chữ thập y tế màu đỏ rực `#E62828` (`new Color(230, 40, 40)`) với lõi phát sáng hồng đỏ.
-  - Cảm biến mắt quang học LED đỏ sắc nhọn `new Color(255, 60, 60)`.
-  - Khe xả nhiệt phản lực phía sau phát ánh đỏ.
-* **Thanh Máu & Giao Diện Trên Đầu**:
-  - Thanh máu trên đầu luôn luôn hiển thị màu đỏ `new Color(230, 45, 45)` đặc trưng của phe địch.
-  - **Loại bỏ hoàn toàn tên / nhãn text trên đầu** để giữ màn hình thông thoáng, chuyên nghiệp.
+  - Thân vỏ hợp kim titan màu xám quân sự đậm `Color(68, 74, 84)`.
+  - Tấm giáp carbon bên trong, đường viền đỏ thẫm hazard, phù hiệu chữ thập y tế đỏ rực `#E62828`.
+* **Thanh Máu Trên Đầu**:
+  - Thanh máu trên đầu luôn luôn hiển thị màu đỏ `Color(230, 45, 45)`. Không hiện text rườm rà.
 
 ---
 
-## 5. Quan hệ với hệ thống khác
-* **`TargetDummy`**: Lớp cơ sở kế thừa. Medic ghi đè `updateAI` và `render` chuyên biệt.
-* **`PlayingState`**: Quản lý danh sách enemies; triệu hồi Medic tại Stage 2, 3 và 4 Boss Arena; gọi `renderAura` tại layer mặt đất trước khi vẽ các entity.
-* **`DungeonMap`**: Kiểm tra va chạm di chuyển trượt trên địa hình.
-* **Các Archetype khác**: Hưởng lợi trực tiếp từ `heal(amount)` khi đứng gần Medic.
-
----
-
-## 6. Sửa đổi / Cập nhật
+## 5. Sửa đổi / Cập nhật
+* **04/11/2026 (Nâng Cấp Trí Thông Minh Di Chuyển Chống Ép Góc & Giữ Tốc Độ Chuẩn)**:
+  - **Giữ tốc độ di chuyển như cũ ($115.0\text{ px/s}$)**: Không buff tốc độ phi lý làm mất cân bằng trải nghiệm. Thay vào đó, tập trung nâng cấp trí tuệ nhân tạo (AI Locomotion) linh hoạt và thông minh hơn.
+  - **Khắc phục triệt để lỗi bị ép vào góc chết (Corner-Trap Fix)**:
+    1. *Bộ lọc ngõ cụt (Dead-End / Corner Pocket Filter)*: `isDeadEndOrPocket` và `calculateOpennessScore` loại bỏ 100% các ô nấp nằm ở góc phòng hoặc sau thùng gỗ bị bao vây 3 phía, ngăn chặn triệt để việc Medic tự dẫn xác vào góc chết.
+    2. *Hệ thống trường lực né tránh lượn sườn (Tactical Flank Steering & Wall Repulsion)*: Khi người chơi áp sát, Medic kết hợp lực kéo về tâm phòng và lực tiếp tuyến, tự động lướt vòng cung qua sườn người chơi thay vì lùi thẳng vào góc tường.
+    3. *Cơ chế bứt phá khẩn cấp (Emergency Breakout / Slip-Through)*: Khi bị người chơi dồn sát góc tường (phía sau bị chặn), Medic quét 16 hướng $360^\circ$ tìm lối thoát dẫn ra không gian mở của phòng, dũng cảm lách qua sườn người chơi để phóng ra ngoài căn phòng.
+  - **Buff chỉ số sinh tồn & hỗ trợ**: Máu 65 - 85 HP; hào quang mở rộng 150px hồi 8 HP mỗi 0.70s; tự phục hồi 4 HP cho bản thân mỗi nhịp.
+  - **Kiểm thử tự động**: Bổ sung 2 bài unit test chuyên sâu (`testMedicDeadEndAndPocketDetection` và `testMedicEmergencyBreakoutFromCorner`). Toàn bộ **315 / 315 test cases PASSED 100%**.
 * **22/10/2026**:
   - Khởi tạo mới lớp `MedicEnemy`.
-  - Triển khai thuật toán né tránh người chơi và ưu tiên cứu thương đồng đội yếu máu nhất.
-  - Tích hợp vòng tròn hào quang $135\text{px}$ phát xung $0.8\text{s}$ hồi $6\text{ HP}$.
-  - Chuyển đổi vùng hào quang sang **màu đỏ** và hạ xuống **layer mặt sàn ở dưới các entity**.
-  - Tinh chỉnh màu thân thành **màu xám quân sự** kèm chi tiết đỏ nguy hiểm của phe phản diện.
-  - Chuẩn hóa thanh máu trên đầu **luôn luôn là màu đỏ** và **loại bỏ tên trên đầu kẻ địch**.
-  - Phân tầng xuất hiện tại Stage 2 trở lên.

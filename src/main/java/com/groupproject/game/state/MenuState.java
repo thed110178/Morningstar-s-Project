@@ -33,7 +33,7 @@ public class MenuState extends GameState {
     private int savedStage = 1;
     private String[] options = {
             "BẮT ĐẦU CHƠI",
-            "BOSS FIGHT: TITAN TANK",
+            "BOSS FIGHT: TITAN TANK MK-IV",
             "CÀI ĐẶT PHÍM (SETTINGS)",
             "HOW TO PLAY",
             "EXIT"
@@ -79,7 +79,7 @@ public class MenuState extends GameState {
             this.options = new String[] {
                     "★ TIẾP TỤC CHƠI (STAGE " + savedStage + ")",
                     "BẮT ĐẦU CHƠI MỚI",
-                    "BOSS FIGHT: TITAN TANK",
+                    "BOSS FIGHT: TITAN TANK MK-IV",
                     "CÀI ĐẶT PHÍM (SETTINGS)",
                     "HOW TO PLAY",
                     "EXIT"
@@ -87,7 +87,7 @@ public class MenuState extends GameState {
         } else {
             this.options = new String[] {
                     "BẮT ĐẦU CHƠI",
-                    "BOSS FIGHT: TITAN TANK",
+                    "BOSS FIGHT: TITAN TANK MK-IV",
                     "CÀI ĐẶT PHÍM (SETTINGS)",
                     "HOW TO PLAY",
                     "EXIT"

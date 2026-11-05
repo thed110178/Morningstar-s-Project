@@ -40,7 +40,7 @@ public class BossIntroCinematic {
     private double bossCamX = 0;
     private double bossCamY = 0;
 
-    private String bossTitle = "HEAVY COMBAT BATTLE TANK [MK-IV]";
+    private String bossTitle = "TITAN TANK MK-IV";
     private String bossSubtitle = "PHÁO ĐÀI CƠ GIỚI BỌC THÉP HẠNG NẶNG";
     private String bossThreatInfo = "PHÁO HẠNG NẶNG & TRIỆU HỒI TIẾP VIỆN";
 
@@ -62,7 +62,7 @@ public class BossIntroCinematic {
 
         String rawName = boss.getName();
         if (rawName != null && !rawName.isEmpty()) {
-            this.bossTitle = rawName.toUpperCase();
+            this.bossTitle = rawName.replace("[BOSS]", "").replace("[boss]", "").trim().toUpperCase();
         }
 
         this.timer = 0.0;

@@ -1,6 +1,6 @@
-Cập nhật mới nhất vào ngày: 03/11/2026
+Cập nhật mới nhất vào ngày: 04/11/2026
 
-# Chiến Xa Bọc Thép Titan (BossTank - Titan Battle Tank)
+# Chiến Xa Titan MK-IV (BossTank - TITAN TANK MK-IV)
 
 ## 1. Mô tả
 Chiến Xa Bọc Thép Titan (`BossTank`) là thủ lĩnh tối cao (Grand Boss) xuất hiện tại Stage 4 (**Grand Boss Arena**) của Biome Alpha Sector. Đây là một cỗ xe tăng chiến đấu bọc thép hạng nặng sở hữu thiết kế cơ khí 3 tầng xoay độc lập (3-Layer Decoupled Structure), lượng sinh lực khổng lồ ($1250\text{ HP}$), kích thước buồng chiến đấu đồ sộ và uy dũng ($96 \times 96\text{px}$ - thân xe $94 \times 76\text{px}$), cùng bộ chiêu thức kết hợp giữa cú húc cơ học thần tốc cực mạnh không báo trước, hỏa lực súng máy áp đảo và pháo bộc phá siêu thanh nổ tức thời xuyên vật cản.
@@ -126,6 +126,23 @@ Cỗ xe tăng vận hành thông qua máy trạng thái hữu hạn (FSM) gồm 
 ---
 
 ## 6. Sửa Đổi / Cập Nhật
+
+* **04/11/2026 (Thống Nhất Định Danh TITAN TANK MK-IV, Tinh Gọn Thanh Máu Boss & Random 2 Súng Cấp 3 Trong Boss Fight)**:
+  - **Trang bị ngẫu nhiên 2 súng chính Cấp 3 không trùng lặp cho Chế độ Boss Fight (PlayingState.loadBossStageDirectly)**:
+    * Loại bỏ cấu hình vũ khí cố định đơn điệu (trước đây luôn là AR Lv 3 + Shotgun Lv 3).
+    * Hệ thống tự động tuyển chọn ngẫu nhiên 2 khẩu súng chính **hoàn toàn khác loại nhau** từ kho vũ khí gồm 6 chủng loại: AR, Shotgun, SMG, Sniper Rifle, Semi-Auto Shotgun (SAS), và Semi-Carbine Rifle (SCR).
+    * Cả 2 khẩu súng đều được nâng cấp lên **Level 3** (configureLevel(3)), gán vào Slot 1 và Slot 2, nạp đầy băng đạn và tiếp tế tối đa đạn dự trữ.
+    * Bổ sung bộ kiểm thử BossFightLoadoutTest (3 test cases), tổng số bài kiểm thử tăng lên **307/307 Passed 100%**.
+  - **Thống nhất tên gọi toàn diện trên toàn bộ trò chơi**:
+    * Chuẩn hóa định danh duy nhất của Boss: **TITAN TANK MK-IV** (tiếng Việt: **Chiến Xa Titan MK-IV**).
+    * Loại bỏ hoàn toàn các tên gọi phân mảnh trước đây (HEAVY COMBAT BATTLE TANK, Xe tăng MK-IV, Titan Battle Tank).
+  - **Tinh gọn giao diện thanh máu Boss (PlayingHUD)**:
+    * Lược bỏ nhãn [BOSS] và các cặp ký tự cảm thán rườm rà ! ... !, thanh máu ở đỉnh màn hình giờ đây chỉ hiển thị duy nhất định danh chiến đấu trang trọng: **TITAN TANK MK-IV**.
+    * Bảng tổng kết kết quả chiến đấu sau phòng đấu Boss (Victory Debriefing) được đồng bộ: ĐÃ TIÊU DIỆT TITAN TANK MK-IV.
+  - **Đồng bộ hóa các thành phần giao diện & điện ảnh**:
+    * Màn hình cắt cảnh xuất hiện trùm (BossIntroCinematic): Thống nhất hiển thị tiêu đề TITAN TANK MK-IV.
+    * Menu chọn màn đấu thử thách trùm (MenuState): Cập nhật thành BOSS FIGHT: TITAN TANK MK-IV.
+  - **Cập nhật toàn bộ Test Suite**: Sửa đổi các bộ kiểm thử đơn vị (CombatDoorTest, EnemyAITest), đảm bảo **304/304 test cases Passed 100%**.
 
 * **03/11/2026 (Sửa Lỗi Đòn Đâm Phase 2, Cân Bằng Hỏa Lực Đa Cự Ly & Toàn Màn Hình Tự Động)**:
   - **Khắc phục lỗi triệt để: Boss dưới 50% máu ngừng đâm húc**:

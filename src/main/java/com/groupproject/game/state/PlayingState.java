@@ -28,7 +28,11 @@ import com.groupproject.game.entity.station.StatReforgeStation;
 import com.groupproject.game.entity.weapon.AssaultRifle;
 import com.groupproject.game.entity.weapon.MeleeSlash;
 import com.groupproject.game.entity.player.Player;
+import com.groupproject.game.entity.weapon.SMG;
+import com.groupproject.game.entity.weapon.SemiAutoShotgun;
+import com.groupproject.game.entity.weapon.SemiCarbineRifle;
 import com.groupproject.game.entity.weapon.Shotgun;
+import com.groupproject.game.entity.weapon.SniperRifle;
 import com.groupproject.game.entity.weapon.Weapon;
 import com.groupproject.game.entity.weapon.WeaponManager;
 import com.groupproject.game.input.KeyBindings;
@@ -50,7 +54,10 @@ import java.awt.geom.Point2D;
 import com.groupproject.game.dungeon.Tile;
 import com.groupproject.game.dungeon.TileExplosionListener;
 import com.groupproject.game.dungeon.TileType;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -271,8 +278,8 @@ public class PlayingState extends GameState implements TileExplosionListener {
         GameSoundManager.playStageBgm(this.currentStage);
         showBanner("STAGE 1", new Color(60, 220, 160), 2.0);
 
-        // Center camera on operative immediately on mission start
-        camera.update(player.getCenterX(), player.getCenterY());
+        // Snap camera ngay vào tâm người chơi khi khởi đầu màn
+        camera.snapTo(player.getCenterX(), player.getCenterY());
     }
 
     /**
@@ -306,6 +313,39 @@ public class PlayingState extends GameState implements TileExplosionListener {
      * Tải và spawn thẳng người chơi vào Grand Boss Arena (Stage 4) đối đầu Chiến Xa Titan.
      * Cung cấp sẵn trang bị vũ khí hỏa lực cao (AR Cấp 3, Shotgun Cấp 3, đầy ắp đạn) và 500 Credits.
      */
+    /**
+     * Sinh ngẫu nhiên một cặp vũ khí chính (Primary Weapons) hoàn toàn không trùng lặp ở Cấp 3 (Level 3)
+     * để trang bị cho Operative khi khởi đầu chế độ thử thách trùm (Boss Fight).
+     *
+     * <p>WHY: Giúp mỗi lượt chơi chế độ Boss Fight đều mang lại trải nghiệm chiến thuật và nhịp độ mới lạ,
+     * không bị rập khuôn bởi một tổ hợp súng cố định (như AR + Shotgun trước đây).
+     * Danh mục khí tài được chọn ngẫu nhiên từ 6 dòng súng chính hiện có:
+     * Assault Rifle (AR), Shotgun (SG), SMG, Sniper Rifle, Semi-Auto Shotgun (SAS), và Semi-Carbine Rifle (SCR).
+     *
+     * @return Danh sách chứa đúng 2 vũ khí chính không trùng lặp đã cấu hình Level 3, sẵn sàng gán vào Slot 1 và Slot 2.
+     */
+    public List<Weapon> generateRandomBossFightWeapons() {
+        List<Supplier<Weapon>> weaponPool = new ArrayList<>(List.of(
+                AssaultRifle::new,
+                Shotgun::new,
+                SMG::new,
+                SniperRifle::new,
+                SemiAutoShotgun::new,
+                SemiCarbineRifle::new
+        ));
+        Collections.shuffle(weaponPool);
+
+        Weapon w1 = weaponPool.get(0).get();
+        w1.configureLevel(3);
+        w1.setSlotIndex(1);
+
+        Weapon w2 = weaponPool.get(1).get();
+        w2.configureLevel(3);
+        w2.setSlotIndex(2);
+
+        return List.of(w1, w2);
+    }
+
     public void loadBossStageDirectly() {
         this.isStandaloneBossFight = true;
         this.currentStage = BOSS_STAGE;
@@ -344,17 +384,14 @@ public class PlayingState extends GameState implements TileExplosionListener {
             }
         }
 
-        // Trang bị vũ khí đầy đủ cho trận chiến Boss: AR Cấp 3 (Slot 1) và Shotgun Cấp 3 (Slot 2)
-        AssaultRifle ar = new AssaultRifle();
-        ar.configureLevel(3);
-        ar.setSlotIndex(1);
-        weaponManager.addWeapon(ar);
-        weaponManager.selectSlot(1);
+        // Trang bị ngẫu nhiên 2 vũ khí chính không trùng lặp ở Cấp 3 (Level 3) cho trận chiến Boss
+        List<Weapon> bossWeapons = generateRandomBossFightWeapons();
+        Weapon primary1 = bossWeapons.get(0);
+        Weapon primary2 = bossWeapons.get(1);
 
-        Shotgun sg = new Shotgun();
-        sg.configureLevel(3);
-        sg.setSlotIndex(2);
-        weaponManager.addWeapon(sg);
+        weaponManager.addWeapon(primary1);
+        weaponManager.addWeapon(primary2);
+        weaponManager.selectSlot(1);
 
         weaponManager.resupplyAmmoPackage(5); // Tiếp tế tối đa đạn dự trữ cho toàn bộ vũ khí
         weaponManager.bindPlayerBuffManager(player.getBuffManager());
@@ -368,8 +405,8 @@ public class PlayingState extends GameState implements TileExplosionListener {
         isBossHealthBarRevealed = true;
         tryStartBossIntro();
 
-        // Center camera on operative immediately on mission start
-        camera.update(player.getCenterX(), player.getCenterY());
+        // Snap camera ngay vào tâm người chơi khi vào phòng Boss
+        camera.snapTo(player.getCenterX(), player.getCenterY());
     }
 
     /**
@@ -410,7 +447,9 @@ public class PlayingState extends GameState implements TileExplosionListener {
 
         populateAllFieldStations();
 
-        camera.update(player.getCenterX(), player.getCenterY());
+        // Snap camera ngay lập tức vào vị trí người chơi ở tầng mới trong lúc màn hình đang đen (HOLD),
+        // loại bỏ hoàn toàn hiện tượng camera bị trễ ở tọa độ của tầng cũ rồi mới lướt sang khi màn hình sáng.
+        camera.snapTo(player.getCenterX(), player.getCenterY());
 
         if (!sTierUpgrades.isEmpty()) {
             String msg = "[S] KHÍ TÀI TỰ LÊN CẤP: " + String.join(", ", sTierUpgrades);
@@ -427,7 +466,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
             Room bossRoom = dungeonMap.getCombatRooms().get(0);
             double cx = bossRoom.getCenterWorldX();
             double cy = bossRoom.getCenterWorldY();
-            spawnBossSafely(bossRoom, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+            spawnBossSafely(bossRoom, cx, cy, 1250, 96.0, "TITAN TANK MK-IV");
         }
     }
 
@@ -457,7 +496,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
      * Ở đây map chỉ được dựng khi màn hình đã tối hẳn (callback HOLD của {@link ScreenTransition}).
      * Giữ nguyên advanceToNextStage() đồng bộ để test và code cũ không bị ảnh hưởng.
      */
-    private void requestAdvanceToNextStage() {
+    public void requestAdvanceToNextStage() {
         if (stageTransition.isActive()) {
             return;
         }
@@ -756,12 +795,12 @@ public class PlayingState extends GameState implements TileExplosionListener {
     private void spawnMedicEnemySafely(Room arena, double preferredX, double preferredY, int baseHealth) {
         Point2D.Double safePos = findSafeSpawnLocation(arena, preferredX, preferredY, 30.0, combatTargets);
         int stageBonus = Math.max(0, currentStage - 2);
-        int scaledHealth = baseHealth + stageBonus * 10;
+        int scaledHealth = Math.max(65, baseHealth) + stageBonus * 12;
         double scaledSpeed = 115.0 + stageBonus * 5.0;
-        int scaledHeal = 6 + stageBonus * 1;
+        int scaledHeal = 8 + stageBonus * 1;
         String name = stageBonus == 0 ? "Combat Field Medic [Support]" : String.format("Combat Field Medic MK-%d [Support]", currentStage);
 
-        MedicEnemy enemy = new MedicEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, 135.0, scaledHeal, 0.80, 210.0, name);
+        MedicEnemy enemy = new MedicEnemy(safePos.x, safePos.y, scaledHealth, scaledSpeed, 150.0, scaledHeal, 0.70, 240.0, name);
         enemy.setSpawnTelegraph(0.40);
         combatTargets.add(enemy);
     }
@@ -830,7 +869,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
             this.bossDummy = existingBoss;
             combatTargets.add(existingBoss);
         } else {
-            spawnBossSafely(arena, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+            spawnBossSafely(arena, cx, cy, 1250, 96.0, "TITAN TANK MK-IV");
         }
         spawnMeleeEnemySafely(arena, cx + 220, cy, 80);
         spawnMeleeEnemySafely(arena, cx - 220, cy, 80);
@@ -838,7 +877,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
         spawnRangedPistolEnemySafely(arena, cx, cy - 180, 60);
         spawnMeleeEnemySafely(arena, cx + 160, cy + 130, 70);
         spawnRangedPistolEnemySafely(arena, cx - 160, cy + 130, 60);
-        spawnMedicEnemySafely(arena, cx + 160, cy - 130, 60);
+        spawnMedicEnemySafely(arena, cx + 160, cy - 130, 85);
         spawnGrenadierEnemySafely(arena, cx - 160, cy - 130, 70);
         this.bossMinionRespawnTimer = BOSS_MINION_RESPAWN_DELAY;
         this.bossMinionWaveCount = 0;
@@ -959,7 +998,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
             } else if (type == 1) {
                 spawnRangedPistolEnemySafely(arena, cx + ox, cy + oy, 60);
             } else if (type == 2) {
-                spawnMedicEnemySafely(arena, cx + ox, cy + oy, 55);
+                spawnMedicEnemySafely(arena, cx + ox, cy + oy, 75);
             } else {
                 spawnGrenadierEnemySafely(arena, cx + ox, cy + oy, 65);
             }
@@ -1045,6 +1084,10 @@ public class PlayingState extends GameState implements TileExplosionListener {
     private boolean handleCinematics(double deltaTime, KeyboardHandler keyH, MouseHandler mouseH) {
         stageTransition.update(deltaTime);
         if (stageTransition.isBlockingInput()) {
+            // Trong suốt quá trình transition chuyển stage (Fading Out, Hold, Fading In),
+            // camera liên tục được snap cố định vào vị trí người chơi để khi màn hình sáng lên,
+            // camera đã ở chính xác 100% tại vị trí Operative mà không hề bị trượt từ màn trước sang.
+            camera.snapTo(player.getCenterX(), player.getCenterY());
             return true;
         }
         if (bossIntroCinematic.isActive()) {
@@ -1053,6 +1096,7 @@ public class PlayingState extends GameState implements TileExplosionListener {
             camera.update(bossIntroCinematic.getCameraFocusX(), bossIntroCinematic.getCameraFocusY());
             if (!bossIntroCinematic.isActive()) {
                 GameSoundManager.transitionBossIntroToLoop();
+                camera.snapTo(player.getCenterX(), player.getCenterY());
             }
             return true;
         }
@@ -1087,7 +1131,9 @@ public class PlayingState extends GameState implements TileExplosionListener {
             if (!isStandaloneBossFight && !player.isDead() && !isExtracting) {
                 com.groupproject.game.storage.RunSaveManager.saveRun(this);
             }
-            gsm.setState(GameStateManager.StateType.MENU);
+            // Kích hoạt transition mờ dần (Fade Out -> Hold -> Fade In) chuyển về Menu chính thay vì đổi state tức thì
+            gsm.transitionTo(GameStateManager.StateType.MENU);
+            return true;
         }
         return true;
     }
@@ -2287,6 +2333,10 @@ public class PlayingState extends GameState implements TileExplosionListener {
         }
     }
 
+    public com.groupproject.game.core.Camera getCamera() {
+        return camera;
+    }
+
     public PauseMenuUI getPauseMenuUI() {
         return pauseMenuUI;
     }
@@ -2784,10 +2834,10 @@ public class PlayingState extends GameState implements TileExplosionListener {
             Room bossRoom = dungeonMap.getCombatRooms().get(0);
             double cx = bossRoom.getCenterWorldX();
             double cy = bossRoom.getCenterWorldY();
-            spawnBossSafely(bossRoom, cx, cy, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+            spawnBossSafely(bossRoom, cx, cy, 1250, 96.0, "TITAN TANK MK-IV");
         }
 
-        camera.update(player.getCenterX(), player.getCenterY());
+        camera.snapTo(player.getCenterX(), player.getCenterY());
         GameSoundManager.playStageBgm(this.currentStage);
         showBanner("TIẾP TỤC CHIẾN DỊCH — STAGE " + currentStage, new Color(255, 215, 60), 2.5);
     }

@@ -950,7 +950,7 @@ class EnemyAITest {
         assertEquals(1250, tank.getCurrentHealth(), "BossTank default Current HP must be 1250 HP");
         assertEquals(96.0, tank.getSize(), "BossTank default hitbox size must be enlarged to 96.0px");
         assertTrue(tank.isBoss(), "BossTank must have isBoss == true");
-        assertTrue(tank.getName().contains("HEAVY COMBAT BATTLE TANK"), "BossTank display name must contain HEAVY COMBAT BATTLE TANK");
+        assertTrue(tank.getName().contains("TITAN TANK MK-IV"), "BossTank display name must contain TITAN TANK MK-IV");
     }
 
     @Test
@@ -1298,7 +1298,7 @@ class EnemyAITest {
         double by = room != null ? room.getCenterWorldY() : 500.0;
 
         // Spawn BossTank với 1250 HP
-        state.spawnBossForTesting(bx, by, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+        state.spawnBossForTesting(bx, by, 1250, 96.0, "TITAN TANK MK-IV");
         TargetDummy boss = state.getBossDummy();
         assertNotNull(boss);
         assertTrue(boss instanceof BossTank);

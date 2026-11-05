@@ -388,7 +388,7 @@ public class CombatDoorTest {
         assertEquals(1250, boss.getMaxHealth(), "Titan Boss Dummy must have 1250 Max HP");
         assertEquals(1250, boss.getCurrentHealth(), "Titan Boss Dummy must start with full 1250 HP");
         assertEquals(96.0, boss.getSize(), "Titan Boss Dummy must be 96px large");
-        assertTrue(boss.getName().contains("HEAVY COMBAT BATTLE TANK"), "Boss name should be Heavy Combat Battle Tank");
+        assertTrue(boss.getName().contains("TITAN TANK MK-IV"), "Boss name should be TITAN TANK MK-IV");
         assertTrue(boss.isAlive(), "Boss must start alive");
 
         // Đợi Boss hoàn tất thời gian spawn telegraph (0.50s) để vật thể hóa hoàn toàn

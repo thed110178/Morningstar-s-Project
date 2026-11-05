@@ -373,9 +373,9 @@ public class PlayingHUD {
         g.fillRect(cardX + cardW - 10, cardY + 2, 8, 2);
         g.fillRect(cardX + cardW - 4, cardY + 2, 2, 8);
 
-        // Header Title: Boss Name & Hazard Icon
+        // Header Title: Tên Boss chuẩn hóa (loại bỏ tiền tố/hậu tố [BOSS] rườm rà)
         g.setFont(GameFontManager.getBoldFont(14.0f));
-        String title = "! " + bossDummy.getName().toUpperCase() + " !";
+        String title = bossDummy.getName().replace("[BOSS]", "").replace("[boss]", "").trim().toUpperCase();
         FontMetrics fm = g.getFontMetrics();
         int titleW = fm.stringWidth(title);
         g.setColor(new Color(255, 220, 80));
@@ -602,7 +602,7 @@ public class PlayingHUD {
         g.setFont(GameFontManager.getBoldFont(18.0f));
         FontMetrics fmSub = g.getFontMetrics();
         String subtitle = isStandaloneBossFight
-                ? "ĐÃ TIÊU DIỆT CHIẾN XA TITAN MK-IV"
+                ? "ĐÃ TIÊU DIỆT TITAN TANK MK-IV"
                 : "CHIẾN DỊCH TOÀN THẮNG — TIÊU DIỆT BOSS & SƠ TÁN THÀNH CÔNG";
         int subX = (width - fmSub.stringWidth(subtitle)) / 2;
         g.setColor(new Color(255, 215, 60));
@@ -621,13 +621,13 @@ public class PlayingHUD {
         g.setFont(GameFontManager.getSmallFont(12.0f));
         g.setColor(new Color(200, 220, 245));
         if (isStandaloneBossFight) {
-            g.drawString("- Chế độ tác chiến: Thử thách độc lập Boss Fight (Titan Battle Tank)", cardX + 30, cardY + 45);
+            g.drawString("- Chế độ tác chiến: Thử thách độc lập Boss Fight (Titan Tank MK-IV)", cardX + 30, cardY + 45);
             g.drawString("- Mục tiêu: Khắc chế hỏa lực đại pháo & súng máy phòng không", cardX + 30, cardY + 80);
-            g.drawString("- Trạng thái: Mục tiêu cơ giới Titan đã bị vô hiệu hóa hoàn toàn", cardX + 30, cardY + 115);
+            g.drawString("- Trạng thái: Mục tiêu cơ giới Titan Tank MK-IV đã bị vô hiệu hóa hoàn toàn", cardX + 30, cardY + 115);
             g.drawString("- Dữ liệu tác chiến đã được ghi nhận vào hệ thống", cardX + 30, cardY + 150);
         } else {
             g.drawString("- Khu vực: Biome 1 (Alpha Sector) - Hoàn thành xuất sắc toàn bộ Chiến dịch", cardX + 30, cardY + 45);
-            g.drawString("- Chiến tích: Tiêu diệt thành công Boss Chiến Xa Titan MK-IV và mở đường sơ tán", cardX + 30, cardY + 80);
+            g.drawString("- Chiến tích: Tiêu diệt thành công Boss Titan Tank MK-IV và mở đường sơ tán", cardX + 30, cardY + 80);
             g.drawString("- Bản Demo hoàn tất: Bạn có thể tiếp tục rèn luyện vũ khí & thử nghiệm tại The Range", cardX + 30, cardY + 115);
             g.drawString("- Hãy tiếp tục cải thiện kỹ năng và đón chờ các bản cập nhật tiếp theo!", cardX + 30, cardY + 150);
         }

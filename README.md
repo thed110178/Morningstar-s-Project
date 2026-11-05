@@ -1,4 +1,4 @@
-Cập nhật mới nhất vào ngày: 30/10/2026
+Cập nhật mới nhất vào ngày: 04/11/2026
 
 # Project Alone in the zone (DontKnow) – Final Project Report & Documentation
 
@@ -17,10 +17,9 @@ Cập nhật mới nhất vào ngày: 30/10/2026
 
 | Student ID | Name | Main Responsibility |
 | ---------- | ---- | ------------------- |
-| *(Your ID)* | *(Phung The Dương)* | **Lead Engine Architect & Level Designer**: Multi-threaded Game Loop, Procedural Multi-Stage Dungeon, Multi-Phase Combat Lockdown, State Pattern, Audio Engine Mixer. |
-| *(Member 2)* | *(Pham Gia Bao)* | **Combat & Weapon Systems**: 360° Omnidirectional Aiming, Star-Level AR Accuracy Recoil, Melee Slashes, Spare Ammo Reserves, Pause/Resume Reload Mechanics. |
-| *(Member 3)* | *Nguyen Phan Anh)* | **Enemy AI & Encounter Systems**: BFS Tile Pathfinding, Obstacle Steering Feelers, Tactical Strafing, Spawn Telegraph Portals, Titan Battle Tank Boss. |
-| *(Member 4)* | *(Nguyen Hoang ANh)* | **UI, Telemetry & QA Engineer**: Automated JUnit 5 Test Suite (**260/260 unit tests PASS 100%**), Sci-Fi HUD, Interactive Volume Slider, Portable JRE Packaging. |
+| *(Student ID 1)* | *(Phung The Duong)* | **Lead Engine Architect & Enemy AI Engineer**: Multi-threaded Game Loop, State Machine, Enemy AI Pathfinding (BFS & Steering Feelers), Titan Tank MK-IV Boss, Combat Medic & Grenadier AI, Checkpoint Save/Load, Automated 315-test JUnit 5 Suite. |
+| *(Student ID 2)* | *(Pham Gia Bao)* | **Combat, Weapon & Upgrade Systems Engineer**: 360° Omnidirectional Aiming, 6 Weapon Classes, Star-Level AR/SCR Accuracy Recoil, Melee Slashes, Character Upgrades & 7 Bio-Tech Perks, Weapon Reforging, 2-Tab Tactical Backpack UI. |
+| *(Student ID 3)* | *(Nguyen Phan Anh)* | **Map Systems & Level Designer**: Procedural 4-Direction Grid Dungeon Map, Strategic Room Types (Spawn, Combat, Shop, Upgrade, Extract), Multi-Phase Combat Door Lockout, Minimap HUD Radar, World Camera & Smooth Screen Transitions. |
 
 ---
 
@@ -42,7 +41,7 @@ This project bridges the gap between theoretical software engineering principles
 * Design a comprehensive **tactical weapon and ballistics framework** supporting 6 distinct firearm classes (Pistol, AR, SMG, Shotgun, Sniper Rifle, Semi-Carbine Rifle) and Combat Knife, star-tier recoil dispersion, tactical pause/resume reloads, spare ammo reserves, and physical projectile simulation.
 * Implement an intuitive **Player Health, Economy, and HUD System** featuring a high-tech on-screen HUD, equipment quick-slots, under-operative reload progress bar, manual pickup interactions, shop supply pedestal rotation, and an in-game inventory backpack.
 * Engineer a **custom Real-Time Software Audio Mixer** supporting concurrent 44.1kHz 16-bit PCM WAV playback, streaming background music (BGM) with JLayer MP3 decoding, and interactive pause-menu volume sliders with mouse-drag interaction.
-* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**260/260 tests passing 100%**).
+* Ensure code maintainability and stability through strict **SOLID principles** and an automated test suite (**315/315 tests passing 100%**).
 
 ## 2.4. Scope
 
@@ -57,7 +56,7 @@ This project bridges the gap between theoretical software engineering principles
 * Player health system with invulnerability frames (i-frames), screen shake, low-HP visual pulse (vignette), and debriefing Game Over screen.
 * Interactive in-game shop with randomized supply pedestals (ammo crates / nanite medkits) and dropped weapons.
 * Inventory backpack UI modal (`TAB`) displaying real-time equipment and spare ammo stats.
-* 100% automated test coverage across core game rules (**260 / 260 Unit Tests PASS**).
+* 100% automated test coverage across core game rules (**315 / 315 Unit Tests PASS**).
 
 ### What is outside the project scope:
 * Multi-client online network multiplayer (focus is strictly single-player roguelite loop).
@@ -106,7 +105,7 @@ This project bridges the gap between theoretical software engineering principles
     * **Heavy Grenadier**: Siege specialist launching timed fuse grenades (`BOMB_BEEP`) that detonate in high-damage kinetic shockwaves (`GRENADIER_EXPLOSION`) after 1.5 seconds.
   * **Directional Knockback Simulation**:
     * Hostiles receive physical knockback impulses upon bullet impacts ($130\text{ px/s}$) and knife slashes ($160\text{ px/s}$), dissipated rapidly via high-friction damping.
-* **Titan Battle Tank Boss (Stage 4 Climax Encounter)**:
+* **TITAN TANK MK-IV Boss (Stage 4 Climax Encounter)**:
   * **Enlarged 96px Heavy Hitbox & 3-Layer Decoupled Rotations**:
     * *Size & Scale*: Massive $96\text{px}$ combat footprint with $94 \times 76\text{px}$ armored chassis, $1250\text{ HP}$, dual caterpillar tracks, and $160\text{px}$ overhead commander boss health bar.
     * *Layer 1 (Top)*: Independent 360° twin-barrel machine gun turret tracking operative at all times.
@@ -456,29 +455,35 @@ Run the complete automated test suite via:
 mvn test
 ```
 
-## 11.3. Test Cases Summary (260 Tests – 100% Passing)
+## 11.3. Test Cases Summary (315 Tests – 100% Passing)
 
 | Test Suite Class | Tests Run | Failures | Errors | Coverage Focus |
-|---|---|---|---|---|
-| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | 52 | 0 | 0 | Weapon creation, selective 3-branch upgrades (DMG/RPM/ACC), Sniper Rifle Pierce specialization, dual-category reforge, Lv.1 weapon star reforge lock, crit reforge bounds, recoil bloom, pause/resume reload upon swap, magazine reloads, and cycling constraints. |
-| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | 38 | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, safe 130px spawn distance, tactical kiting, lateral strafing, BossTank 3-layer decoupled rotations, cannon unlock threshold, ram charge stun, and Boss Arena 5s reinforcement waves. |
-| [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | 20 | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed special rooms (Spawn, Shop, Reforge, Upgrade, Boss), wall grass fringe decoration, camera viewport offset, and anti-tearing seam protection. |
-| [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | 17 | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap, death trigger, manual `[F]` interaction, low-HP visual vignette, and shop medkit purchase. |
-| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | 16 | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss dummy lifecycle (1250 HP, 96px), and door unlock on room clear. |
-| [`HubRangeTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/hub/HubRangeTest.java) | 16 | 0 | 0 | The Range practice mode, target dummy DPS telemetry, armory dispenser, free upgrade station, free dual-category reforge station, and incinerator trash bin. |
-| [`MedicAndGrenadierEnemyTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/MedicAndGrenadierEnemyTest.java) | 14 | 0 | 0 | Combat Medic regenerative nanite aura, low-HP retreat AI, Heavy Grenadier timed fuse grenades (`BOMB_BEEP`), kinetic shockwave radius, and detonation sounds (`GRENADIER_EXPLOSION`). |
-| [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | 13 | 0 | 0 | AR/SMG/Shotgun/Sniper/Carbine reserve caps, reload ammo deduction from reserve, pickup stacking, distinct color identities, and infinite pistol ammo. |
-| [`KeyBindingsAndPauseMenuTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/input/KeyBindingsAndPauseMenuTest.java) | 13 | 0 | 0 | Settings menu, custom keybinds, full-screen toggle, aim guideline toggle (ON/OFF), interactive mouse-drag volume sliders, and mute toggles. |
-| [`CharacterBuffSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/entity/buff/CharacterBuffSystemTest.java) | 12 | 0 | 0 | Permanent character stat augmentations: Max HP (+10), Movement Speed (+6%), Damage Resistance (+5%), Reload Speed (+8%), and Inter-stage Health Regen. |
-| [`StatReforgeRoomTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/StatReforgeRoomTest.java) | 10 | 0 | 0 | Field Gunsmith Workbench room generation, interaction modal, dual-category reforge execution, credit costs, and Lv.1 weapon star reforge rejection. |
-| [`SemiCarbineRifleTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/SemiCarbineRifleTest.java) | 8 | 0 | 0 | Semi-Carbine Rifle attributes, semi-automatic fire cooldown, pinpoint accuracy, dynamic bloom, and star-level scaling. |
-| [`GameSoundManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameSoundManagerTest.java) | 7 | 0 | 0 | Audio Mixer voice lifecycle, independent SFX & BGM volume scaling, mute controls, sound enum mappings, and safe multi-threaded concurrency. |
-| [`GameSpriteManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameSpriteManagerTest.java) | 7 | 0 | 0 | Material assets loading, rotated sprite rendering, nearest-neighbor filtering, and fallback vector rendering. |
-| [`MinimapSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/MinimapSystemTest.java) | 6 | 0 | 0 | Tactical minimap projection, chamber discovery, active operative tracking, and special facility markers. |
-| [`RunSaveManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/storage/RunSaveManagerTest.java) | 6 | 0 | 0 | Checkpoint persistence, serialization integrity, version validation, and clean state recovery. |
-| [`WeaponSpriteManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSpriteManagerTest.java) | 3 | 0 | 0 | Weapon sprite asset loading and fallback vector rendering. |
-| [`GameFontManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameFontManagerTest.java) | 2 | 0 | 0 | Custom TrueType pixel font loading, cache retrieval, and fallback mechanism. |
-| **Total** | **260** | **0** | **0** | **100% BUILD SUCCESS (0 Failures, 0 Errors)** |
+|---|:---:|:---:|:---:|---|
+| [`WeaponSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSystemTest.java) | **53** | 0 | 0 | Weapon creation, selective 3-branch upgrades (DMG/RPM/ACC), Sniper Rifle Pierce specialization, dual-category reforge, Lv.1 weapon star reforge lock, crit reforge bounds, recoil bloom, pause/resume reload upon swap, magazine reloads, and cycling constraints. |
+| [`EnemyAITest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyAITest.java) | **40** | 0 | 0 | Melee BFS pathfinding around obstacles, 10-angle steering feelers, persistent stalking, spawn telegraph 0.4s portal invulnerability, safe 130px spawn distance, tactical kiting, lateral strafing, BossTank 3-layer decoupled rotations, cannon unlock threshold, ram charge stun, and Boss Arena 5s reinforcement waves. |
+| [`DungeonMapTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/DungeonMapTest.java) | **24** | 0 | 0 | Procedural room generation, non-overlapping layouts, corridor connections, guaranteed special rooms (Spawn, Shop, Reforge, Upgrade, Boss), wall grass fringe decoration, camera viewport offset, and anti-tearing seam protection. |
+| [`MedicAndGrenadierEnemyTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/MedicAndGrenadierEnemyTest.java) | **19** | 0 | 0 | Combat Medic self-regeneration (4 HP), 16-ray dead-end/pocket avoidance, flank steering into room center, emergency breakout navigation, Heavy Grenadier timed fuse grenades (`BOMB_BEEP`), kinetic shockwave radius, and detonation sounds. |
+| [`HubRangeTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/hub/HubRangeTest.java) | **19** | 0 | 0 | The Range practice mode, target dummy DPS telemetry, armory dispenser, free upgrade station, free dual-category reforge station, and incinerator trash bin. |
+| [`PlayerHealthTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/player/PlayerHealthTest.java) | **18** | 0 | 0 | Initial 100 HP, damage deduction, i-frame decay, healing cap, death trigger, manual `[F]` interaction, low-HP visual vignette, and shop medkit purchase. |
+| [`CombatDoorTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/CombatDoorTest.java) | **16** | 0 | 0 | Door states (OPEN, CLOSED, LOCKED), multi-phase combat progression, Phase 2 reinforcements, Boss TITAN TANK MK-IV naming verification, and door unlock on room clear. |
+| [`AmmoSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/AmmoSystemTest.java) | **16** | 0 | 0 | AR/SMG/Shotgun/Sniper/Carbine reserve caps, reload ammo deduction from reserve, pickup stacking, distinct color identities, and infinite pistol ammo. |
+| [`KeyBindingsAndPauseMenuTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/input/KeyBindingsAndPauseMenuTest.java) | **14** | 0 | 0 | Settings menu, custom keybinds, full-screen toggle, aim guideline toggle (ON/OFF), interactive mouse-drag volume sliders, audio mute persistence, and pause state lifecycle. |
+| [`CharacterBuffSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/entity/buff/CharacterBuffSystemTest.java) | **12** | 0 | 0 | Permanent character stat augmentations: Max HP (+10), Movement Speed (+6%), Damage Resistance (+5%), Reload Speed (+8%), and 7 tactical Perks with anti-stuck mechanics. |
+| [`BossTankAdvancedMovesetTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/BossTankAdvancedMovesetTest.java) | **11** | 0 | 0 | TITAN TANK MK-IV 3-layer decoupled rotations, distance-based cannon shell damage attenuation, sub-50% HP charging behavior, and exclusive telegraph lock. |
+| [`StatReforgeRoomTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/StatReforgeRoomTest.java) | **10** | 0 | 0 | Field Gunsmith Workbench room generation, interaction modal, dual-category reforge execution, credit costs, and Lv.1 weapon star reforge rejection. |
+| [`GameSoundManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameSoundManagerTest.java) | **9** | 0 | 0 | Audio Mixer voice lifecycle, independent SFX & BGM volume scaling, persistent audio_settings.properties, sound enum mappings, and safe multi-threaded concurrency. |
+| [`GameSpriteManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameSpriteManagerTest.java) | **9** | 0 | 0 | Material assets loading from classpath JAR, rotated sprite rendering, nearest-neighbor filtering, and fallback vector rendering. |
+| [`SemiCarbineRifleTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/SemiCarbineRifleTest.java) | **8** | 0 | 0 | Semi-Carbine Rifle attributes, semi-automatic fire cooldown, pinpoint accuracy, dynamic bloom, and star-level scaling. |
+| [`SemiAutoShotgunTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/SemiAutoShotgunTest.java) | **6** | 0 | 0 | Semi-Auto Shotgun attributes, rapid semi-automatic cycling, 6-pellet conical spread, and distinctive sound profiles. |
+| [`MinimapSystemTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/MinimapSystemTest.java) | **6** | 0 | 0 | Tactical minimap projection, chamber discovery, active operative tracking, and special facility markers. |
+| [`RunSaveManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/storage/RunSaveManagerTest.java) | **6** | 0 | 0 | Checkpoint persistence to save/run_save.properties, serialization integrity, lightweight peekSaveInfo, and clean state recovery. |
+| [`ExplosiveBarrelTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/dungeon/ExplosiveBarrelTest.java) | **5** | 0 | 0 | Explosive hazard barrel placement, health depletion, blast radius damage distribution, and chain reaction detonation. |
+| [`TransitionAndCameraTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/TransitionAndCameraTest.java) | **3** | 0 | 0 | Instantaneous camera snap on stage transition without viewport jitter, continuous lock during blackout, and fade transition to main menu. |
+| [`BossFightLoadoutTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/BossFightLoadoutTest.java) | **3** | 0 | 0 | Procedural randomization of 2 distinct Level 3 weapons from 6 classes for Boss Fight arena, full ammo resupply, and star allocation. |
+| [`EnemyCorpseTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/enemy/EnemyCorpseTest.java) | **3** | 0 | 0 | Slain enemy corpse decals, alpha fade out, decay lifecycle, and memory management. |
+| [`WeaponSpriteManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/weapon/WeaponSpriteManagerTest.java) | **3** | 0 | 0 | Weapon sprite asset loading, muzzle flash anchor offset, and fallback vector rendering. |
+| [`GameFontManagerTest`](file:///c:/Users/THE%20DUONG/My%20Project/GroupProject/src/test/java/com/groupproject/game/core/GameFontManagerTest.java) | **2** | 0 | 0 | Custom TrueType pixel font loading, cache retrieval, and system fallback mechanism. |
+| **Total** | **315** | **0** | **0** | **100% BUILD SUCCESS (0 Failures, 0 Errors across 24 Test Suites)** |
 
 ---
 
@@ -507,7 +512,7 @@ mvn test
 
 * **Simulation & Graphics**: Smooth rendering without flickering or frame tearing via `Graphics2D` double-buffering and subpixel seam protection.
 * **Audio-Visual Feedback**: Dynamic camera screenshake, danger vignette pulse, weapon recoil kick, under-operative reload bar, real-time floating damage tags, and synchronized stereo sound effects.
-* **Test Reliability**: The entire test suite of **260 unit tests** executes in approximately 5 to 7 seconds (`Total time: ~5.1s`), proving exceptional modularity and zero flaky tests.
+* **Test Reliability**: The entire test suite of **315 unit tests** executes in approximately 5 to 7 seconds (`Total time: ~5.1s`), proving exceptional modularity and zero flaky tests.
 
 ---
 
@@ -584,7 +589,7 @@ Docs/Project_Report.md
 * [x] Complete source code included in `src/main/java`.
 * [x] High-fidelity sound engine & software audio mixer integrated.
 * [x] README is completed and formatted according to the course rubric.
-* [x] Automated test suite completed (260/260 tests passing in `mvn test`).
+* [x] Automated test suite completed (315/315 tests passing in `mvn test`).
 * [x] Experimental evaluation and telemetry results included.
 * [x] Novelty and technical contributions clearly identified.
 * [x] All group members understand the architecture and codebase.

@@ -105,7 +105,7 @@ public class BossTank extends TargetDummy {
     }
 
     public BossTank(double x, double y) {
-        this(x, y, 1250, 96.0, "HEAVY COMBAT BATTLE TANK [BOSS]");
+        this(x, y, 1250, 96.0, "TITAN TANK MK-IV");
     }
 
     // =========================================================================
@@ -1549,8 +1549,8 @@ public class BossTank extends TargetDummy {
         g.setFont(new Font("SansSerif", Font.BOLD, 10));
         FontMetrics fm = g.getFontMetrics();
         String title = isCannonAwakened()
-                ? "☠ HEAVY COMBAT BATTLE TANK [ĐẠI PHÁO KÍCH HOẠT] ☠"
-                : "★ HEAVY COMBAT BATTLE TANK [PHASE 1] ★";
+                ? "☠ TITAN TANK MK-IV [ĐẠI PHÁO KÍCH HOẠT] ☠"
+                : "★ TITAN TANK MK-IV ★";
         int textW = fm.stringWidth(title);
         g.setColor(isCannonAwakened() ? new Color(255, 80, 60) : new Color(255, 215, 80));
         g.drawString(title, screenCX - textW / 2, barY - 5);

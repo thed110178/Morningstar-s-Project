@@ -2,6 +2,7 @@ package com.groupproject.game.enemy;
 
 import com.groupproject.game.core.Camera;
 import com.groupproject.game.core.GameConfig;
+import com.groupproject.game.dungeon.DungeonMap;
 import com.groupproject.game.dungeon.Room;
 import com.groupproject.game.entity.enemy.GrenadierEnemy;
 import com.groupproject.game.entity.enemy.MedicEnemy;
@@ -56,10 +57,10 @@ public class MedicAndGrenadierEnemyTest {
         assertTrue(medic.isAlive());
         assertFalse(medic.isBoss());
         assertEquals(115.0, medic.getSpeed(), 0.001);
-        assertEquals(135.0, medic.getHealRadius(), 0.001);
-        assertEquals(6, medic.getHealAmount());
-        assertEquals(0.80, medic.getHealInterval(), 0.001);
-        assertEquals(210.0, medic.getFleeDistance(), 0.001);
+        assertEquals(150.0, medic.getHealRadius(), 0.001);
+        assertEquals(8, medic.getHealAmount());
+        assertEquals(0.70, medic.getHealInterval(), 0.001);
+        assertEquals(240.0, medic.getFleeDistance(), 0.001);
         assertTrue(medic.getName().contains("Medic"), "Name should indicate medical support role");
     }
 
@@ -175,6 +176,128 @@ public class MedicAndGrenadierEnemyTest {
         double newDistToAlly = Math.hypot(medic.getX() - ally.getX(), medic.getY() - ally.getY());
         assertTrue(newDistToAlly < initialDistToAlly,
                 "Medic must close distance toward wounded ally (initial: " + initialDistToAlly + ", new: " + newDistToAlly + ")");
+    }
+
+
+    @Test
+    @DisplayName("Verify MedicEnemy self-heals by 4 HP on restorative pulse when wounded")
+    void testMedicSelfHealingOnPulse() {
+        playingState.getCombatTargets().clear();
+        MedicEnemy medic = new MedicEnemy(300, 300, 80);
+        medic.takeDamage(30);
+        assertEquals(50, medic.getCurrentHealth(), "Medic should have 50 HP after damage");
+
+        // Player is far away
+        double playerX = 900.0;
+        double playerY = 900.0;
+
+        // Update 0.75s (elapsed > 0.70s heal interval -> triggers 1 pulse with +4 self heal)
+        medic.updateAI(0.75, playerX, playerY, 28.0,
+                playingState.getDungeonMap(), playingState.getProjectileManager(), playingState);
+
+        assertEquals(54, medic.getCurrentHealth(), "Medic must self-heal +4 HP on restorative pulse");
+    }
+
+    @Test
+    @DisplayName("Verify MedicEnemy seeks cover when no wounded allies and line of sight is exposed")
+    void testMedicSeeksCoverWhenNoWoundedAllies() {
+        playingState.getCombatTargets().clear();
+        Room room = playingState.getDungeonMap().getSpawnRoom();
+        assertNotNull(room, "Spawn room must exist");
+
+        double playerX = room.getCenterWorldX();
+        double playerY = room.getCenterWorldY();
+
+        double startX = room.getCenterWorldX() + 35.0;
+        double startY = room.getCenterWorldY() + 35.0;
+        MedicEnemy medic = new MedicEnemy(startX, startY, 80);
+        playingState.getCombatTargets().add(medic);
+
+        // Update several ticks of AI to actively maneuver, seek cover, or kite instead of standing still
+        for (int i = 0; i < 15; i++) {
+            medic.updateAI(0.05, playerX, playerY, 28.0,
+                    playingState.getDungeonMap(), playingState.getProjectileManager(), playingState);
+        }
+
+        double movedDist = Math.hypot(medic.getX() - startX, medic.getY() - startY);
+        assertTrue(movedDist > 2.0, "Medic must actively maneuver instead of standing motionless (moved: " + movedDist + ")");
+    }
+
+    @Test
+    @DisplayName("Verify Medic smart steering maneuvers along walls when fleeing from corner")
+    void testMedicSmartSteeringAvoidsCornerTrapping() {
+        Room room = playingState.getDungeonMap().getSpawnRoom();
+        assertNotNull(room, "Spawn room must exist");
+
+        // Đặt medic ở gần góc tường Tây Bắc của phòng Spawn
+        double startX = (room.getGridX() + 1.5) * GameConfig.TILE_SIZE;
+        double startY = (room.getGridY() + 1.5) * GameConfig.TILE_SIZE;
+        MedicEnemy medic = new MedicEnemy(startX, startY, 80);
+
+        // Player áp sát từ hướng Đông Nam (dồn medic vào góc Tây Bắc)
+        double playerX = startX + 70.0;
+        double playerY = startY + 70.0;
+
+        // Cập nhật AI né chạy
+        for (int i = 0; i < 15; i++) {
+            medic.updateAI(0.05, playerX, playerY, 28.0,
+                    playingState.getDungeonMap(), playingState.getProjectileManager(), playingState);
+        }
+
+        // Medic phải bẻ lái thoát hiểm theo các hướng thông thoáng thay vì đứng kẹt cứng tại tọa độ ban đầu
+        double movedDist = Math.hypot(medic.getX() - startX, medic.getY() - startY);
+        assertTrue(movedDist > 1.5, "Medic must utilize multi-ray steering to maneuver out of corner traps");
+    }
+
+    @Test
+    @DisplayName("Verify Medic detects dead-end pocket and avoids selecting it as cover")
+    void testMedicDeadEndAndPocketDetection() {
+        Room room = playingState.getDungeonMap().getSpawnRoom();
+        assertNotNull(room);
+        DungeonMap map = playingState.getDungeonMap();
+
+        // 1. Center of room has high openness score
+        double centerOpenness = new MedicEnemy(room.getCenterWorldX(), room.getCenterWorldY(), 80).calculateOpennessScore(room.getCenterWorldX(), room.getCenterWorldY(), map);
+        assertTrue(centerOpenness > 800.0, "Center of room should have high openness clearance: " + centerOpenness);
+
+        // 2. Corner of room (1.2 tile from walls) is identified as a corner/pocket
+        double cornerX = (room.getGridX() + 1.2) * GameConfig.TILE_SIZE;
+        double cornerY = (room.getGridY() + 1.2) * GameConfig.TILE_SIZE;
+        MedicEnemy cornerMedic = new MedicEnemy(cornerX, cornerY, 80);
+        assertTrue(cornerMedic.isDeadEndOrPocket(cornerX, cornerY, map), "Corner of room should be detected as dead-end/pocket");
+
+        // 3. Cover search from player at center should NEVER select corner pocket
+        java.awt.geom.Point2D.Double coverSpot = cornerMedic.findBestCoverLocation(room.getCenterWorldX(), room.getCenterWorldY(), map);
+        if (coverSpot != null) {
+            assertFalse(cornerMedic.isDeadEndOrPocket(coverSpot.x, coverSpot.y, map), "Selected cover spot must NEVER be a dead-end pocket");
+        }
+    }
+
+    @Test
+    @DisplayName("Verify Medic executes emergency breakout when cornered by player in dead-end pocket")
+    void testMedicEmergencyBreakoutFromCorner() {
+        Room room = playingState.getDungeonMap().getSpawnRoom();
+        assertNotNull(room);
+        DungeonMap map = playingState.getDungeonMap();
+
+        // Set Medic deep in top-right corner pocket
+        double cornerX = (room.getGridX() + room.getWidthInTiles() - 1.5) * GameConfig.TILE_SIZE;
+        double cornerY = (room.getGridY() + 1.5) * GameConfig.TILE_SIZE;
+        MedicEnemy medic = new MedicEnemy(cornerX, cornerY, 80);
+        playingState.getCombatTargets().add(medic);
+
+        // Player blocks the corner entrance from below/left (south-west)
+        double playerX = cornerX - 45.0;
+        double playerY = cornerY + 65.0;
+
+        // Run several AI updates
+        for (int i = 0; i < 20; i++) {
+            medic.updateAI(0.04, playerX, playerY, 28.0, map, playingState.getProjectileManager(), playingState);
+        }
+
+        // Medic must maneuver out of corner pocket towards open room space instead of staying trapped
+        double movedDist = Math.hypot(medic.getX() - cornerX, medic.getY() - cornerY);
+        assertTrue(movedDist > 1.5, "Medic must actively breakout and maneuver away from corner pocket (moved: " + movedDist + ")");
     }
 
     // ==========================================
